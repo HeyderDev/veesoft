@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm app/Modules/Planning/Requests/TerminateDispatchRequest.php)",
+      "Bash(composer dump-autoload *)"
+    ]
+  }
+}
