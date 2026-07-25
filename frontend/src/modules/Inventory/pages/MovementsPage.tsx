@@ -1,0 +1,136 @@
+import { useState, useEffect } from 'react';
+import { useMovementsViewModel } from '../viewmodels/useMovementsViewModel';
+
+export default function MovementsPage() {
+  const { movements, isLoading, loadMovements } = useMovementsViewModel();
+
+  const [filterTipo, setFilterTipo] = useState('');
+  const [filterStudent, setFilterStudent] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
+  const handleFilterEvents = () => {
+    loadMovements(
+      filterTipo || undefined,
+      filterStudent || undefined,
+      filterStartDate || undefined,
+      filterEndDate || undefined
+    );
+  };
+
+  useEffect(() => {
+    loadMovements();
+  }, [loadMovements]);
+
+  const typeLabels: Record<string, string> = {
+    BORROW: 'Préstamo',
+    RETURN: 'Devolución',
+    MAINTENANCE: 'Mantenimiento',
+    ADJUSTMENT: 'Ajuste',
+    CONSUMPTION: 'Consumo'
+  };
+
+  const typeColors: Record<string, string> = {
+    BORROW: 'bg-amber-50 text-amber-600 border-amber-200',
+    RETURN: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    MAINTENANCE: 'bg-red-50 text-red-600 border-red-200',
+    ADJUSTMENT: 'bg-slate-50 text-slate-600 border-slate-200',
+    CONSUMPTION: 'bg-blue-50 text-blue-600 border-blue-200',
+  };
+
+  return (
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden print:hidden">
+        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 className="font-bold text-slate-800 text-base">Historial de Movimientos de Bodega</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Control y trazabilidad de los préstamos, devoluciones y mantenimientos.</p>
+          </div>
+        </div>
+
+        <div className="px-6 pb-4 pt-4 border-b border-slate-100 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">BUSCAR EN HISTORIAL</label>
+            <input type="text" value={filterStudent} onChange={e => setFilterStudent(e.target.value)} placeholder="Ej: nombre, herramienta..." className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none" />
+          </div>
+          <div className="w-full sm:w-auto">
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">TIPO EVENTO</label>
+            <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none">
+              <option value="">Todos</option>
+              <option value="BORROW">Préstamo</option>
+              <option value="RETURN">Devolución</option>
+              <option value="MAINTENANCE">Mantenimiento</option>
+              <option value="ADJUSTMENT">Ajuste / Eliminación</option>
+              <option value="CONSUMPTION">Consumo</option>
+            </select>
+          </div>
+          <div className="w-full sm:w-auto">
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">DESDE</label>
+            <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none" />
+          </div>
+          <div className="w-full sm:w-auto">
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">HASTA</label>
+            <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none" />
+          </div>
+          <button onClick={handleFilterEvents} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition">Filtrar</button>
+          <button
+            onClick={() => { setFilterStudent(''); setFilterTipo(''); setFilterStartDate(''); setFilterEndDate(''); loadMovements(); }}
+            className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 font-bold text-xs text-slate-700 transition"
+          >
+            🔄 Limpiar
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha / Hora</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Item (Herramienta/Insumo)</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Código</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo Evento</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Usuario</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Detalles</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {movements.map((ev) => (
+                <tr key={ev.id} className="hover:bg-slate-50/50 transition duration-150">
+                  <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-600">
+                    {new Date(ev.created_at).toLocaleDateString()} {new Date(ev.created_at).toLocaleTimeString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-800">
+                    <div className="flex items-center gap-2">
+                      {ev.tool?.name || ev.supply?.name || 'Item Desconocido'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 font-mono">
+                    {ev.tool?.code || ev.supply?.sku || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${typeColors[ev.type] || typeColors['ADJUSTMENT']}`}>
+                      {typeLabels[ev.type] || ev.type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-700">
+                    {ev.details?.usuario || 'Sistema'}
+                  </td>
+                  <td className="px-6 py-4 text-xs text-slate-500 italic max-w-xs truncate" title={ev.details?.detalles || ''}>
+                    {ev.details?.detalles || '-'}
+                  </td>
+                </tr>
+              ))}
+              {movements.length === 0 && !isLoading && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm">
+                    No hay registros en el historial de eventos.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

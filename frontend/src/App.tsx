@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AdminLayout } from './layouts/AdminLayout';
 import { PlanningModule } from './modules/Planning';
+import { InventoryModule } from './modules/Inventory';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './shared/context/AuthContext';
 
@@ -24,6 +25,12 @@ function App() {
         return (
           <ToastProvider>
             <PlanningModule onTabChange={setCurrentTab} />
+          </ToastProvider>
+        );
+      case 'inventory':
+        return (
+          <ToastProvider>
+            <InventoryModule onTabChange={setCurrentTab} />
           </ToastProvider>
         );
       default:
