@@ -19,12 +19,14 @@ class ToolController extends BaseApiController
     {
         $search = $request->query('q');
         $tools = $this->toolService->list(15, $search);
+
         return $this->paginatedResponse($tools, 'Herramientas obtenidas');
     }
 
     public function store(CreateToolRequest $request)
     {
         $tool = $this->toolService->create($request->validated());
+
         return $this->createdResponse($tool);
     }
 
@@ -33,21 +35,29 @@ class ToolController extends BaseApiController
         return $this->successResponse($this->toolService->getDetail($tool));
     }
 
+    public function findByCode(string $code)
+    {
+        return $this->successResponse($this->toolService->findByCode($code));
+    }
+
     public function update(UpdateToolRequest $request, int $tool)
     {
         $updated = $this->toolService->update($tool, $request->validated());
+
         return $this->successResponse($updated, 'Herramienta actualizada');
     }
 
     public function updateStatus(UpdateToolStatusRequest $request, int $tool)
     {
         $updated = $this->toolService->updateStatus($tool, $request->validated('status'), $request->validated('details'));
+
         return $this->successResponse($updated, 'Estado de herramienta actualizado');
     }
 
     public function destroy(int $tool)
     {
         $this->toolService->delete($tool);
+
         return $this->noContentResponse();
     }
 }

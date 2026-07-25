@@ -12,7 +12,7 @@ class Supply extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'sku', 'name', 'unit', 'current_stock', 'min_stock'
+        'sku', 'name', 'unit', 'current_stock', 'min_stock',
     ];
 
     protected $casts = [

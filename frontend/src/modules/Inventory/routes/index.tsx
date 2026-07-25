@@ -6,10 +6,16 @@ import MovementsPage from '../pages/MovementsPage';
 import MaintenancePage from '../pages/MaintenancePage';
 import ReportsPage from '../pages/ReportsPage';
 
+import { ScannerPage } from '../pages/ScannerPage';
+
 export const inventoryRoutes: RouteObject[] = [
   {
     path: '',
     element: <InventoryDashboardPage />,
+  },
+  {
+    path: 'scanner',
+    element: <ScannerPage />,
   },
   {
     path: 'herramientas',

@@ -21,8 +21,8 @@ class ToolRepository extends BaseRepository implements ToolRepositoryInterface
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -33,6 +33,12 @@ class ToolRepository extends BaseRepository implements ToolRepositoryInterface
     {
         $maxId = $this->model->max('id') ?? 0;
         $nextId = $maxId + 1;
-        return 'HERR-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
+
+        return 'HERR-'.str_pad($nextId, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function findByCode(string $code)
+    {
+        return $this->model->where('code', $code)->firstOrFail();
     }
 }

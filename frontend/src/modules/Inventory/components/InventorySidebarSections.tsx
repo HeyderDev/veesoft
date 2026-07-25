@@ -20,6 +20,7 @@ export const InventorySidebarSections: React.FC = () => {
   return (
     <div className="pl-4 mt-2 space-y-1">
       {renderLink('dashboard', 'Dashboard')}
+      {renderLink('scanner', 'Escáner')}
       {renderLink('herramientas', 'Herramientas')}
       {renderLink('insumos', 'Insumos')}
       {renderLink('historial', 'Historial')}

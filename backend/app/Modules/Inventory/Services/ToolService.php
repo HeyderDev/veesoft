@@ -23,6 +23,11 @@ class ToolService extends BaseService
         return $this->toolRepository->paginateOrderedByCode($perPage, $search);
     }
 
+    public function findByCode(string $code)
+    {
+        return $this->toolRepository->findByCode($code);
+    }
+
     public function create(array $data)
     {
         if (empty($data['code'])) {
