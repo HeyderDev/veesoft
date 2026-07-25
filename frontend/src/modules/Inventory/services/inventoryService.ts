@@ -5,6 +5,9 @@ export const inventoryService = {
   // Tools
   getTools: (q?: string) => 
     axiosClient.get<{ data: Tool[] }>('/tools', { params: { q } }).then(res => (res as any).data),
+    
+  getToolByCode: (code: string) => 
+    axiosClient.get(`/tools/code/${code}`).then(res => (res as any).data),
   
   createTool: (data: Partial<Tool>) => 
     axiosClient.post('/tools', data).then(res => (res as any).data),

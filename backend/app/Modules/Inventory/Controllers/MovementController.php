@@ -20,6 +20,7 @@ class MovementController extends BaseApiController
         $endDate = $request->query('endDate');
 
         $movements = $this->movementService->list(15, $type, $search, $startDate, $endDate);
+
         return $this->paginatedResponse($movements, 'Movimientos obtenidos');
     }
 }

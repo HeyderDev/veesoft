@@ -25,14 +25,14 @@ class MovementRepository extends BaseRepository implements MovementRepositoryInt
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('details', 'like', "%{$search}%")
-                  ->orWhereHas('tool', function ($t) use ($search) {
-                      $t->where('name', 'like', "%{$search}%")
-                        ->orWhere('code', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('supply', function ($s) use ($search) {
-                      $s->where('name', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('tool', function ($t) use ($search) {
+                        $t->where('name', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('supply', function ($s) use ($search) {
+                        $s->where('name', 'like', "%{$search}%")
+                            ->orWhere('sku', 'like', "%{$search}%");
+                    });
             });
         }
 

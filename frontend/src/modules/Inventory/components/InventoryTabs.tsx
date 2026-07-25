@@ -6,6 +6,7 @@ import SuppliesPage from '../pages/SuppliesPage';
 import MovementsPage from '../pages/MovementsPage';
 import MaintenancePage from '../pages/MaintenancePage';
 import ReportsPage from '../pages/ReportsPage';
+import { ScannerPage } from '../pages/ScannerPage';
 
 interface InventoryTabsProps {
   onTabChange?: (tabLabel: string) => void;
@@ -30,6 +31,7 @@ export const InventoryTabs: React.FC<InventoryTabsProps> = ({ onTabChange }) => 
   return (
     <div className="h-full animate-fade-in">
       {activeSection === 'dashboard' && <InventoryDashboardPage />}
+      {activeSection === 'scanner' && <ScannerPage />}
       {activeSection === 'herramientas' && <ToolsPage />}
       {activeSection === 'insumos' && <SuppliesPage />}
       {activeSection === 'historial' && <MovementsPage />}

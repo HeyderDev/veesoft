@@ -20,6 +20,7 @@ class InventoryService
     public function getStockLevel(string $itemCode): int
     {
         $supply = $this->supplyRepository->findBy('sku', $itemCode);
+
         return $supply ? (int) $supply->current_stock : 0;
     }
 
@@ -28,26 +29,27 @@ class InventoryService
         return DB::transaction(function () use ($items) {
             foreach ($items as $item) {
                 $supply = $this->supplyRepository->findBy('sku', $item['sku']);
-                if (!$supply || $supply->current_stock < $item['quantity']) {
+                if (! $supply || $supply->current_stock < $item['quantity']) {
                     return false;
                 }
-                
+
                 $newStock = $supply->current_stock - $item['quantity'];
                 $this->supplyRepository->update($supply->id, ['current_stock' => $newStock]);
-                
+
                 $this->movementRepository->create([
                     'supply_id' => $supply->id,
                     'type' => Movement::TYPE_ADJUSTMENT,
                     'quantity' => $item['quantity'],
-                    'details' => ['usuario' => 'Sistema', 'detalles' => 'Reserva de material: ' . ($item['reason'] ?? 'N/A')],
+                    'details' => ['usuario' => 'Sistema', 'detalles' => 'Reserva de material: '.($item['reason'] ?? 'N/A')],
                 ]);
             }
+
             return true;
         });
     }
 
     public function registerConsumption(array $items, string $reason): void
     {
-        $this->reserveMaterials(array_map(fn($item) => array_merge($item, ['reason' => $reason]), $items));
+        $this->reserveMaterials(array_map(fn ($item) => array_merge($item, ['reason' => $reason]), $items));
     }
 }

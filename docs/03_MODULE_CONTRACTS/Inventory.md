@@ -1,4 +1,4 @@
-> Versión: 1.2.0 · Última actualización: 2026-07-24 · Estado: Implementado e integrado
+> Versión: 1.3.0 · Última actualización: 2026-07-25 · Estado: Implementado e integrado
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
 # Contrato del Módulo: Inventory (Inventario y Materiales)
