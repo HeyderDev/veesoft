@@ -42,6 +42,11 @@ class AppServiceProvider extends ServiceProvider
 
         // ---- Módulo Tracking ----
         $this->app->bind(DispatchReportRepositoryInterface::class, DispatchReportRepository::class);
+
+        // ---- Módulo Inventory ----
+        $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\ToolRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\ToolRepository::class);
+        $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\SupplyRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\SupplyRepository::class);
+        $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\MovementRepository::class);
     }
 
     /**
