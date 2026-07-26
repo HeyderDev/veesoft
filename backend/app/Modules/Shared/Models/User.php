@@ -2,7 +2,6 @@
 
 namespace App\Modules\Shared\Models;
 
-use App\Modules\Planning\Models\OperationalTask;
 use App\Modules\Planning\Models\ProductionCycle;
 use App\Modules\Planning\Models\ProductionGoal;
 use App\Modules\Planning\Models\ProductionPlan;
@@ -62,11 +61,6 @@ class User extends Authenticatable
     public function productionCycles(): HasMany
     {
         return $this->hasMany(ProductionCycle::class, 'created_by');
-    }
-
-    public function operationalTasks(): HasMany
-    {
-        return $this->hasMany(OperationalTask::class, 'assigned_to');
     }
 
     public function approvedReschedules(): HasMany

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from './layouts/AdminLayout';
 import { PlanningModule } from './modules/Planning';
 import { InventoryModule } from './modules/Inventory';
+import { TasksModule } from './modules/Tasks';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './shared/context/AuthContext';
 
@@ -31,6 +32,12 @@ function App() {
         return (
           <ToastProvider>
             <InventoryModule onTabChange={setCurrentTab} />
+          </ToastProvider>
+        );
+      case 'tasks':
+        return (
+          <ToastProvider>
+            <TasksModule onTabChange={setCurrentTab} />
           </ToastProvider>
         );
       default:
