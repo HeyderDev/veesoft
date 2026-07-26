@@ -35,7 +35,7 @@ export const modulesRegistry: ModuleDescriptor[] = [
     NavProvider: PlanningNavProvider,
     SidebarSections: PlanningSidebarSections,
   },
-  { id: 'tasks', name: 'Tareas', icon: '✅', active: false },
+  { id: 'tasks', name: 'Tareas', icon: '✅', active: true },
   { id: 'logistics', name: 'Logística', icon: '🚚', active: false },
   { 
     id: 'inventory', name: 'Inventario', icon: '📦', active: true,
