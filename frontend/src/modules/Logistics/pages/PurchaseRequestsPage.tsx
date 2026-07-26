@@ -193,7 +193,7 @@ export const PurchaseRequestsPage: React.FC = () => {
               <div className="flex items-center justify-between border-t border-slate-100 mt-3 pt-3">
                 <span className="text-sm font-medium text-slate-600">Total estimado de la orden</span>
                 <span className="text-lg font-bold text-slate-800">
-                  ${(reviewTarget.items ?? []).reduce((sum, item) => sum + item.quantity * (reviewForm.unit_prices[item.id] ?? 0), 0).toFixed(2)}
+                  ${(reviewTarget.items ?? []).reduce((sum, item) => sum + Number(item.quantity) * (reviewForm.unit_prices[item.id] ?? 0), 0).toFixed(2)}
                 </span>
               </div>
             </div>

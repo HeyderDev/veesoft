@@ -76,12 +76,12 @@ export function usePlanningOverviewViewModel() {
       const [viverosRes, tasksRes, supplies] = await Promise.all([
         planningService.getViveros(),
         tasksService.getHistory({ status: 'pending', type: 'lot' }),
-        inventoryService.getSupplies(),
+        inventoryService.getSupplies() as Promise<Supply[]>,
       ]);
 
       const viveros = viverosRes.data || [];
       const rawTasks = (tasksRes.data || []) as unknown as PlanningTaskRaw[];
-      const suppliesById = new Map<number, Supply>(supplies.map(s => [s.id, s]));
+      const suppliesById = new Map<number, Supply>(supplies.map((s): [number, Supply] => [s.id, s]));
 
       // ---- Planificación por vivero (reutiliza el mismo endpoint que Planning > Resumen) ----
       const summaries = await Promise.all(
@@ -145,7 +145,7 @@ export function usePlanningOverviewViewModel() {
       setPendingTasks(tasksOverview);
       setAtRiskSupplies(Array.from(riskMap.values()));
     } catch (err) {
-      error('Error al cargar el panorama operativo');
+      error(extractErrorMessage(err, 'Error al cargar el panorama operativo'));
       console.error(err);
     } finally {
       setIsLoading(false);
