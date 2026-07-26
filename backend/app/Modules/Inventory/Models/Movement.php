@@ -13,12 +13,15 @@ class Movement extends Model
     use HasFactory, SoftDeletes;
 
     public const TYPE_ADJUSTMENT = 'ADJUSTMENT';
+
     public const TYPE_MAINTENANCE = 'MAINTENANCE';
+
     public const TYPE_RETURN = 'RETURN';
+
     public const TYPE_BORROWED = 'BORROWED';
 
     protected $fillable = [
-        'tool_id', 'supply_id', 'user_id', 'type', 'quantity', 'details'
+        'tool_id', 'supply_id', 'user_id', 'type', 'quantity', 'details',
     ];
 
     protected $casts = [

@@ -21,7 +21,7 @@ class SupplyRepository extends BaseRepository implements SupplyRepositoryInterfa
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
@@ -32,6 +32,7 @@ class SupplyRepository extends BaseRepository implements SupplyRepositoryInterfa
     {
         $maxId = $this->model->max('id') ?? 0;
         $nextId = $maxId + 1;
-        return 'INS-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
+
+        return 'INS-'.str_pad($nextId, 3, '0', STR_PAD_LEFT);
     }
 }

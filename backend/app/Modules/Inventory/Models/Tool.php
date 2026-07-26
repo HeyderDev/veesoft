@@ -12,12 +12,15 @@ class Tool extends Model
     use HasFactory, SoftDeletes;
 
     public const STATUS_AVAILABLE = 'AVAILABLE';
+
     public const STATUS_BORROWED = 'BORROWED';
+
     public const STATUS_MAINTENANCE = 'MAINTENANCE';
+
     public const STATUS_DAMAGED = 'DAMAGED';
 
     protected $fillable = [
-        'code', 'name', 'description', 'status', 'quantity'
+        'code', 'name', 'description', 'status', 'quantity',
     ];
 
     public function movements(): HasMany
