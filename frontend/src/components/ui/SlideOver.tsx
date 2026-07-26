@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface SlideOverProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ export const SlideOver: React.FC<SlideOverProps> = ({ isOpen, onClose, title, su
 
   if (!show) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
         {/* Backdrop */}
@@ -64,6 +65,7 @@ export const SlideOver: React.FC<SlideOverProps> = ({ isOpen, onClose, title, su
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

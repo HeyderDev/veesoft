@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Modules\Logistics\Repositories\Contracts\PurchaseOrderRepositoryInterface;
+use App\Modules\Logistics\Repositories\Contracts\PurchaseRequestRepositoryInterface;
+use App\Modules\Logistics\Repositories\Contracts\SupplierRepositoryInterface;
+use App\Modules\Logistics\Repositories\Eloquent\PurchaseOrderRepository;
+use App\Modules\Logistics\Repositories\Eloquent\PurchaseRequestRepository;
+use App\Modules\Logistics\Repositories\Eloquent\SupplierRepository;
 use App\Modules\Planning\Repositories\Contracts\DispatchRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\LotCycleRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\LotRepositoryInterface;
@@ -19,6 +25,7 @@ use App\Modules\Planning\Repositories\Eloquent\ViveroRepository;
 use App\Modules\Tracking\Repositories\Contracts\DispatchReportRepositoryInterface;
 use App\Modules\Tracking\Repositories\Eloquent\DispatchReportRepository;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -50,6 +57,11 @@ class AppServiceProvider extends ServiceProvider
 
         // ---- Módulo Tasks ----
         $this->app->bind(\App\Modules\Tasks\Repositories\Contracts\OperationalTaskRepositoryInterface::class, \App\Modules\Tasks\Repositories\Eloquent\OperationalTaskRepository::class);
+
+        // ---- Módulo Logistics ----
+        $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
+        $this->app->bind(PurchaseOrderRepositoryInterface::class, PurchaseOrderRepository::class);
+        $this->app->bind(PurchaseRequestRepositoryInterface::class, PurchaseRequestRepository::class);
     }
 
     /**
@@ -57,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Schema::defaultStringLength(191);
         // Los modelos viven en App\Modules\{Module}\Models, no en App\Models,
         // por lo que Laravel no puede adivinar su Factory por convención.
         // Esta regla la resuelve por nombre de clase (LotFactory sirve a Lot
