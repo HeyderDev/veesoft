@@ -20,5 +20,5 @@ Route::group([], base_path('app/Modules/Tracking/Routes/api.php'));
 
 Route::group([], base_path('app/Modules/Inventory/Routes/api.php'));
 // Route::group([], base_path('app/Modules/Logistics/Routes/api.php'));
-// Route::group([], base_path('app/Modules/Tasks/Routes/api.php'));
+Route::group([], base_path('app/Modules/Tasks/Routes/api.php'));
 // Route::group([], base_path('app/Modules/Synchronization/Routes/api.php'));

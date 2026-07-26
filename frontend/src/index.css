@@ -166,31 +166,9 @@
     @apply h-full rounded-full transition-all duration-700 ease-out;
   }
 
-  .modal-overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-  }
-
-  .modal-container {
-    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden;
-    animation: modal-in 0.25s ease-out;
-  }
-
   .phase-dot {
     @apply absolute flex items-center justify-center w-8 h-8 rounded-full border-4 border-white shadow-sm text-xs font-bold text-white z-10;
     left: -4px;
-  }
-
-  @keyframes modal-in {
-    from {
-      opacity: 0;
-      transform: scale(0.96) translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
   }
 
   @keyframes fade-in {
