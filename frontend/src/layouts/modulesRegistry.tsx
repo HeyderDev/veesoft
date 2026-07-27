@@ -37,7 +37,7 @@ export const modulesRegistry: ModuleDescriptor[] = [
   { id: 'tasks', name: 'Tareas', icon: '✅', active: false },
   { id: 'logistics', name: 'Logística', icon: '🚚', active: false },
   { id: 'inventory', name: 'Inventario', icon: '📦', active: false },
-  { id: 'tracking', name: 'Seguimiento', icon: '🌱', active: false },
+  { id: 'tracking', name: 'Seguimiento', icon: '🌱', active: true },
   { id: 'reportes', name: 'Reportes', icon: '📈', active: false },
   { id: 'configuracion', name: 'Configuración', icon: '⚙️', active: false },
 ];

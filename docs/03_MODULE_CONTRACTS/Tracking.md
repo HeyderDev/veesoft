@@ -1,41 +1,79 @@
 # 03_MODULE_CONTRACTS/Tracking.md
 
-> Versión: 1.0.0 · Última actualización: 2026-07-22 · Estado: Oficial
+> Versión: 2.0.0 · Última actualización: 2026-07-26 · Estado: Oficial
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
 # Contrato del módulo Tracking
 
-**Estado:** No implementado en su propio módulo — **`ClimateEvent`, `ClimateEventLot`, `Alert` y `ProductionHistory` viven provisionalmente dentro de `Planning`** mientras no había dueño para este módulo. Es lo primero que debe revisar el compañero responsable de `Tracking` junto con el Arquitecto.
+**Estado:** Implementado (parcial). Dos partes conviven bajo el mismo módulo, con dueños/orígenes distintos:
+- `DispatchReport` — reporte de despacho real al cerrar un ciclo de `Planning` (ya existía en el commit inicial del repositorio).
+- `TrackingItem` / `TrackingMovement` — seguimiento de existencias de plántulas por lote (entradas/salidas, alertas de stock bajo), adaptado desde el proyecto individual `app_vivero` en la sesión del 2026-07-26.
+
+**Ubicación:** `backend/app/Modules/Tracking`, `frontend/src/modules/Tracking`.
 
 ---
 
 ## 1. Responsabilidad
 
-Seguimiento del desarrollo de las plántulas: eventos climáticos que afectan lotes, alertas generadas automáticamente, e historial de producción.
+Seguimiento del resultado de la producción: cuánto se despachó realmente al cerrar un ciclo (`DispatchReport`), y seguimiento de existencias de plántulas por lote con sus movimientos de entrada/salida y alertas de stock bajo (`TrackingItem`/`TrackingMovement`).
 
-## 2. Situación de partida (importante)
+## 2. Situación de partida (histórico, sin resolver todavía)
 
-Estas cuatro tablas y sus modelos existen hoy en `backend/app/Modules/Planning/Models/`:
-- `ClimateEvent` / `ClimateEventLot` — evento climático y su relación con lotes afectados.
-- `Alert` — alertas generadas (relacionadas a `CycleLot`).
-- `ProductionHistory` — historial, relacionado a `ProductionCycle`.
+`ClimateEvent`, `ClimateEventLot`, `Alert` y `ProductionHistory` siguen viviendo en `backend/app/Modules/Planning/Models/` (ver `docs/03_MODULE_CONTRACTS/Planning.md` §3). Moverlas a `Tracking` sigue siendo una **decisión pendiente de coordinar con el Arquitecto**, no tomada en esta sesión — esta sesión no las tocó.
 
-**Decisión pendiente de Fase 2** (no la tomes solo): mover estos cuatro modelos (+ sus migraciones y factories) de `Planning/Models` a `Tracking/Models`, y reemplazar el acceso directo (`CycleLot::alerts()`, `ProductionCycle::histories()`) por un `TrackingService` público que `Planning` consuma. Las migraciones ya existen — el movimiento cambia namespace, no crea tablas nuevas.
+## 3. Entidades que posee
 
-## 3. Servicios públicos que debería ofrecer una vez migrado
+- `Dispatch` (tabla `dispatches`, propiedad física de `Planning` — `Tracking` es el único módulo autorizado a crear registros en ella; `Planning` solo cierra el ciclo).
+- `TrackingItem` (tabla `tracking_items`) — lote de plántulas en seguimiento: nombre, especie, etapa de crecimiento, cantidad, unidad, ubicación, stock mínimo.
+- `TrackingMovement` (tabla `tracking_movements`) — entrada/salida de un `TrackingItem`, ajusta su cantidad de forma atómica.
 
-| Método propuesto | Para qué lo consumiría `Planning` (u otros) |
+## 4. Servicios públicos
+
+### `DispatchReportService` (sin cambios en esta sesión)
+
+| Método | Para qué |
 |---|---|
-| `registerClimateEvent(array $data, array $affectedLotIds): ClimateEvent` | Registrar un evento climático y las alertas derivadas. |
-| `getActiveAlerts(?int $cycleLotId = null): Collection` | Mostrar alertas activas, globales o por lote. |
-| `getHistory(int $productionCycleId): Collection` | Historial de un ciclo para reportes. |
+| `totalDispatchedForGoal(int $goalId): int` | Total real despachado de una meta — única fuente que usa Resumen Operativo. |
+| `pendingCyclesForVivero(int $viveroId): Collection` | Ciclos cerrados a la espera de reporte. |
+| `createReport(int $lotCycleId, int $quantity, ?string $dispatchedAt): Dispatch` | Registra el despacho real y completa la meta si corresponde. |
 
-## 4. Dependencias permitidas
+### `TrackingItemService`
 
-`Tracking` → `Planning` → `Shared`. `Tracking` consulta a `Planning` (por ejemplo, `getCurrentPhase()`, ver `docs/03_MODULE_CONTRACTS/Planning.md` §4) para saber en qué fase está un lote antes de generar una alerta relacionada a esa fase.
+| Método | Para qué |
+|---|---|
+| `list(?string $search, ?string $stage, int $perPage = 15)` | Listado paginado con búsqueda y filtro por etapa. |
+| `getDetail(int $id)` | Ítem con su historial de movimientos. |
+| `create(array $data)` | Registra un ítem nuevo (la cantidad inicial se define aquí). |
+| `update(int $id, array $data)` | Actualiza datos del ítem — **la cantidad no se edita aquí**, solo vía movimientos. |
+| `delete(int $id)` | Elimina (soft delete) el ítem. |
 
-## 5. Antes de empezar
+### `TrackingMovementService`
 
-1. Coordina con el Arquitecto el movimiento de estas cuatro tablas fuera de `Planning`.
-2. Sigue la estructura de `Planning` como plantilla para el resto del módulo.
-3. Actualiza este documento y `docs/03_MODULE_CONTRACTS/Planning.md` §3 una vez migradas las tablas.
+| Método | Para qué |
+|---|---|
+| `list(?int $trackingItemId, int $perPage = 15)` | Historial de movimientos, opcionalmente filtrado por ítem. |
+| `register(array $data): TrackingMovement` | Registra entrada/salida y ajusta la existencia del ítem en una transacción. Una salida nunca puede dejar la existencia en negativo (regla agregada respecto al proyecto original `app_vivero`, que no la validaba). |
+
+### `TrackingSummaryService`
+
+| Método | Para qué |
+|---|---|
+| `getSummary(): array` | Totales de ítems/cantidad y distribución por etapa de crecimiento. |
+| `getStockAlerts(): Collection` | Ítems cuya cantidad ya llegó o bajó del stock mínimo. |
+
+## 5. Dependencias permitidas
+
+`Tracking` → `Planning` → `Shared` (para `DispatchReport`, que lee `Lot`/`LotCycle`/`ProductionGoal` de Planning). `TrackingItem`/`TrackingMovement` no dependen hoy de ningún otro módulo — son autocontenidos.
+
+## 6. Frontend
+
+- `ReportesPage` (`DispatchReport`) se consume embebida como tab dentro de `Planning` (`PlanningTabs.tsx` la importa directamente) — no se tocó.
+- `SeguimientoPage`, `MovimientosPage`, `ResumenSeguimientoPage` son la entrada propia de `Tracking` en el Sidebar compartido (`modulesRegistry.tsx`, `id: 'tracking'`, ahora `active: true`), navegadas con tabs planas propias (`TrackingTabs.tsx`) — sin drill-down por vivero, ya que `TrackingItem` no está atado a un `Vivero` específico.
+- QR: se genera (no se escanea) con `qrcode.react`, agregada en esta sesión.
+- Exportar PDF: con `jspdf`, agregada en esta sesión.
+
+## 7. Pendiente / a decidir en integración
+
+- Mover `ClimateEvent`/`ClimateEventLot`/`Alert`/`ProductionHistory` desde `Planning` a `Tracking` (ver §2) — sigue sin resolverse.
+- Si `TrackingItem` debe asociarse a un `Vivero` o `Lot` de Planning (hoy `location` es texto libre, como en `app_vivero`) — no se decidió en esta sesión, se mantuvo el diseño original desacoplado.
+- Escaneo de QR por cámara (no solo generación) quedó fuera de alcance — no aplica bien a un dashboard de escritorio.

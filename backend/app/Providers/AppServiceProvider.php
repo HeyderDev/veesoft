@@ -17,7 +17,11 @@ use App\Modules\Planning\Repositories\Eloquent\ProductionPhaseRepository;
 use App\Modules\Planning\Repositories\Eloquent\SummaryRepository;
 use App\Modules\Planning\Repositories\Eloquent\ViveroRepository;
 use App\Modules\Tracking\Repositories\Contracts\DispatchReportRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingItemRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingMovementRepositoryInterface;
 use App\Modules\Tracking\Repositories\Eloquent\DispatchReportRepository;
+use App\Modules\Tracking\Repositories\Eloquent\TrackingItemRepository;
+use App\Modules\Tracking\Repositories\Eloquent\TrackingMovementRepository;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\ServiceProvider;
 
@@ -42,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
 
         // ---- Módulo Tracking ----
         $this->app->bind(DispatchReportRepositoryInterface::class, DispatchReportRepository::class);
+        $this->app->bind(TrackingItemRepositoryInterface::class, TrackingItemRepository::class);
+        $this->app->bind(TrackingMovementRepositoryInterface::class, TrackingMovementRepository::class);
     }
 
     /**

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AdminLayout } from './layouts/AdminLayout';
 import { PlanningModule } from './modules/Planning';
+import { TrackingModule } from './modules/Tracking';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './shared/context/AuthContext';
 
@@ -26,6 +27,12 @@ function App() {
             <PlanningModule onTabChange={setCurrentTab} />
           </ToastProvider>
         );
+      case 'tracking':
+        return (
+          <ToastProvider>
+            <TrackingModule onTabChange={setCurrentTab} />
+          </ToastProvider>
+        );
       default:
         return (
           <div className="flex items-center justify-center h-[60vh] animate-fade-in">
@@ -43,7 +50,7 @@ function App() {
     <AuthProvider>
       <AdminLayout
         currentModule={currentModule}
-        currentTab={currentModule === 'planning' ? currentTab : undefined}
+        currentTab={(currentModule === 'planning' || currentModule === 'tracking') ? currentTab : undefined}
         setCurrentModule={setCurrentModule}
       >
         {renderCurrentModule()}
