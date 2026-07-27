@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AdminLayout } from './layouts/AdminLayout';
 import { PlanningModule } from './modules/Planning';
+import { TrackingModule } from './modules/Tracking';
 import { InventoryModule } from './modules/Inventory';
 import { TasksModule } from './modules/Tasks';
 import { LogisticsModule } from './modules/Logistics';
@@ -27,6 +28,12 @@ function App() {
         return (
           <ToastProvider>
             <PlanningModule onTabChange={setCurrentTab} />
+          </ToastProvider>
+        );
+      case 'tracking':
+        return (
+          <ToastProvider>
+            <TrackingModule onTabChange={setCurrentTab} />
           </ToastProvider>
         );
       case 'inventory':
@@ -64,7 +71,11 @@ function App() {
     <AuthProvider>
       <AdminLayout
         currentModule={currentModule}
-        currentTab={currentModule === 'planning' || currentModule === 'inventory' || currentModule === 'logistics' ? currentTab : undefined}
+        currentTab={
+          ['planning', 'tracking', 'inventory', 'logistics'].includes(currentModule)
+            ? currentTab
+            : undefined
+        }
         setCurrentModule={setCurrentModule}
       >
         {renderCurrentModule()}
