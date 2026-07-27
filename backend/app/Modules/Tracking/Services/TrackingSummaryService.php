@@ -2,37 +2,35 @@
 
 namespace App\Modules\Tracking\Services;
 
-use App\Modules\Tracking\Repositories\Contracts\TrackingItemRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingLotRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingMovementRepositoryInterface;
 
 /**
- * Agrega datos de TrackingItem para la pantalla de Resumen (totales y distribución
- * por etapa) y las alertas de stock bajo — no posee su propia tabla, por eso no
- * extiende BaseService.
+ * Agrega datos de Lot (Planning) y TrackingMovement/TrackingClient para las dos
+ * vistas de Reportes: general (totales globales) y por lote (historial de
+ * salidas con cliente) — no posee su propia tabla, por eso no extiende BaseService.
  */
 class TrackingSummaryService
 {
     public function __construct(
-        private TrackingItemRepositoryInterface $itemRepository,
+        private TrackingLotRepositoryInterface $lotRepository,
+        private TrackingMovementRepositoryInterface $movementRepository,
     ) {}
 
-    public function getSummary(): array
+    public function getGeneralSummary(): array
     {
-        $items = $this->itemRepository->all();
-
-        $byStage = $items->groupBy('stage')->map(fn ($group) => [
-            'items_count' => $group->count(),
-            'quantity' => (int) $group->sum('quantity'),
-        ]);
-
         return [
-            'total_items' => $items->count(),
-            'total_quantity' => (int) $items->sum('quantity'),
-            'by_stage' => $byStage,
+            'total_lots' => $this->lotRepository->allWithVivero()->count(),
+            'total_dispatched' => $this->movementRepository->totalQuantity(),
+            'top_clients' => $this->movementRepository->topClients(),
         ];
     }
 
-    public function getStockAlerts()
+    public function getLotSummary(int $lotId): array
     {
-        return $this->itemRepository->allBelowMinimumStock();
+        return [
+            'lot' => $this->lotRepository->find($lotId),
+            'movements' => $this->movementRepository->paginateWithFilters($lotId, perPage: 100),
+        ];
     }
 }

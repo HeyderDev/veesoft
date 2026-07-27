@@ -9,13 +9,13 @@ class TrackingSummaryController extends BaseApiController
 {
     public function __construct(private TrackingSummaryService $summaryService) {}
 
-    public function show()
+    public function general()
     {
-        return $this->successResponse($this->summaryService->getSummary());
+        return $this->successResponse($this->summaryService->getGeneralSummary());
     }
 
-    public function alerts()
+    public function forLot(int $lot)
     {
-        return $this->successResponse($this->summaryService->getStockAlerts());
+        return $this->successResponse($this->summaryService->getLotSummary($lot));
     }
 }

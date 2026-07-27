@@ -23,10 +23,12 @@ use App\Modules\Planning\Repositories\Eloquent\ProductionPhaseRepository;
 use App\Modules\Planning\Repositories\Eloquent\SummaryRepository;
 use App\Modules\Planning\Repositories\Eloquent\ViveroRepository;
 use App\Modules\Tracking\Repositories\Contracts\DispatchReportRepositoryInterface;
-use App\Modules\Tracking\Repositories\Contracts\TrackingItemRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingClientRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingLotRepositoryInterface;
 use App\Modules\Tracking\Repositories\Contracts\TrackingMovementRepositoryInterface;
 use App\Modules\Tracking\Repositories\Eloquent\DispatchReportRepository;
-use App\Modules\Tracking\Repositories\Eloquent\TrackingItemRepository;
+use App\Modules\Tracking\Repositories\Eloquent\TrackingClientRepository;
+use App\Modules\Tracking\Repositories\Eloquent\TrackingLotRepository;
 use App\Modules\Tracking\Repositories\Eloquent\TrackingMovementRepository;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Schema;
@@ -53,8 +55,9 @@ class AppServiceProvider extends ServiceProvider
 
         // ---- Módulo Tracking ----
         $this->app->bind(DispatchReportRepositoryInterface::class, DispatchReportRepository::class);
-        $this->app->bind(TrackingItemRepositoryInterface::class, TrackingItemRepository::class);
+        $this->app->bind(TrackingLotRepositoryInterface::class, TrackingLotRepository::class);
         $this->app->bind(TrackingMovementRepositoryInterface::class, TrackingMovementRepository::class);
+        $this->app->bind(TrackingClientRepositoryInterface::class, TrackingClientRepository::class);
 
         // ---- Módulo Inventory ----
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\ToolRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\ToolRepository::class);

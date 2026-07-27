@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { trackingService } from '../services/trackingService';
-import type { TrackingItem, TrackingMovement } from '../types';
+import type { TrackingClient, TrackingLot, TrackingMovement } from '../types';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -11,33 +11,30 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export function useMovimientosViewModel() {
-  const [items, setItems] = useState<TrackingItem[]>([]);
+/**
+ * Escenario de un lote específico: registrar salidas (siempre con cliente) y
+ * ver su historial — no hay entradas, los lotes se crean en Planning.
+ */
+export function useMovimientosViewModel(lotId: number) {
+  const [lot, setLot] = useState<TrackingLot | null>(null);
   const [movements, setMovements] = useState<TrackingMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [historyFilterId, setHistoryFilterId] = useState<number | null>(null);
 
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [type, setType] = useState<'entry' | 'exit'>('entry');
+  const [client, setClient] = useState<TrackingClient | null>(null);
   const [quantity, setQuantity] = useState(0);
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const { success, error } = useToast();
 
-  const fetchAll = async () => {
+  const fetchDetail = async () => {
     setIsLoading(true);
     try {
-      const [itemsRes, movementsRes] = await Promise.all([
-        trackingService.getTrackingItems(),
-        trackingService.getTrackingMovements(historyFilterId ?? undefined),
-      ]);
-      const itemsData = itemsRes.data || [];
-      setItems(itemsData);
-      setMovements(movementsRes.data || []);
-      setSelectedItemId(prev => prev ?? (itemsData.length > 0 ? itemsData[0].id : null));
+      const res = await trackingService.getLotDetail(lotId);
+      setLot(res.data?.lot ?? null);
+      setMovements(res.data?.movements?.data ?? []);
     } catch (err) {
-      error('Error al cargar los movimientos de inventario');
+      error('Error al cargar el historial del lote');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -45,28 +42,32 @@ export function useMovimientosViewModel() {
   };
 
   useEffect(() => {
-    fetchAll();
+    fetchDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyFilterId]);
+  }, [lotId]);
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedItemId) return;
+    if (!client) {
+      error('Selecciona un cliente para registrar la salida');
+      return;
+    }
 
     setIsSaving(true);
     try {
-      await trackingService.createTrackingMovement({
-        tracking_item_id: selectedItemId,
-        type,
+      await trackingService.createMovement({
+        lot_id: lotId,
+        tracking_client_id: client.id,
         quantity,
         notes: notes || undefined,
       });
-      success(type === 'entry' ? 'Entrada registrada' : 'Salida registrada');
+      success('Salida registrada');
+      setClient(null);
       setQuantity(0);
       setNotes('');
-      await fetchAll();
+      await fetchDetail();
     } catch (err) {
-      error(extractErrorMessage(err, 'No se pudo registrar el movimiento'));
+      error(extractErrorMessage(err, 'No se pudo registrar la salida'));
       console.error(err);
     } finally {
       setIsSaving(false);
@@ -74,8 +75,7 @@ export function useMovimientosViewModel() {
   };
 
   return {
-    items, movements, isLoading, historyFilterId, setHistoryFilterId,
-    selectedItemId, setSelectedItemId, type, setType, quantity, setQuantity,
+    lot, movements, isLoading, client, setClient, quantity, setQuantity,
     notes, setNotes, isSaving, handleRegister,
   };
 }

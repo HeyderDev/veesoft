@@ -13,9 +13,9 @@ class TrackingMovementController extends BaseApiController
 
     public function index(Request $request)
     {
-        $trackingItemId = $request->query('tracking_item_id') ? (int) $request->query('tracking_item_id') : null;
+        $lotId = $request->query('lot_id') ? (int) $request->query('lot_id') : null;
 
-        $movements = $this->movementService->list($trackingItemId);
+        $movements = $this->movementService->list($lotId);
 
         return $this->paginatedResponse($movements, 'Movimientos obtenidos');
     }
@@ -24,6 +24,6 @@ class TrackingMovementController extends BaseApiController
     {
         $movement = $this->movementService->register($request->validated());
 
-        return $this->createdResponse($movement, 'Movimiento registrado');
+        return $this->createdResponse($movement, 'Salida registrada');
     }
 }

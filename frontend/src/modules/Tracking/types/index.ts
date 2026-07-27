@@ -3,54 +3,6 @@ export interface DispatchSummary {
   dispatched_seedlings: number;
 }
 
-export type TrackingStage = 'germination' | 'nursery' | 'transplant' | 'ready_for_dispatch';
-
-export interface TrackingMovement {
-  id: number;
-  tracking_item_id: number;
-  type: 'entry' | 'exit';
-  quantity: number;
-  movement_date: string;
-  notes: string | null;
-  tracking_item?: { id: number; name: string };
-}
-
-export interface TrackingItem {
-  id: number;
-  name: string;
-  species: string;
-  stage: TrackingStage;
-  quantity: number;
-  unit: string;
-  location: string;
-  minimum_stock: number;
-  notes: string | null;
-  registered_at: string;
-  movements?: TrackingMovement[];
-}
-
-export interface TrackingItemInput {
-  name: string;
-  species: string;
-  stage: TrackingStage;
-  quantity: number;
-  unit: string;
-  location: string;
-  minimum_stock: number;
-  notes: string;
-}
-
-export interface TrackingStageSummary {
-  items_count: number;
-  quantity: number;
-}
-
-export interface TrackingSummary {
-  total_items: number;
-  total_quantity: number;
-  by_stage: Record<TrackingStage, TrackingStageSummary>;
-}
-
 /** Ciclo ya cerrado (lote liberado) a la espera de que se reporte cuánto se despachó. */
 export interface PendingDispatch {
   id: number; // lot_cycle_id
@@ -64,4 +16,65 @@ export interface PendingDispatch {
     code: string;
     total_capacity: number;
   };
+}
+
+/** Shape cruda de un paginador de Laravel cuando NO pasa por paginatedResponse()
+ * (por ejemplo, anidado dentro de successResponse en /tracking/lots/{lot}). */
+export interface LaravelPaginated<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface TrackingClient {
+  id: number;
+  name: string;
+  cedula: string;
+  phone: string;
+  created_at?: string;
+}
+
+export interface TrackingClientInput {
+  name: string;
+  cedula: string;
+  phone: string;
+}
+
+export interface TrackingMovement {
+  id: number;
+  lot_id: number;
+  tracking_client_id: number;
+  quantity: number;
+  movement_date: string;
+  notes: string | null;
+  tracking_client?: TrackingClient;
+}
+
+/** Lote administrado por Planning — Tracking solo lo lee, nunca lo crea/edita. */
+export interface TrackingLot {
+  id: number;
+  code: string;
+  name: string;
+  total_capacity: number;
+  current_status: 'available' | 'occupied' | 'inactive';
+  vivero?: { id: number; name: string };
+}
+
+export interface TrackingLotDetail {
+  lot: TrackingLot;
+  movements: LaravelPaginated<TrackingMovement>;
+}
+
+export interface TrackingTopClient {
+  tracking_client_id: number;
+  name: string;
+  total_quantity: number;
+}
+
+export interface TrackingGeneralSummary {
+  total_lots: number;
+  total_dispatched: number;
+  top_clients: TrackingTopClient[];
 }

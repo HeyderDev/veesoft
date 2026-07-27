@@ -2,9 +2,7 @@
 
 namespace App\Modules\Tracking\Requests;
 
-use App\Modules\Tracking\Models\TrackingMovement;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class CreateTrackingMovementRequest extends FormRequest
 {
@@ -16,8 +14,8 @@ class CreateTrackingMovementRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tracking_item_id' => 'required|integer|exists:tracking_items,id',
-            'type' => ['required', Rule::in([TrackingMovement::TYPE_ENTRY, TrackingMovement::TYPE_EXIT])],
+            'lot_id' => 'required|integer|exists:lots,id',
+            'tracking_client_id' => 'required|integer|exists:tracking_clients,id',
             'quantity' => 'required|integer|min:1',
             'movement_date' => 'nullable|date',
             'notes' => 'nullable|string',
