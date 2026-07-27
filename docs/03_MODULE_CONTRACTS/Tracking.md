@@ -1,11 +1,11 @@
 # 03_MODULE_CONTRACTS/Tracking.md
 
-> Versión: 2.0.0 · Última actualización: 2026-07-26 · Estado: Oficial
+> Versión: 2.1.0 · Última actualización: 2026-07-27 · Estado: Oficial
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
 # Contrato del módulo Tracking
 
-**Estado:** Implementado (parcial). Dos partes conviven bajo el mismo módulo, con dueños/orígenes distintos:
+**Estado:** Implementado e integrado en `develop` (junto a `Planning`, `Inventory`, `Tasks`, `Logistics`). Dos partes conviven bajo el mismo módulo, con dueños/orígenes distintos:
 - `DispatchReport` — reporte de despacho real al cerrar un ciclo de `Planning` (ya existía en el commit inicial del repositorio).
 - `TrackingItem` / `TrackingMovement` — seguimiento de existencias de plántulas por lote (entradas/salidas, alertas de stock bajo), adaptado desde el proyecto individual `app_vivero` en la sesión del 2026-07-26.
 
@@ -74,6 +74,16 @@ Seguimiento del resultado de la producción: cuánto se despachó realmente al c
 
 ## 7. Pendiente / a decidir en integración
 
-- Mover `ClimateEvent`/`ClimateEventLot`/`Alert`/`ProductionHistory` desde `Planning` a `Tracking` (ver §2) — sigue sin resolverse.
+- Mover `ClimateEvent`/`ClimateEventLot`/`Alert`/`ProductionHistory` desde `Planning` a `Tracking` (ver §2) — sigue sin resolverse, aplazado también en esta sesión de integración a pedido del equipo.
 - Si `TrackingItem` debe asociarse a un `Vivero` o `Lot` de Planning (hoy `location` es texto libre, como en `app_vivero`) — no se decidió en esta sesión, se mantuvo el diseño original desacoplado.
 - Escaneo de QR por cámara (no solo generación) quedó fuera de alcance — no aplica bien a un dashboard de escritorio.
+
+## 8. Integración con `develop` (2026-07-27)
+
+Reconciliación de esquema (Paso 2 del prompt de integración): `tracking_items`/`tracking_movements` no se solapan con ninguna tabla de `Inventory` (`tools`, `supplies`, `movements` — dominio de herramientas/insumos, no de plántulas) ni de ningún otro módulo ya integrado (`Tasks`, `Logistics`). `Tasks` ya había movido `OperationalTask` fuera de `Planning` antes de esta integración, como estaba previsto.
+
+Nota menor (no bloqueante): el frontend ya trae dos librerías de QR distintas (`qrcode` de Inventory y `qrcode.react` de esta sesión) — quedan ambas, no se unificaron, a decidir por el Arquitecto si vale la pena consolidar en una sola.
+
+`./vendor/bin/pint --test app/Modules` reporta 2 archivos con estilo pendiente (`Shared/Routes/api.php`, `Tasks/Services/OperationalTaskService.php`) — **preexistentes en `develop` antes de esta fusión**, no introducidos por `Tracking`. No se corrigieron en esta sesión por no ser dueño de esos módulos.
+
+Verificación completa del sistema fusionado: `migrate:fresh --seed`, 51 tests (`php artisan test`), `route:list` (83 rutas, sin colisiones), `tsc --noEmit`, `npm run build` — todo en verde.
