@@ -15,4 +15,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [HealthController::class, 'check'])->name('health');
 
+Route::get('/users', fn () => \App\Modules\Shared\Models\User::select('id', 'name')->get());
+
 Route::get('/user', fn (Request $request) => $request->user());

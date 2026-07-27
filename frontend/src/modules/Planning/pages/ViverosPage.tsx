@@ -1,8 +1,8 @@
 import React from 'react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import { SlideOver } from '../../../components/ui/SlideOver';
 import { ViveroCard } from '../components/ViveroCard';
 import { useViverosViewModel } from '../viewmodels/useViverosViewModel';
 
@@ -78,15 +78,16 @@ export const ViverosPage: React.FC = () => {
         </div>
       )}
 
-      {/* SlideOver: Vivero */}
-      <SlideOver
+      {/* Modal: Vivero */}
+      <Modal
         isOpen={isViveroFormOpen}
         onClose={closeViveroForm}
         title={editVivero ? 'Editar Vivero' : 'Nuevo Vivero'}
         subtitle="Datos básicos para identificar el vivero."
+        maxWidthClassName="max-w-md"
       >
         <form onSubmit={handleSaveVivero} className="flex flex-col h-full">
-          <div className="flex-1 p-6 space-y-5">
+          <div className="flex-1 p-6 space-y-5 overflow-y-auto">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
               <input
@@ -125,17 +126,18 @@ export const ViverosPage: React.FC = () => {
             </Button>
           </div>
         </form>
-      </SlideOver>
+      </Modal>
 
-      {/* SlideOver: Configuración de Meta */}
-      <SlideOver
+      {/* Modal: Configuración de Meta */}
+      <Modal
         isOpen={isMetaFormOpen}
         onClose={closeMetaForm}
         title={activeMeta ? 'Configuración de Meta' : 'Nueva Meta de Producción'}
         subtitle={activeVivero ? `Vivero: ${activeVivero.name}` : undefined}
+        maxWidthClassName="max-w-lg"
       >
         <form onSubmit={handleSaveMeta} className="flex flex-col h-full">
-          <div className="flex-1 p-6 space-y-6">
+          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
             {activeMeta && (
               <div className="flex items-center gap-2">
                 <Badge variant={activeMeta.status === 'active' ? 'success' : activeMeta.status === 'completed' ? 'info' : 'neutral'}>
@@ -209,7 +211,7 @@ export const ViverosPage: React.FC = () => {
             </Button>
           </div>
         </form>
-      </SlideOver>
+      </Modal>
     </div>
   );
 };

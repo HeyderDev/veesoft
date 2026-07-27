@@ -1,43 +1,37 @@
-# 03_MODULE_CONTRACTS/Inventory.md
-
-> Versión: 1.0.0 · Última actualización: 2026-07-22 · Estado: Oficial
+> Versión: 1.3.0 · Última actualización: 2026-07-25 · Estado: Implementado e integrado
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
-# Contrato del módulo Inventory
+# Contrato del Módulo: Inventory (Inventario y Materiales)
 
-**Estado:** No implementado. Este documento es el punto de partida para el compañero responsable de este módulo — léelo junto con `docs/02_DEVELOPMENT_GUIDE/01_MODULE_CREATION.md` antes de escribir código.
+**Propósito:** Gestiona el catálogo de herramientas y materiales (insumos), controla el stock actual, y registra todos los movimientos (entradas, salidas, ajustes, mantenimientos).
 
----
+## 1. Eventos que Emite (Produce)
 
-## 1. Responsabilidad
+*(Ninguno definido actualmente)*
 
-Control de herramientas, insumos y materiales del vivero: existencias, entradas, salidas y disponibilidad.
+## 2. Eventos que Escucha (Consume)
 
-## 2. Entidades que debería poseer (propuesta inicial — ajustar con el Arquitecto antes de migrar)
+*(Ninguno definido actualmente)*
 
-`InventoryItem` (herramienta/insumo/material), `InventoryCategory`, `InventoryMovement` (entrada/salida), `InventoryStock` (existencia actual por ítem).
+## 3. API Pública (Servicios Expuestos)
 
-## 3. Servicios públicos que debería ofrecer
+Estos métodos están disponibles en `App\Modules\Inventory\Services\InventoryService` para ser inyectados por otros módulos (ej. Planning, Tasks, Logistics).
 
-Pensado como servicios, no como CRUD expuesto sin más (ver filosofía en `01_ARCHITECTURE.md` §"Trabajar por servicios"):
+### 3.1. `getStockLevel(string $itemCode): int`
+Consulta la cantidad actual disponible de un insumo (SKU).
+- **$itemCode:** El SKU del insumo (ej. `INS-001`).
+- **Retorna:** La cantidad en stock. `0` si el insumo no existe.
 
-| Método propuesto | Para qué lo consumirían otros módulos |
-|---|---|
-| `getStockLevel(string $itemCode): int` | `Logistics` decide si hace falta comprar. |
-| `reserveMaterials(array $items): bool` | `Planning`/`Tasks` reservan insumos para una fase (por ejemplo, sustrato para la fase de Preparación). |
-| `registerConsumption(array $items, string $reason): void` | Registrar consumo real durante una fase. |
+### 3.2. `reserveMaterials(array $items): bool`
+Reserva materiales antes de una operación crítica (ej. iniciar una tarea, despachar). Genera movimientos de tipo `ADJUSTMENT`.
+- **$items:** Un arreglo con el formato `[['sku' => 'INS-001', 'quantity' => 10, 'reason' => 'Opcional']]`.
+- **Retorna:** `true` si se reservaron todos exitosamente, `false` si no hay stock suficiente para alguno de ellos (la operación se revierte atómicamente).
 
-## 4. Dependencias permitidas
+### 3.3. `registerConsumption(array $items, string $reason): void`
+Registra el consumo de materiales luego de haber completado una operación. Delega a `reserveMaterials` bajo el capó.
+- **$items:** Igual que `reserveMaterials`.
+- **$reason:** La justificación del consumo que quedará registrada en el historial de movimientos (campo JSON `details.detalles`).
 
-`Inventory` → `Shared` únicamente al inicio. `Logistics` dependerá de `Inventory` (no al revés) — ver sección siguiente.
+## 4. Dependencias
 
-## 5. Consumido por
-
-- `Logistics` (para saber qué reponer).
-- Potencialmente `Planning`/`Tasks` cuando una fase requiera reservar insumos — esa integración se define cuando ambos módulos existan, no antes.
-
-## 6. Antes de empezar
-
-1. Confirma con el Arquitecto el naming final de las entidades (esta lista es una propuesta, no una decisión cerrada).
-2. Sigue exactamente la estructura de carpetas de `Planning` (`docs/02_DEVELOPMENT_GUIDE/01_MODULE_CREATION.md`).
-3. Actualiza este documento con los métodos reales de tu `InventoryService` en cuanto los implementes — es la referencia que usarán los demás.
+- **Shared:** Usa `App\Modules\Shared\Models\User` para los responsables de los movimientos. Usa la estructura base compartida (`BaseService`, `BaseApiController`, etc.).
