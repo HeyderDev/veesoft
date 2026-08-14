@@ -3,6 +3,7 @@
 namespace App\Modules\Tracking\Services;
 
 use App\Modules\Planning\Services\ProductionGoalService;
+use App\Modules\Tracking\Events\DispatchReported;
 use App\Modules\Tracking\Repositories\Contracts\DispatchReportRepositoryInterface;
 use Illuminate\Support\Collection;
 
@@ -49,6 +50,7 @@ class DispatchReportService
         ]);
 
         $this->goalService->completeIfTargetReached($cycle->production_goal_id);
+        event(new DispatchReported($dispatch->id));
 
         return $dispatch;
     }

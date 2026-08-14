@@ -30,4 +30,10 @@ interface DispatchReportRepositoryInterface
     public function findPendingCycle(int $lotCycleId): ?LotCycle;
 
     public function createReport(array $data): Dispatch;
+
+    public function exportForSync($id): array;
+
+    public function upsertForSync($id, array $data): Dispatch;
+
+    public function deleteForSync($id): bool;
 }

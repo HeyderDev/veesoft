@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Services;
 
+use App\Modules\Inventory\Events\InventoryMovementCreated;
 use App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface;
 use App\Modules\Shared\Services\BaseService;
 
@@ -19,6 +20,9 @@ class MovementService extends BaseService
 
     public function createMovement(array $data)
     {
-        return $this->create($data);
+        $movement = $this->create($data);
+        event(new InventoryMovementCreated($movement->id));
+
+        return $movement;
     }
 }

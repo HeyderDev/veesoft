@@ -44,4 +44,34 @@ class DispatchReportRepository implements DispatchReportRepositoryInterface
     {
         return Dispatch::create($data);
     }
+
+    public function exportForSync($id): array
+    {
+        $dispatch = Dispatch::query()->findOrFail($id);
+
+        return [
+            'lot_id' => $dispatch->lot_id,
+            'lot_cycle_id' => $dispatch->lot_cycle_id,
+            'production_goal_id' => $dispatch->production_goal_id,
+            'quantity' => $dispatch->quantity,
+            'dispatched_at' => $dispatch->getRawOriginal('dispatched_at'),
+        ];
+    }
+
+    public function upsertForSync($id, array $data): Dispatch
+    {
+        $dispatch = Dispatch::query()->find($id) ?? new Dispatch;
+        $dispatch->setAttribute($dispatch->getKeyName(), $id);
+        $dispatch->fill($data);
+        $dispatch->save();
+
+        return $dispatch->refresh();
+    }
+
+    public function deleteForSync($id): bool
+    {
+        $dispatch = Dispatch::query()->find($id);
+
+        return ! $dispatch || (bool) $dispatch->delete();
+    }
 }

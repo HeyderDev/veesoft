@@ -2,7 +2,12 @@
 
 namespace App\Modules\Tasks\Services;
 
+use App\Modules\Planning\Models\Lot;
 use App\Modules\Shared\Services\BaseService;
+use App\Modules\Tasks\Events\OperationalTaskCompleted;
+use App\Modules\Tasks\Events\OperationalTaskCreated;
+use App\Modules\Tasks\Events\OperationalTaskDeleted;
+use App\Modules\Tasks\Events\OperationalTaskUpdated;
 use App\Modules\Tasks\Models\OperationalTask;
 use App\Modules\Tasks\Models\TaskResource;
 use App\Modules\Tasks\Repositories\Contracts\OperationalTaskRepositoryInterface;
@@ -37,26 +42,26 @@ class OperationalTaskService extends BaseService
         }
 
         // Resolver lot_id al current phase id
-        if (!empty($data['lot_id'])) {
+        if (! empty($data['lot_id'])) {
             $lotId = $data['lot_id'];
-            $lot = \App\Modules\Planning\Models\Lot::with('activeCycle.phases')->find($lotId);
-            
-            if (!$lot || !$lot->activeCycle) {
+            $lot = Lot::with('activeCycle.phases')->find($lotId);
+
+            if (! $lot || ! $lot->activeCycle) {
                 throw ValidationException::withMessages([
                     'lot_id' => 'El lote seleccionado no tiene un ciclo activo en este momento.',
                 ]);
             }
-            
+
             $phase = $lot->activeCycle->phases()
                 ->where('planned_start_date', '<=', $plannedDateStr)
                 ->orderBy('planned_start_date', 'desc')
                 ->first();
 
-            if (!$phase) {
+            if (! $phase) {
                 $phase = $lot->activeCycle->phases()->orderBy('planned_start_date', 'asc')->first();
             }
 
-            if (!$phase) {
+            if (! $phase) {
                 throw ValidationException::withMessages([
                     'lot_id' => 'No se pudo determinar la fase del ciclo para asignar la actividad.',
                 ]);
@@ -71,6 +76,7 @@ class OperationalTaskService extends BaseService
 
         $task = $this->repository->create($data);
         $this->syncResources($task, $resources);
+        event(new OperationalTaskCreated($task->id));
 
         return $task->load('resources');
     }
@@ -85,27 +91,27 @@ class OperationalTaskService extends BaseService
     public function updateTask(int $id, array $data): OperationalTask
     {
         if (array_key_exists('lot_id', $data)) {
-            if (!empty($data['lot_id'])) {
+            if (! empty($data['lot_id'])) {
                 $task = $this->repository->find($id);
-                $plannedDateStr = isset($data['planned_date']) 
-                    ? Carbon::parse($data['planned_date'])->toDateString() 
+                $plannedDateStr = isset($data['planned_date'])
+                    ? Carbon::parse($data['planned_date'])->toDateString()
                     : Carbon::parse($task->planned_date)->toDateString();
 
                 $lotId = $data['lot_id'];
-                $lot = \App\Modules\Planning\Models\Lot::with('activeCycle.phases')->find($lotId);
-                
-                if (!$lot || !$lot->activeCycle) {
+                $lot = Lot::with('activeCycle.phases')->find($lotId);
+
+                if (! $lot || ! $lot->activeCycle) {
                     throw ValidationException::withMessages([
                         'lot_id' => 'El lote seleccionado no tiene un ciclo activo en este momento.',
                     ]);
                 }
-                
+
                 $phase = $lot->activeCycle->phases()
                     ->where('planned_start_date', '<=', $plannedDateStr)
                     ->orderBy('planned_start_date', 'desc')
                     ->first();
 
-                if (!$phase) {
+                if (! $phase) {
                     $phase = $lot->activeCycle->phases()->orderBy('planned_start_date', 'asc')->first();
                 }
 
@@ -124,6 +130,7 @@ class OperationalTaskService extends BaseService
         if ($resources !== null) {
             $this->syncResources($task, $resources);
         }
+        event(new OperationalTaskUpdated($task->id));
 
         return $task->load('resources');
     }
@@ -137,6 +144,18 @@ class OperationalTaskService extends BaseService
             'completed_date' => now(),
             'completed_by' => $completedBy,
         ]);
+        event(new OperationalTaskCompleted($taskId));
+    }
+
+    public function delete($id)
+    {
+        $deleted = parent::delete($id);
+
+        if ($deleted) {
+            event(new OperationalTaskDeleted($id));
+        }
+
+        return $deleted;
     }
 
     public function getTasksByAssignee(int $userId)

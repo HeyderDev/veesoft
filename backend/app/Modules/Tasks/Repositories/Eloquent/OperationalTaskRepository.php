@@ -4,6 +4,7 @@ namespace App\Modules\Tasks\Repositories\Eloquent;
 
 use App\Modules\Shared\Repositories\Eloquent\BaseRepository;
 use App\Modules\Tasks\Models\OperationalTask;
+use App\Modules\Tasks\Models\TaskResource;
 use App\Modules\Tasks\Repositories\Contracts\OperationalTaskRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -93,5 +94,74 @@ class OperationalTaskRepository extends BaseRepository implements OperationalTas
             'completed' => $completed,
             'by_lot' => $byLot,
         ];
+    }
+
+    public function exportForSync($id): array
+    {
+        $task = $this->model
+            ->newQuery()
+            ->with('resources')
+            ->findOrFail($id);
+
+        return [
+            'lot_cycle_phase_id' => $task->lot_cycle_phase_id,
+            'title' => $task->title,
+            'description' => $task->description,
+            'observations' => $task->observations,
+            'assigned_to' => $task->assigned_to,
+            'status' => $task->status,
+            'priority' => $task->priority,
+            'planned_date' => $task->getRawOriginal('planned_date'),
+            'completed_date' => $task->getRawOriginal('completed_date'),
+            'completed_by' => $task->completed_by,
+            'resources' => $task->resources->map(fn (TaskResource $resource) => [
+                'id' => (string) $resource->getKey(),
+                'resource_type' => $resource->resource_type,
+                'resource_id' => $resource->resource_id,
+            ])->values()->all(),
+        ];
+    }
+
+    public function applySynchronizedState($id, array $payload)
+    {
+        return DB::transaction(function () use ($id, $payload) {
+            $task = $this->upsertForSync($id, [
+                'lot_cycle_phase_id' => $payload['lot_cycle_phase_id'] ?? null,
+                'title' => $payload['title'],
+                'description' => $payload['description'] ?? null,
+                'observations' => $payload['observations'] ?? null,
+                'assigned_to' => $payload['assigned_to'] ?? null,
+                'status' => $payload['status'],
+                'priority' => $payload['priority'],
+                'planned_date' => $payload['planned_date'],
+                'completed_date' => $payload['completed_date'] ?? null,
+                'completed_by' => $payload['completed_by'] ?? null,
+            ]);
+
+            $resourceIds = collect($payload['resources'] ?? [])
+                ->pluck('id')
+                ->all();
+            TaskResource::query()
+                ->where('operational_task_id', $task->getKey())
+                ->when(
+                    $resourceIds !== [],
+                    fn ($query) => $query->whereNotIn('id', $resourceIds),
+                )
+                ->delete();
+
+            foreach ($payload['resources'] ?? [] as $resource) {
+                $record = TaskResource::query()->find($resource['id'])
+                    ?? new TaskResource;
+                $record->setAttribute($record->getKeyName(), $resource['id']);
+                $record->fill([
+                    'operational_task_id' => $task->getKey(),
+                    'resource_type' => $resource['resource_type'],
+                    'resource_id' => $resource['resource_id'],
+                ]);
+                $record->save();
+            }
+
+            return $task->refresh();
+        });
     }
 }

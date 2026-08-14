@@ -2,13 +2,24 @@
 
 namespace Tests\Feature;
 
+use App\Modules\Shared\Models\Role;
+use App\Modules\Shared\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class SummaryTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $adminRole = Role::factory()->create(['name' => 'Admin']);
+        Sanctum::actingAs(User::factory()->create(['role_id' => $adminRole->id]));
+    }
 
     protected function tearDown(): void
     {

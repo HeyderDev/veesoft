@@ -5,8 +5,8 @@
 
 # Contrato del módulo Synchronization
 
-**Estado:** No implementado (esqueleto de carpetas creado, sin código). Este es el módulo del compañero cuya tesis trata sobre bases de datos distribuidas.
-**Ubicación:** `backend/app/Modules/Synchronization` (vacío, listo para implementar).
+**Estado:** Implementado. La infraestructura base (Paso 2) y la adopción del perfil móvil operativo aprobado (Paso 3) están completas. Las entidades no operativas indicadas al final de esta sección siguen pendientes de coordinación con sus dueños.
+**Ubicación:** `backend/app/Modules/Synchronization`.
 
 ---
 
@@ -31,12 +31,18 @@ Planning → PlanningService → PlanningRepository → MySQL Local
 
 Cada módulo guarda normalmente y dispara un evento de dominio (`LotCreated`, `ProductionGoalUpdated`, etc.) después de escribir. `Synchronization` se suscribe a esos eventos vía `Listeners/`. Ningún módulo invoca a `Synchronization` directamente ni conoce cómo funciona — esto es lo que mantiene el sistema desacoplado.
 
-## 3. Lo que debe construir este módulo
+## 3. Infraestructura implementada
 
-- Tabla de cola de sincronización (`sync_queue` o similar): qué entidad, qué operación, cuándo, estado (`pending`, `synced`, `conflict`).
-- `Listeners/` que escuchan los eventos de dominio de los demás módulos y encolan.
-- Estrategia de resolución de conflictos (last-write-wins, versión, o la que se decida en la Fase 0 del proyecto).
-- Job en cola (`Jobs/`) que efectivamente empuja los cambios pendientes al Nodo Central.
+- `sync_nodes`: registro de identidades estables, tipo, URL, estado y hash del token de cada nodo conocido.
+- `sync_entity_states`: versión lógica, versión confirmada, nodo de origen, hash y tombstone de cada entidad sincronizable, sin agregar `origin_node_id` a todas las tablas funcionales.
+- `sync_queue`: outbox/inbox con idempotencia por `event_id`, destino, operación, versiones, reintentos, locks, payload congelado y resultado.
+- `sync_conflicts`: conserva versiones local/remota, causa y futura resolución manual.
+- `SyncableDomainEvent` + `HasSyncMetadata`: contrato mínimo para eventos de otros módulos.
+- `QueueSyncableDomainEvent`: listener registrado para la interfaz anterior. Encola sin que el emisor conozca Synchronization.
+- `PushSyncQueueJob`: entrega al Central mediante HTTP, congela el payload al primer intento y actualiza `synced`, `conflict`, `pending` o `failed`.
+- `POST /api/v1/sync/receive`: receptor autenticado con token de nodo, idempotente y protegido por rate limit.
+- `sync:run`: despacho manual o inmediato (`--now`) y ejecución programada cada minuto.
+- `sync:node-register`: enrolamiento de nodos y generación de token mostrado una sola vez.
 
 ## 4. Lo que los demás módulos deben hacerle llegar
 
@@ -56,6 +62,50 @@ Esto es lo que determina qué tan caro es un cambio de esquema en un módulo fun
 
 Por eso el prompt `09_MASTER_PROMPTS/03_INFRASTRUCTURE_OWNER.md` recomienda construir la infraestructura genérica de `Synchronization` (cola, registro de nodos, Job, resolución de conflictos) sin esperar a que los módulos funcionales estén 100% cerrados, pero posponer la conexión de los eventos reales de cada módulo hasta que su esquema esté razonablemente estable.
 
+### Contrato real para adoptar Synchronization
+
+El módulo dueño declara su evento en `Events/`, implementa la interfaz y usa el trait compartido:
+
+```php
+use App\Modules\Synchronization\Enums\SyncOperation;
+use App\Modules\Synchronization\Events\SyncableDomainEvent;
+use App\Modules\Synchronization\Traits\HasSyncMetadata;
+use Illuminate\Foundation\Events\Dispatchable;
+
+class LotCreated implements SyncableDomainEvent
+{
+    use Dispatchable, HasSyncMetadata;
+
+    public function __construct(Lot $lot)
+    {
+        $this->initializeSyncMetadata(
+            'planning.lot',
+            $lot->getKey(),
+            SyncOperation::CREATED,
+        );
+    }
+}
+```
+
+El evento no transporta el Model ni todos sus campos. En el Paso 3, el módulo registra un `SyncEntityAdapter` que exporta su DTO de sincronización y aplica entradas mediante el contrato de Repository del propio módulo. El Job congela ese payload en `sync_queue` al primer intento para que todos los reintentos sean idénticos.
+
+### Adopción real por módulo
+
+| Módulo | Entidades registradas |
+|---|---|
+| Planning | `planning.lot`, `planning.lot-cycle` (incluye fases y reprogramaciones) |
+| Tasks | `tasks.operational-task` (incluye recursos) |
+| Inventory | `inventory.movement` |
+| Tracking | `tracking.client`, `tracking.movement`, `tracking.dispatch` |
+
+Cada adaptador vive en el módulo dueño y usa su Repository; `Synchronization` solo conoce la interfaz `SyncEntityAdapter`.
+
+Permanecen pendientes:
+
+- `climate_events`/`climate_event_lots`, hasta que Arquitectura resuelva su traslado de Planning a Tracking.
+- Catálogos de Inventory (`tools`, `supplies`) y los flujos de Logistics, que no forman parte del perfil móvil operativo aprobado. Si deben replicarse también entre Administrador y Central, se incorporarán en PRs separados de sus dueños.
+- Las conversiones físicas a UUID aprobadas, que requieren migraciones coordinadas por tabla y no se mezclan con la adopción de eventos.
+
 ## 5. Dependencias permitidas
 
 `Synchronization` puede escuchar eventos de **todos** los módulos (es la única excepción transversal del sistema), pero solo mediante `Events`/`Listeners` — nunca leyendo el `Repository` de otro módulo directamente.
@@ -69,6 +119,15 @@ Nodo Central (MySQL)
 ```
 
 `Synchronization` conecta los tres. Ver `docs/01_ARCHITECTURE.md` sección 14, y la nota sobre claves UUID en `docs/02_DEVELOPMENT_GUIDE/04_DATABASE_GUIDE.md` §5 — cualquier entidad que vaya a poder crearse en el Nodo Móvil necesita coordinar con este módulo su estrategia de clave primaria antes de tener autoincremental en producción.
+
+El Arquitecto aprobó el perfil móvil operativo y la futura migración a UUID de:
+
+- Planning/Tracking provisional: `lot_cycles`, `lot_cycle_phases`, `lot_cycle_reschedules`, `climate_events`, `climate_event_lots`, `dispatches`.
+- Tasks: `operational_tasks`, `operational_task_resources`.
+- Inventory: `movements`.
+- Tracking: `tracking_clients`, `tracking_movements`.
+
+Las conversiones no forman parte de la migración transversal de este Paso 2: cada dueño debe entregar su migración y los cambios de FK, Models, Services, factories, tests y tipos frontend en un PR coordinado. Cuando empiece la primera conversión también debe ampliarse `audit_logs.auditable_id`, hoy `unsignedBigInteger`, para admitir claves UUID y BIGINT.
 
 ### Por qué Capacitor + SQLite y no Flutter 100% nativo ni PWA
 
@@ -85,16 +144,32 @@ Este módulo (`Synchronization`) es responsable de:
 
 Esta decisión reemplaza la mención anterior de "Flutter" en versiones previas de este documento y de `docs/01_ARCHITECTURE.md` §14 (actualizado 2026-07-27). Sigue pendiente de construir: es responsabilidad de quien implemente Misión B del prompt `09_MASTER_PROMPTS/03_INFRASTRUCTURE_OWNER.md` diseñar el esquema SQLite y el outbox en detalle, con aprobación del Arquitecto antes de codificar (mismo Paso 1 que ya rige la cola del backend).
 
-## 7. Cómo se comunican los nodos entre sí (propuesta a confirmar en el Paso 1 de la Misión B)
+## 7. Cómo se comunican los nodos entre sí
 
-Nodo Administrador y Nodo Central corren el **mismo código** (mismo monolito Laravel, sin fork), solo con `.env` y despliegue distintos — consistente con la regla de "un único backend" de `docs/01_ARCHITECTURE.md` §1. Propuesta de transporte, a confirmar con el Arquitecto antes de codificar:
+Nodo Administrador y Nodo Central corren el **mismo código** (mismo monolito Laravel, sin fork), solo con `.env` y despliegue distintos — consistente con la regla de "un único backend" de `docs/01_ARCHITECTURE.md` §1. Transporte aprobado e implementado:
 
 - `Synchronization` expone un endpoint propio, `POST /api/v1/sync/receive`, protegido con un token de nodo (no con sesión de usuario — el emisor es otro nodo, no una persona).
 - El Job de sincronización del nodo emisor llama a ese endpoint del nodo receptor con el payload pendiente.
 - Se mantiene el mismo patrón cliente→API que ya usa el resto del proyecto, en vez de que el Job escriba directo en la base de datos del otro nodo por una segunda conexión Eloquent (eso rompería la regla de que toda escritura pasa por Service→Repository).
 - El futuro outbox del Nodo Móvil (§6) le habla al mismo endpoint — no es un mecanismo de transporte distinto, solo un tercer emisor.
 
-## 8. Estrategia de pruebas sin nodo móvil
+El receptor valida que el token pertenezca al `origin_node_id`. La identidad local vive en `SYNC_NODE_ID`; el destino y su credencial se configuran con `SYNC_TARGET_NODE_ID`, `SYNC_TARGET_URL` y `SYNC_TARGET_TOKEN`.
+
+## 8. Estrategia de conflictos aprobada
+
+Se usa **versionado optimista**, no last-write-wins:
+
+1. El listener incrementa `sync_entity_states.version` y encola `base_version`/`entity_version`.
+2. El receptor acepta el cambio solo cuando `base_version` coincide con la versión que conoce.
+3. `event_id + target_node_id` hace que un reintento sea idempotente.
+4. Un desfase crea `sync_conflicts` y responde HTTP 409; ninguna versión se descarta silenciosamente.
+5. Los timestamps se conservan para auditoría, pero no deciden el ganador.
+6. Las eliminaciones se representan con `tombstoned_at`.
+7. Mientras se aplica un cambio remoto, `SynchronizationContext` evita que el Service receptor vuelva a encolar el mismo cambio.
+
+Estados de `sync_queue`: `pending`, `processing`, `synced`, `conflict`, `failed`, `superseded`. Los tres estados comunes con el futuro outbox móvil siguen siendo `pending`, `synced` y `conflict`.
+
+## 9. Estrategia de pruebas sin nodo móvil
 
 Mientras el Nodo Móvil no exista, se puede probar el ciclo completo de sincronización con solo Administrador y Central, corriendo dos instancias locales del mismo backend:
 

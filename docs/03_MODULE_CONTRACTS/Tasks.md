@@ -36,3 +36,12 @@ El servicio principal es `OperationalTaskService` y expone los siguientes métod
 - `Tasks` → `Planning` (LotCyclePhase): Puede hacer referencia a la fase de un ciclo para registrar tareas específicas del ciclo de producción.
 
 Ningún otro módulo puede depender directamente de la base de datos o Repositorios de `Tasks`.
+
+## 5. Eventos de sincronización
+
+- `OperationalTaskCreated`
+- `OperationalTaskUpdated`
+- `OperationalTaskCompleted`
+- `OperationalTaskDeleted`
+
+Todos usan la entidad `tasks.operational-task`. `OperationalTaskSyncAdapter` trata la tarea y sus filas de `operational_task_resources` como un solo agregado. Los eventos se emiten después de que la escritura y la actualización de recursos terminan correctamente.

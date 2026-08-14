@@ -6,6 +6,8 @@ use App\Modules\Planning\Models\ProductionCycle;
 use App\Modules\Planning\Models\ProductionGoal;
 use App\Modules\Planning\Models\ProductionPlan;
 use App\Modules\Planning\Models\Reschedule;
+use App\Modules\Shared\Enums\PermissionCode;
+use App\Modules\Shared\Traits\Auditable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +19,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use Auditable, HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'role_id',
@@ -46,6 +48,22 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
+    public function hasPermission(PermissionCode|string $permission): bool
+    {
+        $permissionCode = $permission instanceof PermissionCode ? $permission->value : $permission;
+
+        if ($this->role?->name === 'Admin') {
+            return true;
+        }
+
+        return $this->role?->permissions()->where('code', $permissionCode)->exists() ?? false;
     }
 
     public function productionGoals(): HasMany

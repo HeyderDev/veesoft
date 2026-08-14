@@ -2,6 +2,10 @@
 
 namespace App\Modules\Planning\Services;
 
+use App\Modules\Planning\Events\LotCycleDispatchTerminated;
+use App\Modules\Planning\Events\LotCycleRescheduled;
+use App\Modules\Planning\Events\LotCycleStarted;
+use App\Modules\Planning\Events\LotUpdated;
 use App\Modules\Planning\Models\Lot;
 use App\Modules\Planning\Models\LotCycle;
 use App\Modules\Planning\Models\LotCyclePhase;
@@ -114,6 +118,8 @@ class LotCycleService
         });
 
         $this->goalService->activateIfNotStarted($goal->id);
+        event(new LotCycleStarted($cycle));
+        event(new LotUpdated($lot->id));
 
         return $this->lotCycleRepository->findWithPhases($cycle->id);
     }
@@ -131,6 +137,8 @@ class LotCycleService
             $this->lotCycleRepository->update($cycle->id, ['status' => LotCycle::STATUS_DISPATCHED]);
             $this->lotRepository->update($lot->id, ['current_status' => Lot::STATUS_AVAILABLE]);
         });
+        event(new LotCycleDispatchTerminated($cycle));
+        event(new LotUpdated($lot->id));
 
         return $this->lotRepository->findWithCycles($lot->id);
     }
@@ -188,6 +196,7 @@ class LotCycleService
                 'rescheduled_by' => $rescheduledBy,
             ]);
         });
+        event(new LotCycleRescheduled($cycle));
 
         return $this->lotCycleRepository->findWithPhases($cycle->id);
     }

@@ -2,12 +2,23 @@
 
 namespace Tests\Feature;
 
+use App\Modules\Shared\Models\Role;
+use App\Modules\Shared\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class TrackingLotMovementTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $adminRole = Role::factory()->create(['name' => 'Admin']);
+        Sanctum::actingAs(User::factory()->create(['role_id' => $adminRole->id]));
+    }
 
     private function createLot(array $overrides = []): array
     {

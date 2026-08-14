@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../shared/context/AuthContext';
 
 interface HeaderProps {
   currentModule?: string;
@@ -17,7 +18,12 @@ const breadcrumbMap: Record<string, string> = {
 };
 
 export const Header: React.FC<HeaderProps> = ({ currentModule = 'planning', currentTab }) => {
+  const { logout, user } = useAuth();
   const moduleName = breadcrumbMap[currentModule] ?? currentModule;
+  const fullName = user ? `${user.first_name} ${user.last_name}` : '';
+  const initials = user
+    ? `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase()
+    : '';
   const today = new Date().toLocaleDateString('es-EC', {
     weekday: 'long',
     year: 'numeric',
@@ -70,12 +76,22 @@ export const Header: React.FC<HeaderProps> = ({ currentModule = 'planning', curr
         {/* User */}
         <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-semibold text-slate-700 leading-tight">Admin ULEAM</p>
-            <p className="text-xs text-slate-400">Coordinador de Vivero</p>
+            <p className="text-sm font-semibold text-slate-700 leading-tight">{fullName}</p>
+            <p className="text-xs text-slate-400">{user?.role?.name ?? 'Sin rol asignado'}</p>
           </div>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-            AU
+            {initials}
           </div>
+          <button
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-600"
+            onClick={() => void logout()}
+            title="Cerrar sesión"
+            type="button"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H9m4 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+            </svg>
+          </button>
         </div>
       </div>
     </header>

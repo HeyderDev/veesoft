@@ -53,6 +53,13 @@ Definidos en `backend/app/Modules/Planning/Routes/api.php`: `production-goals`, 
 
 `frontend/src/modules/Planning/index.ts` exporta `PlanningModule` (componente de entrada, actualmente un tab-switcher — ver `docs/02_DEVELOPMENT_GUIDE/03_FRONTEND_GUIDE.md`), `planningRoutes`, `planningService` y los tipos `MetaProduccion`, `PlanProduccion`, `Lote`, `Fase`, `Ciclo`. Otro módulo del frontend que necesite mostrar, por ejemplo, el nombre de un lote, importa `planningService` desde este barrel — nunca un archivo interno de `pages/` o `viewmodels/`.
 
-## 8. Eventos que debe emitir (pendiente de implementar)
+## 8. Eventos de sincronización implementados
 
-`LotCreated`, `CycleLotPhaseCompleted`, `ScheduleGenerated` — para que `Synchronization` los escuche y encole. Ver `docs/03_MODULE_CONTRACTS/Synchronization.md`. Hoy `PlanningService` no dispara eventos todavía; es la primera tarea pendiente antes de integrar `Synchronization`.
+Planning emite eventos después de escrituras exitosas; nunca llama directamente a `Synchronization`:
+
+- `LotCreated`, `LotUpdated`, `LotDeleted` → entidad `planning.lot`.
+- `LotCycleStarted`, `LotCycleRescheduled`, `LotCycleDispatchTerminated` → agregado `planning.lot-cycle`.
+
+El adaptador `LotSyncAdapter` exporta el lote. `LotCycleSyncAdapter` exporta/aplica el ciclo junto con `lot_cycle_phases` y `lot_cycle_reschedules`, evitando sincronizar hijos incompletos por separado.
+
+`ClimateEvent`, `ClimateEventLot`, `Alert` y `ProductionHistory` siguen pendientes hasta resolver su traslado coordinado a Tracking. El antiguo nombre de evento `ScheduleGenerated` queda reemplazado por `LotCycleStarted`, que corresponde al flujo real actual; no existe hoy una acción separada `CycleLotPhaseCompleted`.

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Services;
 
+use App\Modules\Inventory\Events\InventoryMovementCreated;
 use App\Modules\Inventory\Models\Movement;
 use App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface;
 use App\Modules\Inventory\Repositories\Contracts\SupplyRepositoryInterface;
@@ -36,12 +37,13 @@ class InventoryService
                 $newStock = $supply->current_stock - $item['quantity'];
                 $this->supplyRepository->update($supply->id, ['current_stock' => $newStock]);
 
-                $this->movementRepository->create([
+                $movement = $this->movementRepository->create([
                     'supply_id' => $supply->id,
                     'type' => Movement::TYPE_ADJUSTMENT,
                     'quantity' => $item['quantity'],
                     'details' => ['usuario' => 'Sistema', 'detalles' => 'Reserva de material: '.($item['reason'] ?? 'N/A')],
                 ]);
+                event(new InventoryMovementCreated($movement->id));
             }
 
             return true;

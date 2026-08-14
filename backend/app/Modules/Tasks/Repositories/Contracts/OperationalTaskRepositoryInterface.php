@@ -19,4 +19,8 @@ interface OperationalTaskRepositoryInterface extends BaseRepositoryInterface
     public function getHistory(array $filters = []): Collection;
 
     public function getReport(): array;
+
+    public function exportForSync($id): array;
+
+    public function applySynchronizedState($id, array $payload);
 }

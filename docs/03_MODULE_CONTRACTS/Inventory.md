@@ -7,7 +7,9 @@
 
 ## 1. Eventos que Emite (Produce)
 
-*(Ninguno definido actualmente)*
+- `InventoryMovementCreated` → entidad sincronizable `inventory.movement`.
+
+Se emite tanto desde `MovementService::createMovement()` como desde los movimientos de ajuste creados por `InventoryService::reserveMaterials()`. `MovementSyncAdapter` conserva estos registros como historial append-only.
 
 ## 2. Eventos que Escucha (Consume)
 

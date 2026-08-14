@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, Request $request) {
@@ -38,6 +40,22 @@ return Application::configure(basePath: dirname(__DIR__))
                         'status' => 'error',
                         'message' => 'Recurso no encontrado',
                     ], 404);
+                }
+
+                if ($e instanceof AuthenticationException) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'No autenticado',
+                        'data' => null,
+                    ], 401);
+                }
+
+                if ($e instanceof AuthorizationException) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'No autorizado',
+                        'data' => null,
+                    ], 403);
                 }
 
                 // Regla de negocio violada (cualquier módulo puede lanzar \DomainException

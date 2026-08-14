@@ -8,7 +8,8 @@ const axiosClient = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  withCredentials: true, // Para Sanctum CSRF cookies
+  withCredentials: true,
+  withXSRFToken: true,
 });
 
 // Interceptor de peticiones

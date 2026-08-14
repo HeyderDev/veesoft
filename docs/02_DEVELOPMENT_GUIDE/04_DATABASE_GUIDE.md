@@ -85,6 +85,17 @@ Planning usa IDs autoincrementales (`$table->id()`) en todas sus tablas, y así 
 
 **Excepción a coordinar con el dueño de `Synchronization`:** cualquier tabla cuyos registros puedan crearse en el futuro Nodo Móvil (offline, SQLite) antes de sincronizar con el Nodo Central debe usar `uuid` como clave primaria en vez de autoincremental, porque dos nodos generando IDs autoincrementales en paralelo van a colisionar al fusionar datos. Esta decisión la toma el compañero responsable de `Synchronization` junto con el dueño del módulo — no la tomes unilateralmente en un módulo funcional.
 
+### Alcance UUID aprobado para el Nodo Móvil operativo
+
+La Misión B aprobó migrar, mediante PRs coordinados por dueño:
+
+- `lot_cycles`, `lot_cycle_phases`, `lot_cycle_reschedules`, `climate_events`, `climate_event_lots`, `dispatches`.
+- `operational_tasks`, `operational_task_resources`.
+- `movements`.
+- `tracking_clients`, `tracking_movements`.
+
+No edites las migraciones históricas que crearon estas tablas. Cada conversión debe ser una migración nueva que preserve datos y actualice todas sus FK, Models, firmas de Service, factories, tests y tipos frontend. `audit_logs.auditable_id` debe admitir tanto UUID como BIGINT antes de auditar la primera entidad convertida.
+
 ---
 
 ## 6. Seeders

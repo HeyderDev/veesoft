@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Modules\Tracking\Events;
+
+use App\Modules\Synchronization\Enums\SyncOperation;
+use App\Modules\Synchronization\Events\SyncableDomainEvent;
+use App\Modules\Synchronization\Traits\HasSyncMetadata;
+use Illuminate\Foundation\Events\Dispatchable;
+
+class TrackingClientDeleted implements SyncableDomainEvent
+{
+    use Dispatchable, HasSyncMetadata;
+
+    public function __construct(string|int $clientId)
+    {
+        $this->initializeSyncMetadata(
+            'tracking.client',
+            $clientId,
+            SyncOperation::DELETED,
+        );
+    }
+}

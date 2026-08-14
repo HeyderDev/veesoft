@@ -1,6 +1,6 @@
 # 02_DEVELOPMENT_GUIDE/02_BACKEND_GUIDE.md
 
-> Versión: 1.0.0 · Última actualización: 2026-07-22 · Estado: Oficial
+> Versión: 1.1.0 · Última actualización: 2026-07-27 · Estado: Oficial
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
 # Guía Oficial de Backend (Laravel)
@@ -209,7 +209,47 @@ class LotResource extends JsonResource
 
 ## 7. Policy
 
-**Responsabilidad:** autorización basada en roles/usuario. Se activa cuando el módulo `Shared` incorpore autenticación real; hasta entonces, los Controllers no llaman a `$this->authorize()`. No implementes tu propio sistema de permisos dentro de un módulo — todo permiso nuevo se declara en `Shared`.
+**Responsabilidad:** autorización basada en los permisos del rol del usuario autenticado. `Shared` registra en Gate todas las abilities declaradas en `App\Modules\Shared\Enums\PermissionCode`; ningún módulo implementa su propio sistema de permisos.
+
+Las rutas privadas usan primero `auth:sanctum` y después la ability de lectura del módulo. Las operaciones sin `FormRequest`, como `DELETE`, declaran además el permiso de acción en la ruta:
+
+```php
+Route::middleware(['auth:sanctum', 'can:planning.view'])->group(function () {
+    Route::delete('lots/{lot}', [LotController::class, 'destroy'])
+        ->middleware('can:planning.delete');
+});
+```
+
+Cada `FormRequest` de escritura delega a la misma Policy mediante Gate:
+
+```php
+public function authorize(): bool
+{
+    return $this->user()?->can('planning.create') ?? false;
+}
+```
+
+Para agregar un permiso:
+
+1. Añade el código al enum `PermissionCode`.
+2. Define su etiqueta para que `PermissionSeeder` lo cree con `firstOrCreate`.
+3. Asigna el permiso únicamente a los roles que lo necesiten.
+4. Protege la ruta y el `FormRequest` con la misma ability.
+
+### Auditoría de Models
+
+Toda entidad que deba conservar historial adopta el trait compartido con una línea dentro de su Model:
+
+```php
+use App\Modules\Shared\Traits\Auditable;
+
+class Lot extends Model
+{
+    use Auditable;
+}
+```
+
+El trait registra automáticamente creación, actualización y eliminación en `audit_logs`, incluyendo el usuario autenticado y los valores anteriores/nuevos. Los atributos de `$hidden` nunca se copian al JSON de auditoría.
 
 ---
 
@@ -222,17 +262,23 @@ class LotResource extends JsonResource
 event(new LotCreated($lot));
 ```
 ```php
-// En Synchronization/Listeners/QueueLotForSync.php
-class QueueLotForSync
+// En Planning/Events/LotCreated.php
+class LotCreated implements SyncableDomainEvent
 {
-    public function handle(LotCreated $event): void
+    use Dispatchable, HasSyncMetadata;
+
+    public function __construct(Lot $lot)
     {
-        SyncQueue::create(['entity' => 'lot', 'entity_id' => $event->lot->id]);
+        $this->initializeSyncMetadata(
+            'planning.lot',
+            $lot->getKey(),
+            SyncOperation::CREATED,
+        );
     }
 }
 ```
 
-Este patrón todavía no está implementado en Planning (no hay eventos disparados aún); es obligatorio para cualquier entidad que deba viajar al Nodo Central. Ver `docs/03_MODULE_CONTRACTS/Synchronization.md`.
+`Synchronization` registra un único listener para la interfaz `SyncableDomainEvent`; el módulo funcional no registra listeners de sincronización ni envía una copia completa del Model. Además, debe registrar un `SyncEntityAdapter` que exporte mediante su Resource/DTO público y aplique entradas mediante su Service público. Este patrón todavía no está adoptado en Planning; se agregará por módulo durante el Paso 3. Ver `docs/03_MODULE_CONTRACTS/Synchronization.md`.
 
 **Checklist:**
 - [ ] ¿El evento se nombra en pasado (`LotCreated`, no `CreateLot`)?
@@ -242,7 +288,9 @@ Este patrón todavía no está implementado en Planning (no hay eventos disparad
 
 ## 9. Jobs
 
-**Responsabilidad:** trabajo diferido (colas). Úsalo para sincronización, envío de notificaciones o cualquier tarea que no deba bloquear la respuesta HTTP. Ninguna entidad de Planning lo requiere hoy; `Synchronization` lo usará para reintentos de sincronización con el Nodo Central.
+**Responsabilidad:** trabajo diferido (colas). Úsalo para sincronización, envío de notificaciones o cualquier tarea que no deba bloquear la respuesta HTTP.
+
+`Synchronization` implementa `PushSyncQueueJob`. El Job entrega el registro al nodo destino; los intentos, backoff y estados durables viven en `sync_queue`, por lo que un reinicio del worker no pierde el pendiente. `php artisan sync:run` despacha los registros vencidos al worker y `php artisan sync:run --now` los procesa inmediatamente para pruebas/demostraciones. El scheduler ejecuta `sync:run` cada minuto.
 
 ---
 

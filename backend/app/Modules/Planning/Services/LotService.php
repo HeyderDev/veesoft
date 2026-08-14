@@ -2,6 +2,9 @@
 
 namespace App\Modules\Planning\Services;
 
+use App\Modules\Planning\Events\LotCreated;
+use App\Modules\Planning\Events\LotDeleted;
+use App\Modules\Planning\Events\LotUpdated;
 use App\Modules\Planning\Models\Lot;
 use App\Modules\Planning\Repositories\Contracts\LotRepositoryInterface;
 use App\Modules\Shared\Services\BaseService;
@@ -67,6 +70,7 @@ class LotService extends BaseService
         $data['current_status'] = Lot::STATUS_AVAILABLE;
 
         $lot = $this->lotRepository->create($data);
+        event(new LotCreated($lot->id));
 
         return $this->lotRepository->findWithCycles($lot->id);
     }
@@ -74,6 +78,7 @@ class LotService extends BaseService
     public function update($id, array $data)
     {
         parent::update($id, $data);
+        event(new LotUpdated($id));
 
         return $this->lotRepository->findWithCycles($id);
     }
@@ -118,6 +123,7 @@ class LotService extends BaseService
         }
 
         $this->lotRepository->update($id, ['total_capacity' => $newCapacity]);
+        event(new LotUpdated($id));
 
         return $this->lotRepository->findWithCycles($id);
     }
@@ -135,13 +141,17 @@ class LotService extends BaseService
         }
 
         $this->lotRepository->update($id, ['current_status' => $status]);
+        event(new LotUpdated($id));
 
         return $this->lotRepository->findWithCycles($id);
     }
 
     public function updatePosition(int $id, float $x, float $y)
     {
-        return $this->lotRepository->update($id, ['position_x' => $x, 'position_y' => $y]);
+        $lot = $this->lotRepository->update($id, ['position_x' => $x, 'position_y' => $y]);
+        event(new LotUpdated($id));
+
+        return $lot;
     }
 
     public function delete($id)
@@ -152,6 +162,12 @@ class LotService extends BaseService
             throw new \DomainException('Solo se puede eliminar un lote que esté inactivo.');
         }
 
-        return $this->lotRepository->delete($id);
+        $deleted = $this->lotRepository->delete($id);
+
+        if ($deleted) {
+            event(new LotDeleted($id));
+        }
+
+        return $deleted;
     }
 }

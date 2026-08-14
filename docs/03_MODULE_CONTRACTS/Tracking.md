@@ -89,7 +89,15 @@ Se eliminó por completo `TrackingItem` (no llegó a subirse a `develop`, así q
 - Escaneo de QR: `html5-qrcode` (componente propio `CameraQrModal.tsx`, mismo patrón que `Inventory/components/WebScanner.tsx` pero sin importarlo — cada módulo tiene el suyo).
 - Exportar PDF: `jspdf`.
 
-## 8. Pendiente / a decidir
+## 8. Eventos de sincronización
+
+- `TrackingClientCreated`, `TrackingClientUpdated`, `TrackingClientDeleted` → `tracking.client`.
+- `TrackingMovementRegistered` → `tracking.movement`.
+- `DispatchReported` → `tracking.dispatch`.
+
+Los adaptadores viven en `Tracking/Services` y aplican datos únicamente mediante los Repositories del módulo dueño. Los movimientos y despachos son append-only; el cliente admite creación, actualización y soft delete.
+
+## 9. Pendiente / a decidir
 
 - Mover `ClimateEvent`/`ClimateEventLot`/`Alert`/`ProductionHistory` desde `Planning` a `Tracking` (ver §2) — sigue sin resolverse.
 - El frontend trae dos librerías de QR distintas (`qrcode` de Inventory y `qrcode.react` de Tracking) — a decidir por el Arquitecto si vale la pena consolidar en una sola.

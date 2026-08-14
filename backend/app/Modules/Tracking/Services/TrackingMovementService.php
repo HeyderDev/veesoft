@@ -2,6 +2,7 @@
 
 namespace App\Modules\Tracking\Services;
 
+use App\Modules\Tracking\Events\TrackingMovementRegistered;
 use App\Modules\Tracking\Models\TrackingMovement;
 use App\Modules\Tracking\Repositories\Contracts\TrackingLotRepositoryInterface;
 use App\Modules\Tracking\Repositories\Contracts\TrackingMovementRepositoryInterface;
@@ -35,6 +36,9 @@ class TrackingMovementService
 
         $data['movement_date'] = $data['movement_date'] ?? now();
 
-        return $this->movementRepository->create($data);
+        $movement = $this->movementRepository->create($data);
+        event(new TrackingMovementRegistered($movement->id));
+
+        return $movement;
     }
 }

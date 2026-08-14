@@ -14,11 +14,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Crear roles base
-        $adminRole = Role::firstOrCreate(['name' => 'Admin'], ['description' => 'Administrador del sistema']);
-        $operatorRole = Role::firstOrCreate(['name' => 'Operario'], ['description' => 'Operario de campo']);
+        $this->call([
+            SyncNodeSeeder::class,
+            PermissionSeeder::class,
+        ]);
 
-        // Crear usuario admin
+        $adminRole = Role::firstOrCreate(['name' => 'Admin'], ['description' => 'Administrador del sistema']);
+
         User::firstOrCreate(
             ['email' => 'admin@vivero.com'],
             [

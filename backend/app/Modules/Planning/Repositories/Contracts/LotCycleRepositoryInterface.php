@@ -16,4 +16,8 @@ interface LotCycleRepositoryInterface extends BaseRepositoryInterface
      * para reprogramar en masa cuando cambia la duración de una fase de ese vivero.
      */
     public function allActiveWithPhasesForVivero(int $viveroId): Collection;
+
+    public function exportForSync($id): array;
+
+    public function applySynchronizedState($id, array $payload);
 }

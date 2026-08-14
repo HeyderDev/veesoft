@@ -8,7 +8,7 @@ class CreateProductionGoalRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('planning.create') ?? false;
     }
 
     public function rules(): array
