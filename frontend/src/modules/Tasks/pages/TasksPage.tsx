@@ -7,6 +7,7 @@ import { TaskReportPanel } from '../components/TaskReportPanel';
 import { useTasksViewModel, type TaskTab } from '../viewmodels/useTasksViewModel';
 import type { LotInfo, OperationalTask } from '../types';
 import { tasksService } from '../services/tasksService';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 // ---- Filtros de estado ----
 const STATUS_FILTERS = [
@@ -39,9 +40,10 @@ interface TaskRowProps {
   onEdit: (task: OperationalTask) => void;
   onComplete: (id: number) => void;
   onDelete: (id: number) => void;
+  canManage: boolean;
 }
 
-const TaskRow: React.FC<TaskRowProps> = ({ task, onEdit, onComplete, onDelete }) => (
+const TaskRow: React.FC<TaskRowProps> = ({ task, onEdit, onComplete, onDelete, canManage }) => (
   <tr className="group hover:bg-slate-50 transition-colors">
     <td className="px-4 py-3">
       <div className="font-medium text-slate-800 text-sm">{task.title}</div>
@@ -89,28 +91,32 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onEdit, onComplete, onDelete })
             Completar
           </button>
         )}
-        <button
-          id={`edit-task-${task.id}`}
-          onClick={() => onEdit(task)}
-          title="Editar tarea"
-          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </button>
-        <button
-          id={`delete-task-${task.id}`}
-          onClick={() => onDelete(task.id)}
-          title="Eliminar tarea"
-          className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
+        {canManage && (
+          <>
+            <button
+              id={`edit-task-${task.id}`}
+              onClick={() => onEdit(task)}
+              title="Editar tarea"
+              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              id={`delete-task-${task.id}`}
+              onClick={() => onDelete(task.id)}
+              title="Eliminar tarea"
+              className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
     </td>
   </tr>
@@ -118,6 +124,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onEdit, onComplete, onDelete })
 
 // ---- Página principal ----
 export const TasksPage: React.FC = () => {
+  const { isAdmin } = useAuth();
   const {
     activeTab, setActiveTab,
     // Generales
@@ -149,8 +156,10 @@ export const TasksPage: React.FC = () => {
   const tabs: { id: TaskTab; label: string; icon: string }[] = [
     { id: 'general', label: 'Actividades Generales', icon: '📋' },
     { id: 'lot', label: 'Actividades por Lote', icon: '🌱' },
-    { id: 'history', label: 'Historial', icon: '🕒' },
-    { id: 'report', label: 'Reporte General', icon: '📊' },
+    ...(isAdmin ? [
+      { id: 'history' as const, label: 'Historial', icon: '🕒' },
+      { id: 'report' as const, label: 'Reporte General', icon: '📊' },
+    ] : []),
   ];
 
   return (
@@ -163,7 +172,7 @@ export const TasksPage: React.FC = () => {
             Gestión integral de actividades, asignación de lotes e inventario.
           </p>
         </div>
-        {activeTab !== 'report' && activeTab !== 'history' && (
+        {isAdmin && activeTab !== 'report' && activeTab !== 'history' && (
           <Button id="btn-new-task" onClick={openCreate}>
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -234,7 +243,7 @@ export const TasksPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {generalTasks.map(task => (
-                      <TaskRow key={task.id} task={task} onEdit={openEdit} onComplete={openComplete} onDelete={openDelete} />
+                      <TaskRow key={task.id} task={task} onEdit={openEdit} onComplete={openComplete} onDelete={openDelete} canManage={isAdmin} />
                     ))}
                   </tbody>
                 </table>
@@ -289,7 +298,7 @@ export const TasksPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {lotTasks.map(task => (
-                        <TaskRow key={task.id} task={task} onEdit={openEdit} onComplete={openComplete} onDelete={openDelete} />
+                        <TaskRow key={task.id} task={task} onEdit={openEdit} onComplete={openComplete} onDelete={openDelete} canManage={isAdmin} />
                       ))}
                     </tbody>
                   </table>
@@ -355,7 +364,7 @@ export const TasksPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {historyTasks.map(task => (
-                      <TaskRow key={task.id} task={task} onEdit={openEdit} onComplete={openComplete} onDelete={openDelete} />
+                      <TaskRow key={task.id} task={task} onEdit={openEdit} onComplete={openComplete} onDelete={openDelete} canManage={isAdmin} />
                     ))}
                   </tbody>
                 </table>

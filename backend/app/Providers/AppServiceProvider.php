@@ -15,6 +15,7 @@ use App\Modules\Planning\Repositories\Contracts\ProductionGoalRepositoryInterfac
 use App\Modules\Planning\Repositories\Contracts\ProductionPhaseRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\SummaryRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\ViveroRepositoryInterface;
+use App\Modules\Shared\Support\CurrentVivero;
 use App\Modules\Planning\Repositories\Eloquent\DispatchRepository;
 use App\Modules\Planning\Repositories\Eloquent\LotCycleRepository;
 use App\Modules\Planning\Repositories\Eloquent\LotRepository;
@@ -64,8 +65,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\ToolUnitRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\ToolUnitRepository::class);
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\SupplyRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\SupplyRepository::class);
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\MovementRepository::class);
-        $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\StudentRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\StudentRepository::class);
-
 
         // ---- Módulo Tasks ----
         $this->app->bind(\App\Modules\Tasks\Repositories\Contracts\OperationalTaskRepositoryInterface::class, \App\Modules\Tasks\Repositories\Eloquent\OperationalTaskRepository::class);
@@ -74,6 +73,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
         $this->app->bind(PurchaseOrderRepositoryInterface::class, PurchaseOrderRepository::class);
         $this->app->bind(PurchaseRequestRepositoryInterface::class, PurchaseRequestRepository::class);
+
+        // ---- Contexto de vivero activo (una instancia por request) ----
+        $this->app->singleton(CurrentVivero::class);
     }
 
     /**

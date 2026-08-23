@@ -2,19 +2,20 @@
 
 namespace App\Modules\Inventory\Models;
 
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Modules\Tracking\Models\TrackingMovement; // Use TrackingMovement? No, inventory Movement. Let's use correct namespace
 use App\Modules\Inventory\Models\Movement;
 
 class ToolUnit extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToVivero;
 
     protected $fillable = [
+        'vivero_id',
         'tool_id',
         'code',
         'status',

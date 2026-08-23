@@ -5,14 +5,14 @@ export default function MovementsPage() {
   const { movements, isLoading, loadMovements } = useMovementsViewModel();
 
   const [filterTipo, setFilterTipo] = useState('');
-  const [filterStudent, setFilterStudent] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
 
   const handleFilterEvents = () => {
     loadMovements(
       filterTipo || undefined,
-      filterStudent || undefined,
+      searchTerm || undefined,
       filterStartDate || undefined,
       filterEndDate || undefined
     );
@@ -59,7 +59,7 @@ export default function MovementsPage() {
         <div className="px-6 pb-4 pt-4 border-b border-slate-100 flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[150px]">
             <label className="block text-[10px] font-bold text-slate-500 mb-1">BUSCAR EN HISTORIAL</label>
-            <input type="text" value={filterStudent} onChange={e => setFilterStudent(e.target.value)} placeholder="Ej: nombre, herramienta..." className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none" />
+            <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Ej: nombre, herramienta..." className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none" />
           </div>
           <div className="w-full sm:w-auto">
             <label className="block text-[10px] font-bold text-slate-500 mb-1">TIPO EVENTO</label>
@@ -84,7 +84,7 @@ export default function MovementsPage() {
           </div>
           <button onClick={handleFilterEvents} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition">Filtrar</button>
           <button
-            onClick={() => { setFilterStudent(''); setFilterTipo(''); setFilterStartDate(''); setFilterEndDate(''); loadMovements(); }}
+            onClick={() => { setSearchTerm(''); setFilterTipo(''); setFilterStartDate(''); setFilterEndDate(''); loadMovements(); }}
             className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 font-bold text-xs text-slate-700 transition"
           >
             🔄 Limpiar
@@ -143,7 +143,6 @@ export default function MovementsPage() {
                      <div className="flex flex-col gap-1 max-w-xs">
                        <span className="truncate" title={ev.details?.detalles || ev.reason || ''}>{ev.details?.detalles || ev.reason || '-'}</span>
                        {ev.observations && <span className="text-[10px] text-emerald-600 truncate" title={ev.observations}>Obs: {ev.observations}</span>}
-                       {ev.student_id && <span className="text-[10px] text-blue-600">Estudiante ID: {ev.student_id}</span>}
                        {ev.operational_task_id && <span className="text-[10px] text-amber-600">Actividad ID: {ev.operational_task_id}</span>}
                     </div>
                   </td>

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Planning\Models;
 
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lot extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToVivero;
 
     public const STATUS_AVAILABLE = 'available';
 

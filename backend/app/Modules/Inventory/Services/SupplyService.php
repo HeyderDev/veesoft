@@ -101,10 +101,6 @@ class SupplyService extends BaseService
             $newStock = $previousStock;
 
             if ($type === 'ENTRADA') {
-                if ($supply->max_stock && ($newStock + $quantity) > $supply->max_stock) {
-                    $available = max(0, $supply->max_stock - $previousStock);
-                    throw new \Exception("No se puede registrar la entrada. La cantidad ingresada supera la capacidad máxima del inventario.\nStock actual: {$previousStock} {$supply->unit}\nCantidad máxima: {$supply->max_stock} {$supply->unit}\nCantidad disponible para entrada: {$available} {$supply->unit}");
-                }
                 $newStock += $quantity;
             } elseif ($type === 'SALIDA') {
                 if ($previousStock < $quantity) {

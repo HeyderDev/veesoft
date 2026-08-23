@@ -36,8 +36,8 @@ export function useLotesViewModel(viveroId: number) {
         planningService.getLots(),
         planningService.getPhases(),
       ]);
-      setLotes((resLotes.data || []).filter(l => l.vivero_id === viveroId));
-      setFases((resFases.data || []).filter(f => f.vivero_id === viveroId));
+      setLotes(resLotes.data || []);
+      setFases(resFases.data || []);
     } catch (e) {
       error('Error al cargar los lotes');
       console.error(e);

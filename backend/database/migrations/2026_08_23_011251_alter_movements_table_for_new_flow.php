@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::table('movements', function (Blueprint $table) {
             $table->foreignId('tool_unit_id')->nullable()->constrained('tool_units')->nullOnDelete()->after('tool_id');
-            $table->foreignId('student_id')->nullable()->constrained('students')->nullOnDelete()->after('user_id');
-            $table->foreignId('operational_task_id')->nullable()->constrained('operational_tasks')->nullOnDelete()->after('student_id');
+            $table->foreignId('operational_task_id')->nullable()->constrained('operational_tasks')->nullOnDelete()->after('user_id');
             $table->text('observations')->nullable()->after('details');
         });
     }
@@ -26,9 +25,8 @@ return new class extends Migration
     {
         Schema::table('movements', function (Blueprint $table) {
             $table->dropForeign(['tool_unit_id']);
-            $table->dropForeign(['student_id']);
             $table->dropForeign(['operational_task_id']);
-            $table->dropColumn(['tool_unit_id', 'student_id', 'operational_task_id', 'observations']);
+            $table->dropColumn(['tool_unit_id', 'operational_task_id', 'observations']);
         });
     }
 };

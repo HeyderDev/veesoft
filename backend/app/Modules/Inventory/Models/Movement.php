@@ -3,6 +3,7 @@
 namespace App\Modules\Inventory\Models;
 
 use App\Modules\Shared\Models\User;
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Movement extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToVivero;
 
     public const TYPE_ADJUSTMENT = 'ADJUSTMENT';
 
@@ -21,11 +22,11 @@ class Movement extends Model
     public const TYPE_BORROWED = 'BORROWED';
 
     protected $fillable = [
+        'vivero_id',
         'tool_id',
         'tool_unit_id',
         'supply_id',
         'user_id',
-        'student_id',
         'operational_task_id',
         'type',
         'quantity',
@@ -67,11 +68,6 @@ class Movement extends Model
     public function toolUnit(): BelongsTo
     {
         return $this->belongsTo(ToolUnit::class);
-    }
-
-    public function student(): BelongsTo
-    {
-        return $this->belongsTo(\App\Modules\Shared\Models\Student::class);
     }
 
     public function operationalTask(): BelongsTo

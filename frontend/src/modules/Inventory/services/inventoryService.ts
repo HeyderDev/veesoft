@@ -54,9 +54,6 @@ export const inventoryService = {
     axiosClient.get<{ data: Movement[] }>('/movements', { params: { type, q, startDate, endDate } }).then(res => (res as any).data),
 
   // Shared / Tasks
-  getStudents: (q?: string) =>
-    axiosClient.get('/students', { params: { q } }).then(res => (res as any).data),
-  
   getTasks: (q?: string) =>
     axiosClient.get('/tasks', { params: { q } }).then(res => (res as any).data),
 };

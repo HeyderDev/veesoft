@@ -6,7 +6,7 @@ export interface UserReport {
   first_name: string;
   last_name: string;
   cedula: string;
-  role: string; // 'administrador' | 'estudiante' | 'bodeguero'
+  role: string; // 'Admin' | 'Operario'
   active_loans: number;
   overdue: boolean;
 }
