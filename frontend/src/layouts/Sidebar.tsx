@@ -14,7 +14,7 @@ const NavIcon = ({ children }: { children: React.ReactNode }) => (
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModule }) => {
   return (
-    <aside className="w-64 h-screen flex flex-col fixed left-0 top-0 z-30"
+    <aside className="print:hidden w-64 h-screen flex flex-col fixed left-0 top-0 z-30"
       style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}>
 
       {/* Logo / Brand */}

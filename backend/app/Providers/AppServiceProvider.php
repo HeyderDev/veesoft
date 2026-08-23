@@ -62,8 +62,11 @@ class AppServiceProvider extends ServiceProvider
 
         // ---- Módulo Inventory ----
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\ToolRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\ToolRepository::class);
+        $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\ToolUnitRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\ToolUnitRepository::class);
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\SupplyRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\SupplyRepository::class);
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\MovementRepository::class);
+        $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\StudentRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\StudentRepository::class);
+
 
         // ---- Módulo Tasks ----
         $this->app->bind(\App\Modules\Tasks\Repositories\Contracts\OperationalTaskRepositoryInterface::class, \App\Modules\Tasks\Repositories\Eloquent\OperationalTaskRepository::class);

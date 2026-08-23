@@ -12,17 +12,14 @@ class Tool extends Model
 {
     use HasFactory, SoftDeletes, BelongsToVivero;
 
-    public const STATUS_AVAILABLE = 'AVAILABLE';
-
-    public const STATUS_BORROWED = 'BORROWED';
-
-    public const STATUS_MAINTENANCE = 'MAINTENANCE';
-
-    public const STATUS_DAMAGED = 'DAMAGED';
-
     protected $fillable = [
-        'vivero_id', 'code', 'name', 'description', 'status', 'quantity',
+        'vivero_id', 'name', 'description',
     ];
+
+    public function units(): HasMany
+    {
+        return $this->hasMany(ToolUnit::class);
+    }
 
     public function movements(): HasMany
     {

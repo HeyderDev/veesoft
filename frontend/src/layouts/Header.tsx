@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({ currentModule = 'planning', curr
   });
 
   return (
-    <header className="h-16 bg-white/90 backdrop-blur-sm border-b border-slate-200/80 flex items-center justify-between px-6 sticky top-0 z-20 shadow-sm">
+    <header className="print:hidden h-16 bg-white/90 backdrop-blur-sm border-b border-slate-200/80 flex items-center justify-between px-6 sticky top-0 z-20 shadow-sm">
 
       {/* Left — Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
