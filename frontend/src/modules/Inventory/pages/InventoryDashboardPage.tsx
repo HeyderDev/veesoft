@@ -5,18 +5,22 @@ export default function InventoryDashboardPage() {
 
   const typeLabels: Record<string, string> = {
     BORROW: 'Préstamo',
+    BORROWED: 'Préstamo',
     RETURN: 'Devolución',
     MAINTENANCE: 'Mantenimiento',
     ADJUSTMENT: 'Ajuste',
-    CONSUMPTION: 'Consumo'
+    CONSUMPTION: 'Consumo',
+    decommissioned: 'Dado de baja'
   };
 
   const typeColors: Record<string, string> = {
     BORROW: 'bg-amber-50 text-amber-600 border-amber-200',
+    BORROWED: 'bg-amber-50 text-amber-600 border-amber-200',
     RETURN: 'bg-emerald-50 text-emerald-600 border-emerald-200',
     MAINTENANCE: 'bg-red-50 text-red-600 border-red-200',
     ADJUSTMENT: 'bg-slate-50 text-slate-600 border-slate-200',
     CONSUMPTION: 'bg-blue-50 text-blue-600 border-blue-200',
+    decommissioned: 'bg-slate-50 text-slate-600 border-slate-200',
   };
 
   const setActiveTab = (tab: string) => {
@@ -86,7 +90,6 @@ export default function InventoryDashboardPage() {
             </p>
           </div>
           <div className="flex gap-3 mt-8">
-            <button onClick={() => setActiveTab('students')} className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 transition text-slate-900 rounded-xl font-bold text-xs shadow-md">Importar Estudiantes (CSV)</button>
             <button onClick={() => setActiveTab('tools')} className="px-5 py-2.5 bg-white/10 hover:bg-white/20 transition text-white border border-white/20 rounded-xl font-semibold text-xs relative z-10">Inventario Herramientas</button>
           </div>
         </div>

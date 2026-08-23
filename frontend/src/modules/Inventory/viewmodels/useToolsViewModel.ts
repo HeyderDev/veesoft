@@ -46,9 +46,9 @@ export function useToolsViewModel() {
     }
   };
 
-  const handleUpdateStatus = async (id: number, status: string, details?: any) => {
+  const handleUpdateUnitStatus = async (id: number, status: string, details?: any) => {
     try {
-      await inventoryService.updateToolStatus(id, status, details);
+      await inventoryService.updateToolUnitStatus(id, status, details);
       success('Estado actualizado');
       loadTools();
     } catch (e: any) {
@@ -83,7 +83,7 @@ export function useToolsViewModel() {
     loadTools,
     handleCreate,
     handleUpdate,
-    handleUpdateStatus,
+    handleUpdateUnitStatus,
     handleDelete,
     handlePrintLabel,
   };

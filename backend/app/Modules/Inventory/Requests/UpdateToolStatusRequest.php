@@ -16,10 +16,10 @@ class UpdateToolStatusRequest extends FormRequest
     {
         return [
             'status' => 'required|string|in:'.implode(',', [
-                Tool::STATUS_AVAILABLE,
-                Tool::STATUS_BORROWED,
-                Tool::STATUS_MAINTENANCE,
-                Tool::STATUS_DAMAGED,
+                'available',
+                'borrowed',
+                'maintenance',
+                'out_of_service',
             ]),
             'details' => 'nullable|array',
         ];

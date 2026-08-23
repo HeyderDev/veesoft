@@ -14,31 +14,23 @@ class ToolRepository extends BaseRepository implements ToolRepositoryInterface
         parent::__construct($model);
     }
 
-    public function paginateOrderedByCode(int $perPage = 15, ?string $search = null): LengthAwarePaginator
+    public function paginateWithUnits(int $perPage = 15, ?string $search = null): LengthAwarePaginator
     {
-        $query = $this->model->newQuery();
+        $query = $this->model->newQuery()->with('units')->withCount(['units', 'units as available_units_count' => function ($q) {
+            $q->where('status', 'available');
+        }, 'units as borrowed_units_count' => function ($q) {
+            $q->where('status', 'borrowed');
+        }, 'units as maintenance_units_count' => function ($q) {
+            $q->whereIn('status', ['maintenance', 'damaged']);
+        }]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy('code')->paginate($perPage);
-    }
-
-    public function generateUniqueCode(): string
-    {
-        $maxId = $this->model->max('id') ?? 0;
-        $nextId = $maxId + 1;
-
-        return 'HERR-'.str_pad($nextId, 3, '0', STR_PAD_LEFT);
-    }
-
-    public function findByCode(string $code)
-    {
-        return $this->model->where('code', $code)->firstOrFail();
+        return $query->orderBy('name')->paginate($perPage);
     }
 }

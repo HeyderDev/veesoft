@@ -30,9 +30,14 @@ class SupplyRepository extends BaseRepository implements SupplyRepositoryInterfa
 
     public function generateUniqueSku(): string
     {
-        $maxId = $this->model->max('id') ?? 0;
+        $maxId = $this->model->withTrashed()->max('id') ?? 0;
         $nextId = $maxId + 1;
 
         return 'INS-'.str_pad($nextId, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function findBySku(string $sku)
+    {
+        return $this->model->where('sku', $sku)->firstOrFail();
     }
 }

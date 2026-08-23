@@ -16,7 +16,7 @@ class MovementRepository extends BaseRepository implements MovementRepositoryInt
 
     public function paginateWithRelations(int $perPage = 15, ?string $type = null, ?string $search = null, ?string $startDate = null, ?string $endDate = null): LengthAwarePaginator
     {
-        $query = $this->model->with(['tool', 'supply', 'user']);
+        $query = $this->model->with(['tool', 'supply', 'user', 'toolUnit']);
 
         if ($type) {
             $query->where('type', strtoupper($type));
@@ -28,6 +28,9 @@ class MovementRepository extends BaseRepository implements MovementRepositoryInt
                     ->orWhereHas('tool', function ($t) use ($search) {
                         $t->where('name', 'like', "%{$search}%")
                             ->orWhere('code', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('toolUnit', function ($tu) use ($search) {
+                        $tu->where('code', 'like', "%{$search}%");
                     })
                     ->orWhereHas('supply', function ($s) use ($search) {
                         $s->where('name', 'like', "%{$search}%")

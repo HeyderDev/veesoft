@@ -10,4 +10,6 @@ interface SupplyRepositoryInterface extends BaseRepositoryInterface
     public function paginateOrderedBySku(int $perPage = 15, ?string $search = null): LengthAwarePaginator;
 
     public function generateUniqueSku(): string;
+    
+    public function findBySku(string $sku);
 }
