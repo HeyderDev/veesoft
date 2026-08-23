@@ -3,14 +3,32 @@
 use App\Modules\Inventory\Controllers\MovementController;
 use App\Modules\Inventory\Controllers\SupplyController;
 use App\Modules\Inventory\Controllers\ToolController;
+use App\Modules\Inventory\Controllers\PrintController;
 use App\Modules\Inventory\Services\InventoryQueryService;
 use Illuminate\Support\Facades\Route;
 
+use App\Modules\Inventory\Controllers\ToolUnitController;
+use App\Modules\Inventory\Controllers\StudentController;
+use App\Modules\Inventory\Controllers\CareerController;
+
+Route::get('careers', [CareerController::class, 'index']);
+
+Route::post('students/import', [StudentController::class, 'importCsv']);
+Route::patch('students/{student}/status', [StudentController::class, 'updateStatus']);
+Route::apiResource('students', StudentController::class);
+
+Route::post('tools/print-label', [PrintController::class, 'printLabel']);
 Route::apiResource('tools', ToolController::class);
-Route::get('tools/code/{code}', [ToolController::class, 'findByCode']);
-Route::patch('tools/{tool}/status', [ToolController::class, 'updateStatus']);
+Route::post('tools/{tool}/units', [ToolUnitController::class, 'store']);
+
+Route::get('tool-units/{unit}', [ToolUnitController::class, 'show']);
+Route::get('tool-units/code/{code}', [ToolUnitController::class, 'findByCode']);
+Route::patch('tool-units/{unit}/status', [ToolUnitController::class, 'updateStatus']);
+Route::delete('tool-units/{unit}', [ToolUnitController::class, 'destroy']);
 
 Route::apiResource('supplies', SupplyController::class);
+Route::get('supplies/code/{code}', [SupplyController::class, 'findByCode']);
+Route::post('supplies/{supply}/movements', [SupplyController::class, 'registerMovement']);
 
 Route::get('movements', [MovementController::class, 'index']);
 

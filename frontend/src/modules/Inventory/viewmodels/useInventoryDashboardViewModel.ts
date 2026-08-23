@@ -22,18 +22,19 @@ export function useInventoryDashboardViewModel() {
     fetchAll();
   }, [loadTools, loadSupplies, loadMovements]);
 
-  const totalTools = tools.length;
-  const availableTools = tools.filter(t => t.status === 'AVAILABLE').length;
-  const maintTools = tools.filter(t => t.status === 'MAINTENANCE').length;
+  const totalTools = tools.reduce((acc, t) => acc + (t.units_count || 0), 0);
+  const availableTools = tools.reduce((acc, t) => acc + (t.available_units_count || 0), 0);
+  const maintTools = tools.reduce((acc, t) => acc + (t.out_of_service_units_count || 0), 0);
 
   const totalSupplies = supplies.length;
-  const criticalSupplies = supplies.filter(s => s.current_stock <= s.min_stock).length;
+  // Consider critical if available is less than 10% of total
+  const criticalSupplies = supplies.filter(s => s.total_stock > 0 && s.current_stock <= (s.total_stock * 0.1)).length;
 
   const totalMovements = movements.length;
 
   // Encontrar prestamos no devueltos
   const overdueTools = movements
-    .filter(m => m.type === 'BORROW' && !movements.some(ret => ret.type === 'RETURN' && ret.tool_id === m.tool_id && new Date(ret.created_at) > new Date(m.created_at)))
+    .filter(m => (m.type === 'BORROW' || m.type === 'BORROWED') && !movements.some(ret => ret.type === 'RETURN' && ret.tool_id === m.tool_id && new Date(ret.created_at) > new Date(m.created_at)))
     .filter(m => {
         const diff = new Date().getTime() - new Date(m.created_at).getTime();
         const days = diff / (1000 * 3600 * 24);

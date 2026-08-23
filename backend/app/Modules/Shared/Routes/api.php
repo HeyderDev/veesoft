@@ -18,3 +18,6 @@ Route::get('/health', [HealthController::class, 'check'])->name('health');
 Route::get('/users', fn () => \App\Modules\Shared\Models\User::select('id', 'name')->get());
 
 Route::get('/user', fn (Request $request) => $request->user());
+
+use App\Modules\Shared\Controllers\StudentController;
+Route::get('/students', [StudentController::class, 'index']);

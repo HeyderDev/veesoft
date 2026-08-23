@@ -6,6 +6,7 @@ import SuppliesPage from '../pages/SuppliesPage';
 import MovementsPage from '../pages/MovementsPage';
 import MaintenancePage from '../pages/MaintenancePage';
 import ReportsPage from '../pages/ReportsPage';
+import { StudentsPage } from '../pages/StudentsPage';
 import { ScannerPage } from '../pages/ScannerPage';
 
 interface InventoryTabsProps {
@@ -36,6 +37,7 @@ export const InventoryTabs: React.FC<InventoryTabsProps> = ({ onTabChange }) => 
       {activeSection === 'insumos' && <SuppliesPage />}
       {activeSection === 'historial' && <MovementsPage />}
       {activeSection === 'mantenimiento' && <MaintenancePage />}
+      {activeSection === 'estudiantes' && <StudentsPage />}
       {activeSection === 'reportes' && <ReportsPage />}
     </div>
   );

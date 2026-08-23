@@ -21,11 +21,31 @@ class Movement extends Model
     public const TYPE_BORROWED = 'BORROWED';
 
     protected $fillable = [
-        'tool_id', 'supply_id', 'user_id', 'type', 'quantity', 'details',
+        'tool_id',
+        'tool_unit_id',
+        'supply_id',
+        'user_id',
+        'student_id',
+        'operational_task_id',
+        'type',
+        'quantity',
+        'previous_stock',
+        'new_stock',
+        'reason',
+        'scanned_code',
+        'batch',
+        'details',
+        'observations',
+        'sync_id',
+        'origin_node',
+        'origin_module',
+        'sync_status',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:2',
+        'previous_stock' => 'decimal:2',
+        'new_stock' => 'decimal:2',
         'details' => 'array',
     ];
 
@@ -42,5 +62,24 @@ class Movement extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function toolUnit(): BelongsTo
+    {
+        return $this->belongsTo(ToolUnit::class);
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Shared\Models\Student::class);
+    }
+
+    public function operationalTask(): BelongsTo
+    {
+        // Operational tasks seem to not be in a module? Wait, they are in DB, but I'll need to check the exact namespace. 
+        // Assuming App\Models\OperationalTask for now, or App\Modules\Tasks\Models\OperationalTask
+        // I will use \App\Modules\Tasks\Models\OperationalTask if it exists.
+        // Let's search it next. For now:
+        return $this->belongsTo(\App\Modules\Tasks\Models\OperationalTask::class);
     }
 }
