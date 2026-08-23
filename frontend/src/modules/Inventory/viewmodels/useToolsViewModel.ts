@@ -46,9 +46,9 @@ export function useToolsViewModel() {
     }
   };
 
-  const handleUpdateStatus = async (id: number, status: string, details?: any) => {
+  const handleUpdateUnitStatus = async (id: number, status: string, details?: any) => {
     try {
-      await inventoryService.updateToolStatus(id, status, details);
+      await inventoryService.updateToolUnitStatus(id, status, details);
       success('Estado actualizado');
       loadTools();
     } catch (e: any) {
@@ -66,13 +66,25 @@ export function useToolsViewModel() {
     }
   };
 
+  const handlePrintLabel = async (name: string, code: string, format: 'qr' | 'barcode') => {
+    try {
+      await inventoryService.printLabel(name, code, format);
+      success('Impresión enviada correctamente');
+      return true;
+    } catch (e: any) {
+      error(e.response?.data?.message || 'No se pudo conectar con la impresora POS-5890A.');
+      return false;
+    }
+  };
+
   return {
     tools,
     isLoading,
     loadTools,
     handleCreate,
     handleUpdate,
-    handleUpdateStatus,
+    handleUpdateUnitStatus,
     handleDelete,
+    handlePrintLabel,
   };
 }

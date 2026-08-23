@@ -2,6 +2,7 @@
 
 namespace App\Modules\Logistics\Models;
 
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,14 +10,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Supplier extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToVivero;
 
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_INACTIVE = 'inactive';
 
     protected $fillable = [
-        'name', 'tax_id', 'email', 'phone', 'address',
+        'vivero_id', 'name', 'tax_id', 'email', 'phone', 'address',
         'organic_certified', 'certificate_expires_at', 'score', 'status',
     ];
 

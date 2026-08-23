@@ -25,9 +25,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     <NavProvider>
       <div className="flex min-h-screen bg-slate-50">
         <Sidebar currentModule={currentModule} setCurrentModule={setCurrentModule} />
-        <div className="flex-1 ml-64 flex flex-col min-h-screen">
+        <div className="flex-1 ml-64 flex flex-col min-h-screen print:ml-0">
           <Header currentModule={currentModule} currentTab={currentTab} />
-          <main className="flex-1 p-6 overflow-x-hidden">
+          <main className="flex-1 p-6 overflow-x-hidden print:p-0 print:overflow-visible print:bg-white">
             {children}
           </main>
         </div>

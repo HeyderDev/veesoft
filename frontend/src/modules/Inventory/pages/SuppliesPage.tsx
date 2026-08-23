@@ -4,43 +4,45 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { useSuppliesViewModel } from '../viewmodels/useSuppliesViewModel';
 
+const UNIT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'kg', label: 'Kilogramo (kg)' },
+  { value: 'g', label: 'Gramo (g)' },
+  { value: 'L', label: 'Litro (L)' },
+  { value: 'ml', label: 'Mililitro (ml)' },
+  { value: 'und', label: 'Unidad (und)' },
+  { value: 'm', label: 'Metro (m)' },
+];
+
 export default function SuppliesPage() {
   const { 
     supplies, isLoading,
-    loadSupplies, handleCreate, handleUpdate, handleDelete
+    loadSupplies, handleCreate, handleUpdate, handleDelete, handlePrintLabel
   } = useSuppliesViewModel();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [newInsumoName, setNewInsumoName] = useState('');
   const [newInsumoDesc, setNewInsumoDesc] = useState('');
-  const [newInsumoStock, setNewInsumoStock] = useState(0);
-  const [newInsumoStockMin, setNewInsumoStockMin] = useState(0);
+  const [newInsumoUnit, setNewInsumoUnit] = useState('');
+  const [newInsumoInitialStock, setNewInsumoInitialStock] = useState(0);
+  const [newInsumoMinStock, setNewInsumoMinStock] = useState(0);
   const [editItem, setEditItem] = useState<{ id: number, data: any } | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [generatedLabel, setGeneratedLabel] = useState<{code: string, name: string} | null>(null);
   const [labelFormat, setLabelFormat] = useState<'qr' | 'barcode'>('qr');
-  const [labelSize, setLabelSize] = useState<'pequeno' | 'mediano' | 'grande'>('mediano');
+  const [isPrinting, setIsPrinting] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const barcodeSvgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     if (generatedLabel) {
-      const qrSizes = { pequeno: 80, mediano: 120, grande: 180 };
-      const barcodeSizes = {
-        pequeno: { width: 1.2, height: 30, fontSize: 10 },
-        mediano: { width: 1.5, height: 50, fontSize: 14 },
-        grande: { width: 2.5, height: 80, fontSize: 18 }
-      };
-      
       if (labelFormat === 'qr' && qrCanvasRef.current) {
-        QRCode.toCanvas(qrCanvasRef.current, generatedLabel.code, { width: qrSizes[labelSize], margin: 1 }, (err: any) => { if (err) console.error(err); });
+        QRCode.toCanvas(qrCanvasRef.current, generatedLabel.code, { width: 140, margin: 1 }, (err: any) => { if (err) console.error(err); });
       }
       if (labelFormat === 'barcode' && barcodeSvgRef.current) {
-        const bs = barcodeSizes[labelSize];
-        JsBarcode(barcodeSvgRef.current, generatedLabel.code, { format: "CODE128", width: bs.width, height: bs.height, displayValue: true, fontSize: bs.fontSize, margin: 5 });
+        JsBarcode(barcodeSvgRef.current, generatedLabel.code, { format: "CODE128", width: 1.5, height: 60, displayValue: true, fontSize: 14, margin: 5 });
       }
     }
-  }, [generatedLabel, labelFormat, labelSize]);
+  }, [generatedLabel, labelFormat]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -51,7 +53,7 @@ export default function SuppliesPage() {
 
   const handleCreateInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInsumoName || newInsumoStock < 0 || newInsumoStockMin < 0) return;
+    if (!newInsumoName || newInsumoInitialStock < 0 || !newInsumoUnit) return;
 
     const result = await Swal.fire({
       title: '¿Registrar Insumo?',
@@ -68,16 +70,17 @@ export default function SuppliesPage() {
     const createdSupply = await handleCreate({
       name: newInsumoName.trim(),
       description: newInsumoDesc.trim(),
-      current_stock: Number(newInsumoStock),
-      min_stock: Number(newInsumoStockMin),
-      unit: 'UNIDADES'
+      current_stock: Number(newInsumoInitialStock),
+      min_stock: Number(newInsumoMinStock),
+      unit: newInsumoUnit,
     });
-    
+
     if (createdSupply) {
       setNewInsumoName('');
       setNewInsumoDesc('');
-      setNewInsumoStock(0);
-      setNewInsumoStockMin(0);
+      setNewInsumoUnit('');
+      setNewInsumoInitialStock(0);
+      setNewInsumoMinStock(0);
       setGeneratedLabel({ code: createdSupply.sku, name: createdSupply.name });
       Swal.fire('¡Éxito!', 'Insumo registrado correctamente.', 'success');
     } else {
@@ -121,18 +124,14 @@ export default function SuppliesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white p-4 rounded-2xl border border-slate-100 text-center mb-6 shadow-sm">
+      <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-2xl border border-slate-100 text-center mb-6 shadow-sm">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Total Insumos</p>
+          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Total Tipos Insumos</p>
           <p className="text-2xl font-extrabold text-slate-800">{isLoading ? '...' : supplies.length}</p>
         </div>
         <div>
           <p className="text-[10px] text-rose-400 uppercase tracking-wider font-semibold">En Alerta (Stock Bajo)</p>
-          <p className="text-2xl font-extrabold text-rose-600">{isLoading ? '...' : supplies.filter(i => i.current_stock <= i.min_stock).length}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Unidades Totales</p>
-          <p className="text-2xl font-extrabold text-emerald-600">{isLoading ? '...' : supplies.reduce((acc, i) => acc + i.current_stock, 0)}</p>
+          <p className="text-2xl font-extrabold text-rose-600">{isLoading ? '...' : supplies.filter(i => i.current_stock <= (i.min_stock ?? 0)).length}</p>
         </div>
       </div>
 
@@ -160,13 +159,13 @@ export default function SuppliesPage() {
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {supplies.map((item) => {
-                const isCritical = item.current_stock <= item.min_stock;
+                const isCritical = item.current_stock <= (item.min_stock ?? 0);
                 return (
                   <div key={item.id} className={`bg-white p-5 rounded-2xl shadow-sm border flex flex-col justify-between hover:shadow-md transition duration-200 ${isCritical ? 'border-red-200 bg-red-50/10' : 'border-slate-100'}`}>
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${isCritical ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-600'}`}>
-                          STOCK: {item.current_stock} / MÍN: {item.min_stock}
+                          STOCK: {item.current_stock} {item.unit}
                         </span>
                         {isCritical && (
                           <span className="px-2.5 py-0.5 bg-rose-500 text-white rounded-full text-[9px] font-bold uppercase animate-pulse">
@@ -174,7 +173,10 @@ export default function SuppliesPage() {
                           </span>
                         )}
                       </div>
-                      <h3 className="font-bold text-slate-800 text-sm">{item.name}</h3>
+                      <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        {item.name}
+                        <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{item.sku}</span>
+                      </h3>
                       <p className="text-slate-500 text-xs mt-1 leading-relaxed">{item.description || 'Sin descripción.'}</p>
                     </div>
                     <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center">
@@ -209,16 +211,19 @@ export default function SuppliesPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {supplies.map((item) => {
-                      const isCritical = item.current_stock <= item.min_stock;
+                      const isCritical = item.current_stock <= (item.min_stock ?? 0);
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/50 transition">
                           <td className="px-5 py-3 text-xs text-slate-800">
-                            <p className="font-bold">{item.name}</p>
+                            <p className="font-bold flex items-center gap-2">
+                              {item.name}
+                              <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{item.sku}</span>
+                            </p>
                             <p className="text-[10px] text-slate-500">{item.description || 'Sin descripción'}</p>
                           </td>
                           <td className="px-5 py-3 text-xs">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-block w-max ${isCritical ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-600'}`}>
-                              {item.current_stock} / {item.min_stock}
+                              {item.current_stock} {item.unit}
                             </span>
                           </td>
                           <td className="px-5 py-3 text-xs flex gap-2">
@@ -238,14 +243,48 @@ export default function SuppliesPage() {
 
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 h-fit space-y-4">
           <h3 className="font-bold text-slate-800 text-base">Registrar Nuevo Insumo</h3>
-          <form onSubmit={handleCreateInsumo} className="space-y-4">
-            <input type="text" required placeholder="Nombre" value={newInsumoName} onChange={(e) => setNewInsumoName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm" />
-            <textarea placeholder="Descripción..." rows={2} value={newInsumoDesc} onChange={(e) => setNewInsumoDesc(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm" />
-            <div className="grid grid-cols-2 gap-3">
-              <input type="number" min="0" required placeholder="Stock" value={newInsumoStock} onChange={(e) => setNewInsumoStock(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm" />
-              <input type="number" min="0" required placeholder="Min" value={newInsumoStockMin} onChange={(e) => setNewInsumoStockMin(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm" />
+          <form onSubmit={handleCreateInsumo} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500">Nombre del insumo</label>
+              <input type="text" required value={newInsumoName} onChange={(e) => setNewInsumoName(e.target.value.replace(/[^A-Za-záéíóúÁÉÍÓÚñÑ\s]/g, ''))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
-            <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm">Registrar</button>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500">Descripción</label>
+              <textarea rows={2} value={newInsumoDesc} onChange={(e) => setNewInsumoDesc(e.target.value.replace(/[^A-Za-záéíóúÁÉÍÓÚñÑ\s]/g, ''))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500">Unidad de medida</label>
+              <select value={newInsumoUnit} onChange={(e) => setNewInsumoUnit(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="" disabled>Seleccionar unidad de medida</option>
+                {UNIT_OPTIONS.map(u => (
+                  <option key={u.value} value={u.value}>{u.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {newInsumoUnit && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500">Cantidad inicial</label>
+                  <div className="relative">
+                    <input type="number" min="0" step={newInsumoUnit === 'und' ? '1' : '0.01'} required value={newInsumoInitialStock || ''} onChange={(e) => setNewInsumoInitialStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{newInsumoUnit}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500">Stock mínimo (Alerta)</label>
+                  <div className="relative">
+                    <input type="number" min="0" step={newInsumoUnit === 'und' ? '1' : '0.01'} required value={newInsumoMinStock || ''} onChange={(e) => setNewInsumoMinStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{newInsumoUnit}</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button type="submit" className="w-full py-3 mt-2 bg-emerald-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-emerald-700 transition">Registrar</button>
           </form>
         </div>
       </div>
@@ -255,9 +294,21 @@ export default function SuppliesPage() {
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
             <h3 className="font-bold text-slate-800 text-lg mb-4">Editar Insumo</h3>
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <input type="text" required value={editItem.data.name} onChange={e => setEditItem({...editItem, data: {...editItem.data, name: e.target.value}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
-              <input type="number" required value={editItem.data.current_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, current_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
-              <div className="flex gap-2">
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold">NOMBRE</label>
+                <input type="text" required value={editItem.data.name} onChange={e => setEditItem({...editItem, data: {...editItem.data, name: e.target.value.replace(/[^A-Za-záéíóúÁÉÍÓÚñÑ\s]/g, '')}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold">STOCK ACTUAL</label>
+                  <input type="number" step="0.01" required value={editItem.data.current_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, current_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold">STOCK MÍNIMO</label>
+                  <input type="number" step="0.01" required value={editItem.data.min_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, min_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
                   <button type="button" onClick={() => setEditItem(null)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Cancelar</button>
                   <button type="submit" className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition">Guardar</button>
               </div>
@@ -299,20 +350,6 @@ export default function SuppliesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1.5">TAMAÑO DE ETIQUETA</label>
-                  <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1 rounded-xl mb-4">
-                    <button type="button" onClick={() => setLabelSize('pequeno')} className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 ${labelSize === 'pequeno' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                      Pequeño<br/><span className="text-[9px] font-normal opacity-70">40x20 mm</span>
-                    </button>
-                    <button type="button" onClick={() => setLabelSize('mediano')} className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 ${labelSize === 'mediano' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                      Mediano<br/><span className="text-[9px] font-normal opacity-70">50x30 mm</span>
-                    </button>
-                    <button type="button" onClick={() => setLabelSize('grande')} className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 ${labelSize === 'grande' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                      Grande<br/><span className="text-[9px] font-normal opacity-70">70x50 mm</span>
-                    </button>
-                  </div>
-                </div>
-                <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">CÓDIGO ÚNICO</label>
                   <input type="text" value={generatedLabel.code} readOnly className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 text-sm focus:outline-none cursor-not-allowed" />
                 </div>
@@ -326,14 +363,10 @@ export default function SuppliesPage() {
                 <div 
                   id="print-label-area" 
                   className="bg-white border-2 border-dashed border-slate-200 flex flex-col items-center justify-center print:border-none print:shadow-none print:m-0 print:p-0 overflow-hidden relative"
-                  style={
-                    labelSize === 'pequeno' ? { width: '40mm', height: '20mm', padding: '2mm' } :
-                    labelSize === 'mediano' ? { width: '50mm', height: '30mm', padding: '3mm' } :
-                    { width: '70mm', height: '50mm', padding: '4mm' }
-                  }
+                  style={{ width: '48mm', height: '48mm', padding: '3mm' }}
                 >
-                  <div className="w-full text-center border-b border-slate-200 flex flex-col items-center justify-center" style={{ marginBottom: labelSize === 'pequeno' ? '1mm' : '2mm', paddingBottom: labelSize === 'pequeno' ? '1mm' : '2mm' }}>
-                    <span className="font-bold text-slate-800 leading-none" style={{ fontSize: labelSize === 'pequeno' ? '6pt' : labelSize === 'mediano' ? '8pt' : '12pt' }}>VIVERO ULEAM</span>
+                  <div className="w-full text-center border-b border-slate-200 flex flex-col items-center justify-center mb-[2mm] pb-[1mm]">
+                    <span className="font-bold text-slate-800 leading-none text-[8pt]">VIVERO CACAO</span>
                   </div>
                   {labelFormat === 'qr' && (
                     <div className="flex flex-col items-center justify-center flex-1 w-full">
@@ -345,29 +378,27 @@ export default function SuppliesPage() {
                       <svg ref={barcodeSvgRef} style={{ maxWidth: '100%', maxHeight: '100%' }}></svg>
                     </div>
                   )}
-                  <div className="w-full text-center mt-auto" style={{ paddingTop: labelSize === 'pequeno' ? '1mm' : '2mm' }}>
-                    <p className="font-bold text-slate-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis" style={{ fontSize: labelSize === 'pequeno' ? '5pt' : labelSize === 'mediano' ? '6pt' : '9pt' }}>{generatedLabel.name}</p>
-                    <p className="font-bold font-mono leading-none" style={{ fontSize: labelSize === 'pequeno' ? '4.5pt' : labelSize === 'mediano' ? '5.5pt' : '8pt' }}>{generatedLabel.code}</p>
+                  <div className="w-full text-center mt-auto pt-[2mm]">
+                    <p className="font-bold text-slate-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[7pt]">{generatedLabel.name}</p>
+                    <p className="font-bold font-mono leading-none text-[6pt]">{generatedLabel.code}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-end gap-3 w-full mt-6 pt-4 border-t border-slate-100">
-              <button type="button" onClick={() => setGeneratedLabel(null)} className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition">Cerrar</button>
-              <button type="button" onClick={() => {
-                const printContent = document.getElementById('print-label-area');
-                const originalContent = document.body.innerHTML;
-                document.body.innerHTML = `
-                  <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-                    ${printContent?.outerHTML}
-                  </div>
-                `;
-                window.print();
-                document.body.innerHTML = originalContent;
-                window.location.reload();
-              }} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-2">
-                <span>🖨️</span> Imprimir
+              <button type="button" onClick={() => setGeneratedLabel(null)} disabled={isPrinting} className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition disabled:opacity-50">Cerrar</button>
+              <button type="button" onClick={async () => {
+                setIsPrinting(true);
+                await handlePrintLabel(generatedLabel.name, generatedLabel.code, labelFormat);
+                setIsPrinting(false);
+              }} disabled={isPrinting} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-75 disabled:cursor-wait">
+                {isPrinting ? (
+                  <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                ) : (
+                  <span>🖨️</span>
+                )}
+                {isPrinting ? 'Imprimiendo...' : 'Imprimir'}
               </button>
             </div>
           </div>

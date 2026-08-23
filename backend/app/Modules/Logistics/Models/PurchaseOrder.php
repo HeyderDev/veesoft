@@ -3,6 +3,7 @@
 namespace App\Modules\Logistics\Models;
 
 use App\Modules\Shared\Models\User;
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PurchaseOrder extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToVivero;
 
     public const STATUS_DRAFT = 'draft';
 
@@ -24,7 +25,7 @@ class PurchaseOrder extends Model
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [
-        'order_number', 'supplier_id', 'created_by', 'status',
+        'vivero_id', 'order_number', 'supplier_id', 'created_by', 'status',
         'issued_at', 'estimated_delivery_date', 'total',
     ];
 

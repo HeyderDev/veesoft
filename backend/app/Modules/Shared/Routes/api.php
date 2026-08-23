@@ -1,7 +1,7 @@
 <?php
 
+use App\Modules\Shared\Controllers\AuthController;
 use App\Modules\Shared\Controllers\HealthController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -9,12 +9,22 @@ use Illuminate\Support\Facades\Route;
 | Shared Module Routes
 |--------------------------------------------------------------------------
 | Recursos transversales: salud del sistema, sesión de usuario autenticado.
-| La autenticación completa (login/registro) se añade aquí a medida que
-| se implemente.
 */
 
 Route::get('/health', [HealthController::class, 'check'])->name('health');
 
-Route::get('/users', fn () => \App\Modules\Shared\Models\User::select('id', 'name')->get());
+// Puntos de entrada — fuera de auth:sanctum a propósito.
+Route::post('/login', [AuthController::class, 'login']);
 
-Route::get('/user', fn (Request $request) => $request->user());
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user', [AuthController::class, 'me']);
+
+    Route::middleware('role:Admin')->group(function () {
+        Route::get('/users', fn () => response()->json([
+            'status' => 'success',
+            'message' => 'Usuarios obtenidos',
+            'data' => \App\Modules\Shared\Models\User::with('role')->get(),
+        ]));
+    });
+});

@@ -3,6 +3,7 @@
 namespace App\Modules\Planning\Models;
 
 use App\Modules\Shared\Models\User;
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductionGoal extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToVivero;
 
     public const STATUS_NOT_STARTED = 'not_started';
 

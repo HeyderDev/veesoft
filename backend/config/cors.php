@@ -24,11 +24,12 @@ return [
         'http://127.0.0.1:5173',
         'http://172.17.131.72:5173',
         'http://192.168.1.7:5173',
+        'http://192.168.1.8:5173',
     ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'X-XSRF-TOKEN', 'Accept'],
+    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'X-XSRF-TOKEN', 'Accept', 'X-Vivero-Id'],
 
     'exposed_headers' => [],
 

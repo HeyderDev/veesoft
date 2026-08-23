@@ -3,6 +3,7 @@
 namespace App\Modules\Logistics\Models;
 
 use App\Modules\Shared\Models\User;
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToVivero;
 
     public const STATUS_PENDING = 'pending';
 
@@ -19,7 +20,7 @@ class PurchaseRequest extends Model
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'requested_by', 'reason', 'status', 'reviewed_by', 'reviewed_at', 'purchase_order_id',
+        'vivero_id', 'requested_by', 'reason', 'status', 'reviewed_by', 'reviewed_at', 'purchase_order_id',
     ];
 
     protected $casts = [

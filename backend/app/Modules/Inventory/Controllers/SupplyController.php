@@ -47,4 +47,38 @@ class SupplyController extends BaseApiController
 
         return $this->noContentResponse();
     }
+
+    public function findByCode(string $code)
+    {
+        return $this->successResponse($this->supplyService->findBySku($code));
+    }
+
+    public function registerMovement(Request $request, int $supply)
+    {
+        $request->validate([
+            'type' => 'required|string|in:ENTRADA,SALIDA,AJUSTE',
+            'quantity' => 'required|numeric|min:0.01',
+            'reason' => 'nullable|string',
+            'observation' => 'nullable|string',
+            'scanned_code' => 'nullable|string',
+        ]);
+
+        try {
+            $result = $this->supplyService->registerMovement(
+                $supply,
+                $request->type,
+                $request->quantity,
+                $request->reason,
+                $request->observation,
+                $request->scanned_code
+            );
+
+            return $this->successResponse($result, 'Movimiento registrado correctamente');
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
 }
