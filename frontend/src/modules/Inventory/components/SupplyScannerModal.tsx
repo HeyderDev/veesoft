@@ -12,12 +12,10 @@ interface SupplyScannerModalProps {
 
 export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply }: SupplyScannerModalProps) {
   const [supply, setSupply] = useState<any | null>(null);
-  
+
   const [type, setType] = useState('SALIDA');
   const [quantity, setQuantity] = useState<number | ''>('');
-  const [reason, setReason] = useState('Consumo en vivero');
-  const [observation, setObservation] = useState('');
-  
+
   useEffect(() => {
     if (isOpen && preloadedSupply) {
       setSupply(preloadedSupply);
@@ -30,21 +28,19 @@ export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply
     setSupply(null);
     setType('SALIDA');
     setQuantity('');
-    setReason('Consumo en vivero');
-    setObservation('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supply || !quantity || quantity <= 0) return;
-    
+
     try {
       await inventoryService.registerSupplyMovement(
         supply.id,
         type,
         Number(quantity),
-        reason,
-        observation,
+        undefined,
+        undefined,
         supply.sku
       );
       
@@ -65,18 +61,6 @@ export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply
       });
     }
   };
-
-  const reasons = [
-    'Consumo en vivero',
-    'Aplicación de fertilizante',
-    'Control fitosanitario',
-    'Preparación de sustrato',
-    'Siembra',
-    'Mantenimiento',
-    'Entrega',
-    'Merma',
-    'Otro'
-  ];
 
   if (!isOpen) return null;
 
@@ -123,12 +107,8 @@ export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply
                     <span className="font-medium text-slate-800">{supply.current_stock} {supply.unit}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-slate-500">Capacidad máxima</span>
-                    <span className="font-medium text-slate-800">{supply.max_stock} {supply.unit}</span>
-                  </div>
-                  <div className="flex flex-col col-span-2 border-t border-slate-200 pt-2 mt-1">
-                    <span className="text-slate-500">Categoría</span>
-                    <span className="font-medium text-slate-800">{supply.category || '-'}</span>
+                    <span className="text-slate-500">Unidad de medida</span>
+                    <span className="font-medium text-slate-800">{supply.unit}</span>
                   </div>
                 </div>
               </div>
@@ -187,32 +167,6 @@ export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply
                     {supply.unit}
                   </div>
                 </div>
-              </div>
-
-              {/* Reason */}
-              {type === 'SALIDA' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Motivo</label>
-                  <select
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                  >
-                    {reasons.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {/* Observation */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Observación (Opcional)</label>
-                <textarea
-                  value={observation}
-                  onChange={(e) => setObservation(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                  rows={2}
-                  placeholder="Detalles adicionales..."
-                ></textarea>
               </div>
 
               <div className="pt-4 flex gap-3">

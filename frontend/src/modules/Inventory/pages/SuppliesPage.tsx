@@ -4,17 +4,14 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { useSuppliesViewModel } from '../viewmodels/useSuppliesViewModel';
 
-const CATEGORY_UNITS: Record<string, string> = {
-  'Sustratos': 'kg',
-  'Fertilizantes': 'kg',
-  'Control fitosanitario': 'L',
-  'Material de propagación': 'und',
-  'Material para cultivo': 'und',
-  'Material de soporte': 'und',
-  'Riego': 'm',
-  'Limpieza': 'L',
-  'Embalaje': 'und'
-};
+const UNIT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'kg', label: 'Kilogramo (kg)' },
+  { value: 'g', label: 'Gramo (g)' },
+  { value: 'L', label: 'Litro (L)' },
+  { value: 'ml', label: 'Mililitro (ml)' },
+  { value: 'und', label: 'Unidad (und)' },
+  { value: 'm', label: 'Metro (m)' },
+];
 
 export default function SuppliesPage() {
   const { 
@@ -25,9 +22,8 @@ export default function SuppliesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newInsumoName, setNewInsumoName] = useState('');
   const [newInsumoDesc, setNewInsumoDesc] = useState('');
-  const [newInsumoCategory, setNewInsumoCategory] = useState('');
+  const [newInsumoUnit, setNewInsumoUnit] = useState('');
   const [newInsumoInitialStock, setNewInsumoInitialStock] = useState(0);
-  const [newInsumoMaxStock, setNewInsumoMaxStock] = useState(0);
   const [newInsumoMinStock, setNewInsumoMinStock] = useState(0);
   const [editItem, setEditItem] = useState<{ id: number, data: any } | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -57,7 +53,7 @@ export default function SuppliesPage() {
 
   const handleCreateInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInsumoName || newInsumoInitialStock < 0 || newInsumoMaxStock < 0 || !newInsumoCategory) return;
+    if (!newInsumoName || newInsumoInitialStock < 0 || !newInsumoUnit) return;
 
     const result = await Swal.fire({
       title: '¿Registrar Insumo?',
@@ -74,19 +70,16 @@ export default function SuppliesPage() {
     const createdSupply = await handleCreate({
       name: newInsumoName.trim(),
       description: newInsumoDesc.trim(),
-      category: newInsumoCategory,
       current_stock: Number(newInsumoInitialStock),
-      max_stock: Number(newInsumoMaxStock),
       min_stock: Number(newInsumoMinStock),
-      unit: CATEGORY_UNITS[newInsumoCategory] || 'und'
+      unit: newInsumoUnit,
     });
-    
+
     if (createdSupply) {
       setNewInsumoName('');
       setNewInsumoDesc('');
-      setNewInsumoCategory('');
+      setNewInsumoUnit('');
       setNewInsumoInitialStock(0);
-      setNewInsumoMaxStock(0);
       setNewInsumoMinStock(0);
       setGeneratedLabel({ code: createdSupply.sku, name: createdSupply.name });
       Swal.fire('¡Éxito!', 'Insumo registrado correctamente.', 'success');
@@ -138,7 +131,7 @@ export default function SuppliesPage() {
         </div>
         <div>
           <p className="text-[10px] text-rose-400 uppercase tracking-wider font-semibold">En Alerta (Stock Bajo)</p>
-          <p className="text-2xl font-extrabold text-rose-600">{isLoading ? '...' : supplies.filter(i => i.max_stock > 0 && i.current_stock <= i.min_stock).length}</p>
+          <p className="text-2xl font-extrabold text-rose-600">{isLoading ? '...' : supplies.filter(i => i.current_stock <= (i.min_stock ?? 0)).length}</p>
         </div>
       </div>
 
@@ -166,13 +159,13 @@ export default function SuppliesPage() {
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {supplies.map((item) => {
-                const isCritical = item.current_stock <= item.min_stock;
+                const isCritical = item.current_stock <= (item.min_stock ?? 0);
                 return (
                   <div key={item.id} className={`bg-white p-5 rounded-2xl shadow-sm border flex flex-col justify-between hover:shadow-md transition duration-200 ${isCritical ? 'border-red-200 bg-red-50/10' : 'border-slate-100'}`}>
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${isCritical ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-600'}`}>
-                          DISP: {item.current_stock} {item.unit} / MÁX: {item.max_stock} {item.unit}
+                          STOCK: {item.current_stock} {item.unit}
                         </span>
                         {isCritical && (
                           <span className="px-2.5 py-0.5 bg-rose-500 text-white rounded-full text-[9px] font-bold uppercase animate-pulse">
@@ -193,7 +186,7 @@ export default function SuppliesPage() {
                       >
                         Eliminar
                       </button>
-                      <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock, max_stock: item.max_stock, min_stock: item.min_stock } })} className="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-50 transition rounded-lg font-semibold">Editar</button>
+                      <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock, min_stock: item.min_stock } })} className="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-50 transition rounded-lg font-semibold">Editar</button>
                       <button
                         onClick={() => setGeneratedLabel({ code: item.sku, name: item.name })}
                         className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition rounded-lg font-bold"
@@ -218,7 +211,7 @@ export default function SuppliesPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {supplies.map((item) => {
-                      const isCritical = item.current_stock <= item.min_stock;
+                      const isCritical = item.current_stock <= (item.min_stock ?? 0);
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/50 transition">
                           <td className="px-5 py-3 text-xs text-slate-800">
@@ -230,11 +223,11 @@ export default function SuppliesPage() {
                           </td>
                           <td className="px-5 py-3 text-xs">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-block w-max ${isCritical ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-600'}`}>
-                              {item.current_stock} {item.unit} / {item.max_stock} {item.unit}
+                              {item.current_stock} {item.unit}
                             </span>
                           </td>
                           <td className="px-5 py-3 text-xs flex gap-2">
-                            <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock, max_stock: item.max_stock, min_stock: item.min_stock } })} className="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
+                            <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock, min_stock: item.min_stock } })} className="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
                             <button onClick={() => handleDeleteInsumo(item.id, item.name)} className="text-rose-600 hover:text-rose-900 font-semibold">Eliminar</button>
                             <button onClick={() => setGeneratedLabel({ code: item.sku, name: item.name })} className="text-emerald-600 hover:text-emerald-900 font-semibold">QR/Barras</button>
                           </td>
@@ -262,46 +255,30 @@ export default function SuppliesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500">Categoría</label>
-              <select value={newInsumoCategory} onChange={(e) => setNewInsumoCategory(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                <option value="" disabled>Seleccionar Categoría</option>
-                {Object.keys(CATEGORY_UNITS).map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+              <label className="text-xs font-bold text-slate-500">Unidad de medida</label>
+              <select value={newInsumoUnit} onChange={(e) => setNewInsumoUnit(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="" disabled>Seleccionar unidad de medida</option>
+                {UNIT_OPTIONS.map(u => (
+                  <option key={u.value} value={u.value}>{u.label}</option>
                 ))}
               </select>
             </div>
 
-            {newInsumoCategory && (
+            {newInsumoUnit && (
               <>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500">Unidad de medida</label>
-                  <div className="relative">
-                    <input type="text" value={CATEGORY_UNITS[newInsumoCategory] === 'und' ? 'Unidad (und)' : CATEGORY_UNITS[newInsumoCategory] === 'L' ? 'Litro (L)' : CATEGORY_UNITS[newInsumoCategory] === 'kg' ? 'Kilogramo (kg)' : 'Metro (m)'} disabled className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 text-slate-500 cursor-not-allowed font-medium" />
-                    <div className="absolute right-4 top-2.5 text-slate-400">🔒</div>
-                  </div>
-                </div>
-
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500">Cantidad inicial</label>
                   <div className="relative">
-                    <input type="number" min="0" step={CATEGORY_UNITS[newInsumoCategory] === 'und' ? '1' : '0.01'} required value={newInsumoInitialStock || ''} onChange={(e) => setNewInsumoInitialStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{CATEGORY_UNITS[newInsumoCategory]}</div>
-                  </div>
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500">Stock máximo</label>
-                  <div className="relative">
-                    <input type="number" min="0" step={CATEGORY_UNITS[newInsumoCategory] === 'und' ? '1' : '0.01'} required value={newInsumoMaxStock || ''} onChange={(e) => setNewInsumoMaxStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{CATEGORY_UNITS[newInsumoCategory]}</div>
+                    <input type="number" min="0" step={newInsumoUnit === 'und' ? '1' : '0.01'} required value={newInsumoInitialStock || ''} onChange={(e) => setNewInsumoInitialStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{newInsumoUnit}</div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500">Stock mínimo (Alerta)</label>
                   <div className="relative">
-                    <input type="number" min="0" step={CATEGORY_UNITS[newInsumoCategory] === 'und' ? '1' : '0.01'} required value={newInsumoMinStock || ''} onChange={(e) => setNewInsumoMinStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{CATEGORY_UNITS[newInsumoCategory]}</div>
+                    <input type="number" min="0" step={newInsumoUnit === 'und' ? '1' : '0.01'} required value={newInsumoMinStock || ''} onChange={(e) => setNewInsumoMinStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{newInsumoUnit}</div>
                   </div>
                 </div>
               </>
@@ -327,13 +304,9 @@ export default function SuppliesPage() {
                   <input type="number" step="0.01" required value={editItem.data.current_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, current_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-500 font-bold">CANTIDAD MÁXIMA</label>
-                  <input type="number" step="0.01" required value={editItem.data.max_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, max_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
+                  <label className="text-[10px] text-slate-500 font-bold">STOCK MÍNIMO</label>
+                  <input type="number" step="0.01" required value={editItem.data.min_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, min_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
                 </div>
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 font-bold">STOCK MÍNIMO</label>
-                <input type="number" step="0.01" required value={editItem.data.min_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, min_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
               </div>
               <div className="flex gap-2 mt-4">
                   <button type="button" onClick={() => setEditItem(null)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Cancelar</button>
