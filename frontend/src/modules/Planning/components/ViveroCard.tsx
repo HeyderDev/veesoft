@@ -12,8 +12,10 @@ const metaStatusConfig: Record<EstadoMeta, { label: string; variant: 'neutral' |
 interface ViveroCardProps {
   vivero: Vivero;
   meta?: MetaProduccion;
-  onEditVivero: () => void;
-  onConfigureMeta: () => void;
+  /** Si se omite, no se muestra el botón de editar (ej. pantalla de selección). */
+  onEditVivero?: () => void;
+  /** Si se omite, no se muestra la sección de meta (ej. pantalla de selección). */
+  onConfigureMeta?: () => void;
   onEnter: () => void;
 }
 
@@ -30,38 +32,42 @@ export const ViveroCard: React.FC<ViveroCardProps> = ({ vivero, meta, onEditVive
           <p className="text-xs text-slate-500 mt-1">📍 {vivero.location}</p>
           <p className="text-xs text-slate-500">👤 {vivero.responsible}</p>
         </div>
-        <Button variant="ghost" onClick={onEditVivero} className="h-8 w-8 p-0 rounded-full shrink-0">✏️</Button>
-      </div>
-
-      <div className="border-t border-slate-100 pt-4">
-        {meta ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-700 truncate pr-2">{meta.title}</p>
-              <Badge variant={metaStatusConfig[meta.status].variant}>{metaStatusConfig[meta.status].label}</Badge>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs text-slate-500 mb-1">
-                <span>Avance</span>
-                <span>0 / {meta.target_seedlings.toLocaleString('es')} plántulas</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-            <Button variant="secondary" onClick={onConfigureMeta} className="w-full">
-              Configurar Meta
-            </Button>
-          </div>
-        ) : (
-          <div className="text-center py-2">
-            <p className="text-sm text-slate-400 mb-3">Este vivero no tiene una meta en curso.</p>
-            <Button onClick={onConfigureMeta} className="w-full">
-              Nueva Meta
-            </Button>
-          </div>
+        {onEditVivero && (
+          <Button variant="ghost" onClick={onEditVivero} className="h-8 w-8 p-0 rounded-full shrink-0">✏️</Button>
         )}
       </div>
+
+      {onConfigureMeta && (
+        <div className="border-t border-slate-100 pt-4">
+          {meta ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-700 truncate pr-2">{meta.title}</p>
+                <Badge variant={metaStatusConfig[meta.status].variant}>{metaStatusConfig[meta.status].label}</Badge>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs text-slate-500 mb-1">
+                  <span>Avance</span>
+                  <span>0 / {meta.target_seedlings.toLocaleString('es')} plántulas</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+              <Button variant="secondary" onClick={onConfigureMeta} className="w-full">
+                Configurar Meta
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-sm text-slate-400 mb-3">Este vivero no tiene una meta en curso.</p>
+              <Button onClick={onConfigureMeta} className="w-full">
+                Nueva Meta
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <Button variant="primary" onClick={onEnter} className="w-full">
         Entrar al vivero →

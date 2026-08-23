@@ -4,6 +4,7 @@ namespace App\Modules\Tasks\Models;
 
 use App\Modules\Planning\Models\LotCyclePhase;
 use App\Modules\Shared\Models\User;
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Database\Factories\OperationalTaskFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,9 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OperationalTask extends Model
 {
     /** @use HasFactory<OperationalTaskFactory> */
-    use HasFactory;
+    use HasFactory, BelongsToVivero;
 
     protected $fillable = [
+        'vivero_id',
         'lot_cycle_phase_id',
         'title',
         'description',

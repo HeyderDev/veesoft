@@ -15,6 +15,7 @@ use App\Modules\Planning\Repositories\Contracts\ProductionGoalRepositoryInterfac
 use App\Modules\Planning\Repositories\Contracts\ProductionPhaseRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\SummaryRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\ViveroRepositoryInterface;
+use App\Modules\Shared\Support\CurrentVivero;
 use App\Modules\Planning\Repositories\Eloquent\DispatchRepository;
 use App\Modules\Planning\Repositories\Eloquent\LotCycleRepository;
 use App\Modules\Planning\Repositories\Eloquent\LotRepository;
@@ -71,6 +72,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
         $this->app->bind(PurchaseOrderRepositoryInterface::class, PurchaseOrderRepository::class);
         $this->app->bind(PurchaseRequestRepositoryInterface::class, PurchaseRequestRepository::class);
+
+        // ---- Contexto de vivero activo (una instancia por request) ----
+        $this->app->singleton(CurrentVivero::class);
     }
 
     /**

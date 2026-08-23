@@ -7,6 +7,8 @@ import { TasksModule } from './modules/Tasks';
 import { LogisticsModule } from './modules/Logistics';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './shared/context/AuthContext';
+import { ActiveViveroProvider } from './shared/context/ActiveViveroContext';
+import { ActiveViveroGate } from './shared/components/ActiveViveroGate';
 
 function App() {
   const [currentModule, setCurrentModule] = useState('planning');
@@ -69,17 +71,21 @@ function App() {
 
   return (
     <AuthProvider>
-      <AdminLayout
-        currentModule={currentModule}
-        currentTab={
-          ['planning', 'tracking', 'inventory', 'logistics'].includes(currentModule)
-            ? currentTab
-            : undefined
-        }
-        setCurrentModule={setCurrentModule}
-      >
-        {renderCurrentModule()}
-      </AdminLayout>
+      <ActiveViveroProvider>
+        <ActiveViveroGate>
+          <AdminLayout
+            currentModule={currentModule}
+            currentTab={
+              ['planning', 'tracking', 'inventory', 'logistics', 'tasks'].includes(currentModule)
+                ? currentTab
+                : undefined
+            }
+            setCurrentModule={setCurrentModule}
+          >
+            {renderCurrentModule()}
+          </AdminLayout>
+        </ActiveViveroGate>
+      </ActiveViveroProvider>
     </AuthProvider>
   );
 }

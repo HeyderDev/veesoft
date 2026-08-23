@@ -1,4 +1,5 @@
 import React from 'react';
+import { ViveroSwitcher } from './ViveroSwitcher';
 
 interface HeaderProps {
   currentModule?: string;
@@ -30,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ currentModule = 'planning', curr
 
       {/* Left — Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-slate-400 font-medium">Vivero ULEAM</span>
+        <ViveroSwitcher />
         <svg className="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>

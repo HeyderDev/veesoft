@@ -3,7 +3,7 @@
 use App\Modules\Tasks\Controllers\OperationalTaskController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('tasks')->group(function () {
+Route::prefix('tasks')->middleware('vivero.scope')->group(function () {
     // Rutas fijas primero (antes de los parámetros /{id})
     Route::get('/history', [OperationalTaskController::class, 'history']);
     Route::get('/report', [OperationalTaskController::class, 'report']);

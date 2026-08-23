@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Models;
 
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,10 +10,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Supply extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToVivero;
 
     protected $fillable = [
-        'sku', 'name', 'unit', 'current_stock', 'min_stock',
+        'vivero_id', 'sku', 'name', 'unit', 'current_stock', 'min_stock',
     ];
 
     protected $casts = [

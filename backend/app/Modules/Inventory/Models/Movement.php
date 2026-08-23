@@ -3,6 +3,7 @@
 namespace App\Modules\Inventory\Models;
 
 use App\Modules\Shared\Models\User;
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Movement extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToVivero;
 
     public const TYPE_ADJUSTMENT = 'ADJUSTMENT';
 
@@ -21,7 +22,7 @@ class Movement extends Model
     public const TYPE_BORROWED = 'BORROWED';
 
     protected $fillable = [
-        'tool_id', 'supply_id', 'user_id', 'type', 'quantity', 'details',
+        'vivero_id', 'tool_id', 'supply_id', 'user_id', 'type', 'quantity', 'details',
     ];
 
     protected $casts = [

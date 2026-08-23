@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ACTIVE_VIVERO_STORAGE_KEY } from '../constants/vivero';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -16,6 +17,10 @@ axiosClient.interceptors.request.use(
   (config) => {
     // Si usas tokens (JWT o Sanctum Bearer) puedes inyectarlo aquí.
     // Ej: const token = localStorage.getItem('token'); if(token) config.headers.Authorization = `Bearer ${token}`;
+    const viveroId = localStorage.getItem(ACTIVE_VIVERO_STORAGE_KEY);
+    if (viveroId) {
+      config.headers['X-Vivero-Id'] = viveroId;
+    }
     return config;
   },
   (error) => Promise.reject(error)
