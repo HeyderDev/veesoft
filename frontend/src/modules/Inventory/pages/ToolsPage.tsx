@@ -8,7 +8,7 @@ import { useToolsViewModel } from '../viewmodels/useToolsViewModel';
 export default function ToolsPage() {
   const { 
     tools, isLoading,
-    loadTools, handleCreate, handleUpdate, handleDelete
+    loadTools, handleCreate, handleUpdate, handleDelete, handlePrintLabel
   } = useToolsViewModel();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,28 +18,20 @@ export default function ToolsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [generatedLabel, setGeneratedLabel] = useState<{code: string, name: string} | null>(null);
   const [labelFormat, setLabelFormat] = useState<'qr' | 'barcode'>('qr');
-  const [labelSize, setLabelSize] = useState<'pequeno' | 'mediano' | 'grande'>('mediano');
+  const [isPrinting, setIsPrinting] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const barcodeSvgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     if (generatedLabel) {
-      const qrSizes = { pequeno: 80, mediano: 120, grande: 180 };
-      const barcodeSizes = {
-        pequeno: { width: 1.2, height: 30, fontSize: 10 },
-        mediano: { width: 1.5, height: 50, fontSize: 14 },
-        grande: { width: 2.5, height: 80, fontSize: 18 }
-      };
-      
       if (labelFormat === 'qr' && qrCanvasRef.current) {
-        QRCode.toCanvas(qrCanvasRef.current, generatedLabel.code, { width: qrSizes[labelSize], margin: 1 }, (err: any) => { if (err) console.error(err); });
+        QRCode.toCanvas(qrCanvasRef.current, generatedLabel.code, { width: 140, margin: 1 }, (err: any) => { if (err) console.error(err); });
       }
       if (labelFormat === 'barcode' && barcodeSvgRef.current) {
-        const bs = barcodeSizes[labelSize];
-        JsBarcode(barcodeSvgRef.current, generatedLabel.code, { format: "CODE128", width: bs.width, height: bs.height, displayValue: true, fontSize: bs.fontSize, margin: 5 });
+        JsBarcode(barcodeSvgRef.current, generatedLabel.code, { format: "CODE128", width: 1.5, height: 60, displayValue: true, fontSize: 14, margin: 5 });
       }
     }
-  }, [generatedLabel, labelFormat, labelSize]);
+  }, [generatedLabel, labelFormat]);
 
   useEffect(() => {
     // Debounce
@@ -335,20 +327,6 @@ export default function ToolsPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5">TAMAÑO DE ETIQUETA</label>
-                    <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1 rounded-xl mb-4">
-                      <button type="button" onClick={() => setLabelSize('pequeno')} className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 ${labelSize === 'pequeno' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                        Pequeño<br/><span className="text-[9px] font-normal opacity-70">40x20 mm</span>
-                      </button>
-                      <button type="button" onClick={() => setLabelSize('mediano')} className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 ${labelSize === 'mediano' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                        Mediano<br/><span className="text-[9px] font-normal opacity-70">50x30 mm</span>
-                      </button>
-                      <button type="button" onClick={() => setLabelSize('grande')} className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 ${labelSize === 'grande' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                        Grande<br/><span className="text-[9px] font-normal opacity-70">70x50 mm</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">CÓDIGO ÚNICO</label>
                     <input type="text" value={generatedLabel.code} readOnly className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 text-sm focus:outline-none cursor-not-allowed" />
                   </div>
@@ -362,14 +340,10 @@ export default function ToolsPage() {
                   <div 
                     id="print-label-area" 
                     className="bg-white border-2 border-dashed border-slate-200 flex flex-col items-center justify-center print:border-none print:shadow-none print:m-0 print:p-0 overflow-hidden relative"
-                    style={
-                      labelSize === 'pequeno' ? { width: '40mm', height: '20mm', padding: '2mm' } :
-                      labelSize === 'mediano' ? { width: '50mm', height: '30mm', padding: '3mm' } :
-                      { width: '70mm', height: '50mm', padding: '4mm' }
-                    }
+                    style={{ width: '48mm', height: '48mm', padding: '3mm' }}
                   >
-                    <div className="w-full text-center border-b border-slate-200 flex flex-col items-center justify-center" style={{ marginBottom: labelSize === 'pequeno' ? '1mm' : '2mm', paddingBottom: labelSize === 'pequeno' ? '1mm' : '2mm' }}>
-                      <span className="font-bold text-slate-800 leading-none" style={{ fontSize: labelSize === 'pequeno' ? '6pt' : labelSize === 'mediano' ? '8pt' : '12pt' }}>VIVERO ULEAM</span>
+                    <div className="w-full text-center border-b border-slate-200 flex flex-col items-center justify-center mb-[2mm] pb-[1mm]">
+                      <span className="font-bold text-slate-800 leading-none text-[8pt]">VIVERO CACAO</span>
                     </div>
                     {labelFormat === 'qr' && (
                       <div className="flex flex-col items-center justify-center flex-1 w-full">
@@ -381,29 +355,27 @@ export default function ToolsPage() {
                         <svg ref={barcodeSvgRef} style={{ maxWidth: '100%', maxHeight: '100%' }}></svg>
                       </div>
                     )}
-                    <div className="w-full text-center mt-auto" style={{ paddingTop: labelSize === 'pequeno' ? '1mm' : '2mm' }}>
-                      <p className="font-bold text-slate-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis" style={{ fontSize: labelSize === 'pequeno' ? '5pt' : labelSize === 'mediano' ? '6pt' : '9pt' }}>{generatedLabel.name}</p>
-                      <p className="font-bold font-mono leading-none" style={{ fontSize: labelSize === 'pequeno' ? '4.5pt' : labelSize === 'mediano' ? '5.5pt' : '8pt' }}>{generatedLabel.code}</p>
+                    <div className="w-full text-center mt-auto pt-[2mm]">
+                      <p className="font-bold text-slate-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[7pt]">{generatedLabel.name}</p>
+                      <p className="font-bold font-mono leading-none text-[6pt]">{generatedLabel.code}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 w-full mt-6 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setGeneratedLabel(null)} className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition">Cerrar</button>
-                <button type="button" onClick={() => {
-                  const printContent = document.getElementById('print-label-area');
-                  const originalContent = document.body.innerHTML;
-                  document.body.innerHTML = `
-                    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-                      ${printContent?.outerHTML}
-                    </div>
-                  `;
-                  window.print();
-                  document.body.innerHTML = originalContent;
-                  window.location.reload();
-                }} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-2">
-                  <span>🖨️</span> Imprimir
+                <button type="button" onClick={() => setGeneratedLabel(null)} disabled={isPrinting} className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition disabled:opacity-50">Cerrar</button>
+                <button type="button" onClick={async () => {
+                  setIsPrinting(true);
+                  await handlePrintLabel(generatedLabel.name, generatedLabel.code, labelFormat);
+                  setIsPrinting(false);
+                }} disabled={isPrinting} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-75 disabled:cursor-wait">
+                  {isPrinting ? (
+                    <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                  ) : (
+                    <span>🖨️</span>
+                  )}
+                  {isPrinting ? 'Imprimiendo...' : 'Imprimir'}
                 </button>
               </div>
             </div>

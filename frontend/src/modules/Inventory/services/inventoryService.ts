@@ -21,6 +21,9 @@ export const inventoryService = {
   deleteTool: (id: number) => 
     axiosClient.delete(`/tools/${id}`).then(res => res.data),
 
+  printLabel: (name: string, code: string, format: 'qr' | 'barcode') =>
+    axiosClient.post('/tools/print-label', { name, code, format }).then(res => res.data),
+
   // Supplies
   getSupplies: (q?: string) => 
     axiosClient.get<{ data: Supply[] }>('/supplies', { params: { q } }).then(res => (res as any).data),

@@ -66,6 +66,17 @@ export function useToolsViewModel() {
     }
   };
 
+  const handlePrintLabel = async (name: string, code: string, format: 'qr' | 'barcode') => {
+    try {
+      await inventoryService.printLabel(name, code, format);
+      success('Impresión enviada correctamente');
+      return true;
+    } catch (e: any) {
+      error(e.response?.data?.message || 'No se pudo conectar con la impresora POS-5890A.');
+      return false;
+    }
+  };
+
   return {
     tools,
     isLoading,
@@ -74,5 +85,6 @@ export function useToolsViewModel() {
     handleUpdate,
     handleUpdateStatus,
     handleDelete,
+    handlePrintLabel,
   };
 }

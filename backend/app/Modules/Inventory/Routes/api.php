@@ -3,9 +3,11 @@
 use App\Modules\Inventory\Controllers\MovementController;
 use App\Modules\Inventory\Controllers\SupplyController;
 use App\Modules\Inventory\Controllers\ToolController;
+use App\Modules\Inventory\Controllers\PrintController;
 use App\Modules\Inventory\Services\InventoryQueryService;
 use Illuminate\Support\Facades\Route;
 
+Route::post('tools/print-label', [PrintController::class, 'printLabel']);
 Route::apiResource('tools', ToolController::class);
 Route::get('tools/code/{code}', [ToolController::class, 'findByCode']);
 Route::patch('tools/{tool}/status', [ToolController::class, 'updateStatus']);
