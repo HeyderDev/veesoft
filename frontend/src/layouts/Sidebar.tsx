@@ -1,5 +1,10 @@
 import React from 'react';
 import { modulesRegistry } from './modulesRegistry';
+import { useAuth } from '../shared/context/AuthContext';
+
+// Módulos a los que Operario no tiene acceso — el backend ya los bloquea (403),
+// esto es solo para no mostrar una pestaña que va a fallar.
+const ADMIN_ONLY_MODULES = ['planning', 'logistics'];
 
 interface SidebarProps {
   currentModule: string;
@@ -13,6 +18,11 @@ const NavIcon = ({ children }: { children: React.ReactNode }) => (
 );
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModule }) => {
+  const { isAdmin } = useAuth();
+  const visibleModules = isAdmin
+    ? modulesRegistry
+    : modulesRegistry.filter(mod => !ADMIN_ONLY_MODULES.includes(mod.id));
+
   return (
     <aside className="print:hidden w-64 h-screen flex flex-col fixed left-0 top-0 z-30"
       style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}>
@@ -40,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModul
         </div>
 
         <ul className="space-y-0.5 px-3">
-          {modulesRegistry.map((mod) => {
+          {visibleModules.map((mod) => {
             const isActive = currentModule === mod.id;
             const isDisabled = !mod.active;
             const SidebarSections = mod.SidebarSections;

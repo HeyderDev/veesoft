@@ -27,16 +27,13 @@ export default function InventoryDashboardPage() {
     // Para simplificar la navegación podemos simplemente usar window.location
     if (tab === 'tools') {
       window.location.hash = '#/inventory/tools';
-    } else if (tab === 'students') {
-      // Assuming students might be managed somewhere else or not implemented yet.
-      window.location.hash = '#/';
     }
   };
 
   return (
     <div className="space-y-6 print:hidden p-4 md:p-6 lg:p-8">
       {/* Metrics summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
           <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Herramientas Totales</span>
           <div className="flex items-baseline gap-2 mt-2">
@@ -60,15 +57,6 @@ export default function InventoryDashboardPage() {
         </div>
 
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Estudiantes Activos</span>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-amber-500">-</span>
-            <span className="text-xs text-slate-500">registrados</span>
-          </div>
-          <div className="mt-2 text-[10px] text-slate-400">Habilitados para PWA Móvil</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
           <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Movimientos Recientes</span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-teal-600">{isLoading ? '...' : metrics.totalMovements}</span>
@@ -86,7 +74,7 @@ export default function InventoryDashboardPage() {
             <div className="inline-block px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-bold uppercase tracking-wider text-emerald-300">Administración de Vivero</div>
             <h2 className="text-2xl font-bold leading-tight">Consola de Control del Vivero El Carmen</h2>
             <p className="text-emerald-100 text-sm leading-relaxed">
-              Bienvenido al panel centralizado. Desde aquí puedes catalogar herramientas de vivero e insumos de cultivo, registrar y administrar el padrón de estudiantes autorizados, gestionar mantenimientos de herramientas, e imprimir etiquetas de identificación en formato QR o código de barras.
+              Bienvenido al panel centralizado. Desde aquí puedes catalogar herramientas de vivero e insumos de cultivo, gestionar mantenimientos de herramientas, e imprimir etiquetas de identificación en formato QR o código de barras.
             </p>
           </div>
           <div className="flex gap-3 mt-8">

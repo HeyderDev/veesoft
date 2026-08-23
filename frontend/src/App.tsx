@@ -6,12 +6,14 @@ import { InventoryModule } from './modules/Inventory';
 import { TasksModule } from './modules/Tasks';
 import { LogisticsModule } from './modules/Logistics';
 import { ToastProvider } from './components/ui/Toast';
-import { AuthProvider } from './shared/context/AuthContext';
+import { AuthProvider, useAuth } from './shared/context/AuthContext';
+import { AuthGate } from './shared/components/AuthGate';
 import { ActiveViveroProvider } from './shared/context/ActiveViveroContext';
 import { ActiveViveroGate } from './shared/components/ActiveViveroGate';
 
-function App() {
-  const [currentModule, setCurrentModule] = useState('planning');
+function AppShell() {
+  const { isAdmin } = useAuth();
+  const [currentModule, setCurrentModule] = useState(isAdmin ? 'planning' : 'inventory');
   const [currentTab, setCurrentTab] = useState<string | undefined>();
 
   const renderCurrentModule = () => {
@@ -70,22 +72,30 @@ function App() {
   };
 
   return (
+    <AdminLayout
+      currentModule={currentModule}
+      currentTab={
+        ['planning', 'tracking', 'inventory', 'logistics', 'tasks'].includes(currentModule)
+          ? currentTab
+          : undefined
+      }
+      setCurrentModule={setCurrentModule}
+    >
+      {renderCurrentModule()}
+    </AdminLayout>
+  );
+}
+
+function App() {
+  return (
     <AuthProvider>
-      <ActiveViveroProvider>
-        <ActiveViveroGate>
-          <AdminLayout
-            currentModule={currentModule}
-            currentTab={
-              ['planning', 'tracking', 'inventory', 'logistics', 'tasks'].includes(currentModule)
-                ? currentTab
-                : undefined
-            }
-            setCurrentModule={setCurrentModule}
-          >
-            {renderCurrentModule()}
-          </AdminLayout>
-        </ActiveViveroGate>
-      </ActiveViveroProvider>
+      <AuthGate>
+        <ActiveViveroProvider>
+          <ActiveViveroGate>
+            <AppShell />
+          </ActiveViveroGate>
+        </ActiveViveroProvider>
+      </AuthGate>
     </AuthProvider>
   );
 }

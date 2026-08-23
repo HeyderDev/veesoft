@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type InventorySection = 'dashboard' | 'scanner' | 'herramientas' | 'insumos' | 'historial' | 'mantenimiento' | 'estudiantes' | 'reportes';
+export type InventorySection = 'dashboard' | 'scanner' | 'herramientas' | 'insumos' | 'historial' | 'mantenimiento' | 'reportes';
 
 interface InventoryNavContextType {
   activeSection: InventorySection;

@@ -10,6 +10,7 @@ const axiosClient = axios.create({
     'Accept': 'application/json'
   },
   withCredentials: true, // Para Sanctum CSRF cookies
+  withXSRFToken: true, // axios solo adjunta la cookie XSRF-TOKEN como header en requests same-origin por defecto; el backend vive en otro puerto/origen, así que hay que pedirlo explícitamente.
 });
 
 // Interceptor de peticiones
@@ -32,8 +33,7 @@ axiosClient.interceptors.response.use(
   (error) => {
     // Manejo global de errores (ej. 401 Unauthorized)
     if (error.response && error.response.status === 401) {
-      // Opcional: Redirigir al login o disparar un evento global
-      console.warn('No autorizado, redirigiendo a login...');
+      window.dispatchEvent(new Event('auth:unauthorized'));
     }
     return Promise.reject(error);
   }

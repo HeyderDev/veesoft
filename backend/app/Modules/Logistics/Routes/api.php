@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 | Ningún otro módulo debe declarar rutas para estos recursos.
 */
 
-Route::middleware('vivero.scope')->group(function () {
+Route::middleware(['auth:sanctum', 'role:Admin', 'vivero.scope'])->group(function () {
     // Proveedores
     Route::post('suppliers/{supplier}/evaluate', [SupplierController::class, 'evaluate']);
     Route::get('suppliers/{supplier}/purchase-orders', [SupplierController::class, 'purchaseHistory']);

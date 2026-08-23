@@ -25,7 +25,6 @@ export const InventorySidebarSections: React.FC = () => {
       {renderLink('insumos', 'Insumos')}
       {renderLink('historial', 'Historial')}
       {renderLink('mantenimiento', 'Mantenimiento')}
-      {renderLink('estudiantes', 'Estudiantes')}
       {renderLink('reportes', 'Reportes')}
     </div>
   );

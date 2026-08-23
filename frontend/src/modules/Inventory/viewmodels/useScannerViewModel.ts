@@ -10,7 +10,6 @@ export const useScannerViewModel = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [selectedSupply, setSelectedSupply] = useState<any>(null);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   const fetchToolDetails = async (code: string) => {
     setLoadingCode(true);
@@ -38,29 +37,6 @@ export const useScannerViewModel = () => {
     }
   };
 
-  const findStudent = async (cedula: string) => {
-    setLoadingCode(true);
-    try {
-      // Usamos el servicio ya configurado con Axios y headers
-      const { studentService } = await import('../services/studentService');
-      const response = await studentService.getStudents({ q: cedula });
-      const match = response.data?.find((s: any) => s.cedula === cedula);
-      if (match) {
-        if (match.status === 'inactive') {
-          alert("El estudiante está inactivo y no puede realizar préstamos.");
-        } else {
-          setSelectedStudent(match);
-        }
-      } else {
-        alert("Estudiante no encontrado con esa cédula.");
-      }
-    } catch (error) {
-      alert("Error al buscar estudiante.");
-    } finally {
-      setLoadingCode(false);
-    }
-  };
-
   const handleScan = useCallback((code: string) => {
     if (!code) return;
     setIsScanning(false);
@@ -79,12 +55,8 @@ export const useScannerViewModel = () => {
 
     try {
       const status = tipo === 'BORROWED' ? 'borrowed' : 'available';
-      const eventDetails = { ...details };
-      if (selectedStudent) {
-        eventDetails.student_id = selectedStudent.id;
-      }
-      
-      await inventoryService.updateToolUnitStatus(selectedTool.id, status, eventDetails);
+
+      await inventoryService.updateToolUnitStatus(selectedTool.id, status, details);
       
       setSelectedTool(null);
       setSuccessMessage(`${tipo === 'BORROWED' ? 'Préstamo' : 'Devolución'} registrado exitosamente`);
@@ -106,13 +78,10 @@ export const useScannerViewModel = () => {
     setSelectedTool,
     selectedSupply,
     setSelectedSupply,
-    selectedStudent,
-    setSelectedStudent,
     successMessage,
     setSuccessMessage,
     handleScan,
     handleManualSubmit,
     registerEvent,
-    findStudent
   };
 };

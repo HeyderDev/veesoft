@@ -30,8 +30,6 @@ export interface Supply {
   current_stock: number;
   total_stock: number;
   min_stock?: number;
-  max_stock?: number;
-  category?: string;
 }
 
 export interface Movement {
@@ -40,7 +38,6 @@ export interface Movement {
   tool_unit_id: number | null;
   supply_id: number | null;
   user_id: number | null;
-  student_id: number | null;
   operational_task_id: number | null;
   type: string;
   quantity: number;
