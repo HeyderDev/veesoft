@@ -9,18 +9,29 @@ export const useScannerViewModel = () => {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const [selectedSupply, setSelectedSupply] = useState<any>(null);
+
   const fetchToolDetails = async (code: string) => {
     setLoadingCode(true);
     try {
-      const tool = await inventoryService.getToolByCode(code);
-      if (tool) {
-        setSelectedTool(tool);
+      if (code.startsWith('INS-')) {
+        const supply = await inventoryService.getSupplyByCode(code);
+        if (supply) {
+          setSelectedSupply(supply);
+        } else {
+          alert("Insumo no encontrado");
+        }
       } else {
-        alert("Herramienta no encontrada");
+        const tool = await inventoryService.getToolUnitByCode(code);
+        if (tool) {
+          setSelectedTool(tool);
+        } else {
+          alert("Herramienta no encontrada");
+        }
       }
     } catch (error) {
       console.error(error);
-      alert("Error al buscar la herramienta. Verifique que el código exista.");
+      alert("Error al buscar el código. Verifique que exista.");
     } finally {
       setLoadingCode(false);
     }
@@ -39,14 +50,13 @@ export const useScannerViewModel = () => {
     }
   };
 
-  const registerEvent = async (tipo: 'BORROWED' | 'RETURN') => {
+  const registerEvent = async (tipo: 'BORROWED' | 'RETURN', details: any) => {
     if (!selectedTool) return;
 
     try {
-      const status = tipo === 'BORROWED' ? 'BORROWED' : 'AVAILABLE';
-      await inventoryService.updateToolStatus(selectedTool.id, status, {
-        motivo: tipo === 'BORROWED' ? 'Préstamo por escáner' : 'Devolución por escáner'
-      });
+      const status = tipo === 'BORROWED' ? 'borrowed' : 'available';
+
+      await inventoryService.updateToolUnitStatus(selectedTool.id, status, details);
       
       setSelectedTool(null);
       setSuccessMessage(`${tipo === 'BORROWED' ? 'Préstamo' : 'Devolución'} registrado exitosamente`);
@@ -66,9 +76,12 @@ export const useScannerViewModel = () => {
     loadingCode,
     selectedTool,
     setSelectedTool,
+    selectedSupply,
+    setSelectedSupply,
     successMessage,
+    setSuccessMessage,
     handleScan,
     handleManualSubmit,
-    registerEvent
+    registerEvent,
   };
 };

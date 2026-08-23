@@ -1,186 +1,199 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
+import Swal from 'sweetalert2';
 import { useToolsViewModel } from '../viewmodels/useToolsViewModel';
-import { useMovementsViewModel } from '../viewmodels/useMovementsViewModel';
+import type { ToolUnit } from '../types';
 
 export default function MaintenancePage() {
-  const { tools, handleUpdateStatus } = useToolsViewModel();
-  const { movements, loadMovements } = useMovementsViewModel(); // Optionally could use to show history, but we'll try to find the last maint event
+  const { tools, isLoading, loadTools, handleUpdateUnitStatus } = useToolsViewModel();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedToolId, setSelectedToolId] = useState<number | null>(null);
 
-  const [selectedMaintToolId, setSelectedMaintToolId] = useState<number | ''>('');
-  const [maintNotes, setMaintNotes] = useState('');
-  const [releasingToolId, setReleasingToolId] = useState<number | null>(null);
-  const [releaseNotes, setReleaseNotes] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadTools(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, loadTools]);
 
-  const toolsInMaintenance = tools.filter(t => t.status === 'MAINTENANCE' || t.status === 'DAMAGED');
-  const availableTools = tools.filter(t => t.status === 'AVAILABLE');
+  const handleSendToMaintenance = async (unit: ToolUnit, toolName: string) => {
+    if (unit.status !== 'available') {
+      await Swal.fire({
+        icon: 'error',
+        title: 'No disponible',
+        text: 'La herramienta está prestada y no puede enviarse a mantenimiento.'
+      });
+      return;
+    }
+    const { value: notes, isConfirmed } = await Swal.fire({
+      title: 'Enviar a Mantenimiento',
+      html: `
+        <div class="text-left space-y-3">
+          <p class="text-sm text-slate-600">Herramienta: <strong>${toolName}</strong></p>
+          <p class="text-sm text-slate-600">Unidad: <strong class="font-mono text-emerald-700">${unit.code}</strong></p>
+        </div>
+      `,
+      input: 'textarea',
+      inputLabel: 'Descripción del Mantenimiento',
+      inputPlaceholder: 'Ej: Desgaste en cuchilla, revisión preventiva...',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Enviar a Mantenimiento',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Debes ingresar una descripción';
+        }
+      }
+    });
 
-  const handleSendToolToMaintenance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedMaintToolId) return;
-    const details = {
-      usuario: 'Administrador',
-      detalles: maintNotes || 'Enviado a mantenimiento preventivo/correctivo'
-    };
-    
-    await handleUpdateStatus(Number(selectedMaintToolId), 'MAINTENANCE', details);
-    setSelectedMaintToolId('');
-    setMaintNotes('');
-    loadMovements(); // refresh history
+    if (isConfirmed && notes) {
+      const details = {
+        usuario: 'Administrador',
+        detalles: notes
+      };
+      await handleUpdateUnitStatus(unit.id, 'maintenance', details);
+    }
   };
 
-  const handleReleaseTool = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!releasingToolId) return;
-    const details = {
-      usuario: 'Administrador',
-      detalles: releaseNotes || 'Liberado de mantenimiento'
-    };
-    
-    await handleUpdateStatus(releasingToolId, 'AVAILABLE', details);
-    setReleasingToolId(null);
-    setReleaseNotes('');
-    loadMovements(); // refresh history
+  const handleLiftMaintenance = async (unit: ToolUnit, toolName: string) => {
+    const { value: notes, isConfirmed } = await Swal.fire({
+      title: 'Levantar Mantenimiento',
+      html: `
+        <div class="text-left space-y-3">
+          <p class="text-sm text-slate-600">Herramienta: <strong>${toolName}</strong></p>
+          <p class="text-sm text-slate-600">Unidad: <strong class="font-mono text-emerald-700">${unit.code}</strong></p>
+        </div>
+      `,
+      input: 'textarea',
+      inputLabel: 'Descripción del trabajo realizado',
+      inputPlaceholder: 'Ej: Se afiló la cuchilla, cambio de aceite...',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Liberar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Debes ingresar el trabajo realizado';
+        }
+      }
+    });
+
+    if (isConfirmed && notes) {
+      const details = {
+        usuario: 'Administrador',
+        detalles: notes
+      };
+      await handleUpdateUnitStatus(unit.id, 'available', details);
+    }
+  };
+
+  const statusColors: Record<string, string> = {
+    available: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    borrowed: 'bg-amber-50 text-amber-600 border-amber-200',
+    maintenance: 'bg-orange-50 text-orange-600 border-orange-200',
+    out_of_service: 'bg-slate-50 text-slate-600 border-slate-200'
+  };
+  const statusLabels: Record<string, string> = {
+    available: 'Disponible',
+    borrowed: 'Prestada',
+    maintenance: 'Mantenimiento',
+    out_of_service: 'Baja'
   };
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Mantenimiento de Herramientas</h1>
-          <p className="text-sm text-slate-500">Gestión de revisiones técnicas y reparaciones.</p>
+          <p className="text-sm text-slate-500">Gestión de revisiones técnicas y reparaciones por unidad física.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-4">
-            <div>
-              <h3 className="font-bold text-slate-800 text-base">Herramientas en Mantenimiento</h3>
-              <p className="text-xs text-slate-400">Control de equipos bajo reparación o mantenimiento técnico.</p>
+      <div className="grid grid-cols-1 gap-6 print:hidden">
+          <div className="space-y-4">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+              <span className="text-slate-400">🔍</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar entidad por nombre o descripción..."
+                className="w-full text-slate-800 placeholder-slate-400 text-sm focus:outline-none"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {toolsInMaintenance.map((tool) => {
-                // Find the last maintenance event for this tool to show details
-                const maintEvent = movements.find(e => e.type === 'MAINTENANCE' && e.tool?.id === tool.id);
-                return (
-                  <div key={tool.id} className="bg-red-50/20 border border-red-100 p-5 rounded-2xl flex flex-col justify-between hover:shadow-md transition duration-200">
+            <div className="space-y-4">
+              {tools.map((tool) => (
+                <div key={tool.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                  <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="px-2.5 py-0.5 bg-red-100/50 rounded-md text-[10px] font-bold text-red-700 font-mono">{tool.code}</span>
-                        <span className="px-2 py-0.5 bg-red-600 text-white rounded-full text-[9px] font-bold uppercase animate-pulse">
-                          En Mantenimiento
-                        </span>
+                      <h3 className="font-bold text-slate-800 text-base">{tool.name}</h3>
+                      <p className="text-slate-500 text-xs mt-1 max-w-lg">{tool.description || 'Sin descripción.'}</p>
+                      
+                      <div className="flex gap-4 mt-3 text-[11px] font-semibold">
+                        <span className="text-slate-600 bg-slate-100 px-2 py-1 rounded">Total: {tool.units_count || 0}</span>
+                        <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Disp: {tool.available_units_count || 0}</span>
+                        <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded">En Mantenimiento: {tool.maintenance_units_count || 0}</span>
                       </div>
-                      <h4 className="font-bold text-slate-800 text-sm">{tool.name}</h4>
-                      <p className="text-slate-500 text-xs mt-1 truncate">{tool.description || 'Sin descripción.'}</p>
-
-                      {maintEvent && (
-                        <div className="mt-3 bg-white p-2.5 rounded-xl border border-red-100/60 text-[11px] text-slate-600">
-                          <p className="font-bold text-red-800">Detalles de Ingreso:</p>
-                          <p className="mt-0.5 leading-relaxed">{maintEvent.details?.detalles}</p>
-                          <p className="text-[9px] text-slate-400 font-semibold mt-1">Registrado el {new Date(maintEvent.created_at).toLocaleString()}</p>
-                        </div>
-                      )}
                     </div>
-
-                    <div className="mt-4 pt-4 border-t border-slate-100/80 flex justify-end">
-                      {releasingToolId === tool.id ? (
-                        <form onSubmit={handleReleaseTool} className="w-full space-y-2">
-                          <textarea
-                            required
-                            placeholder="Describe el trabajo realizado o estado final..."
-                            rows={2}
-                            value={releaseNotes}
-                            onChange={(e) => setReleaseNotes(e.target.value)}
-                            className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:outline-none bg-white"
-                          />
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              type="button"
-                              onClick={() => setReleasingToolId(null)}
-                              className="px-2.5 py-1.5 text-[11px] text-slate-500 hover:bg-slate-100 rounded-lg font-bold"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              type="submit"
-                              className="px-3 py-1.5 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold"
-                            >
-                              Confirmar Liberación
-                            </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setReleasingToolId(tool.id);
-                            setReleaseNotes('');
-                          }}
-                          className="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-sm"
-                        >
-                          🔧 Liberar Herramienta
-                        </button>
-                      )}
+                    <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                       <button onClick={() => setSelectedToolId(selectedToolId === tool.id ? null : tool.id)} className="px-4 py-2 text-xs bg-slate-100 hover:bg-slate-200 transition text-slate-700 rounded-xl font-bold">
+                          {selectedToolId === tool.id ? 'Ocultar Unidades' : 'Ver Unidades'}
+                       </button>
                     </div>
                   </div>
-                );
-              })}
-              {toolsInMaintenance.length === 0 && (
-                <div className="col-span-full bg-slate-50/50 p-8 text-center rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
-                  No hay herramientas en mantenimiento en este momento.
+
+                  {/* UNIDADES ACCORDION */}
+                  {selectedToolId === tool.id && (
+                    <div className="bg-slate-50 p-5 border-t border-slate-100">
+                       <div className="flex justify-between items-center mb-4">
+                         <h4 className="font-bold text-sm text-slate-700">Unidades Físicas</h4>
+                       </div>
+                       
+                       {(!tool.units || tool.units.length === 0) ? (
+                          <p className="text-xs text-slate-400 text-center py-4">No se han cargado las unidades o no existen.</p>
+                       ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {tool.units.map(unit => (
+                              <div key={unit.id} className="bg-white border border-slate-200 p-4 rounded-xl flex flex-col justify-between transition hover:shadow-md hover:border-slate-300">
+                                 <div className="flex justify-between items-start mb-3">
+                                   <span className="font-mono text-sm font-bold text-slate-700">{unit.code}</span>
+                                   <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full border ${statusColors[unit.status] || statusColors.available}`}>{statusLabels[unit.status] || unit.status}</span>
+                                 </div>
+                                 
+                                 <div className="flex justify-center items-center mt-2 pt-3 border-t border-slate-50">
+                                   {unit.status === 'available' && (
+                                     <button onClick={() => handleSendToMaintenance(unit, tool.name)} className="w-full text-xs font-bold bg-orange-50 text-orange-700 px-3 py-2 rounded-lg hover:bg-orange-100 transition shadow-sm border border-orange-100">
+                                       🛠️ Enviar a Mantenimiento
+                                     </button>
+                                   )}
+                                   {(unit.status === 'maintenance' || unit.status === 'damaged') && (
+                                     <button onClick={() => handleLiftMaintenance(unit, tool.name)} className="w-full text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg hover:bg-emerald-100 transition shadow-sm border border-emerald-100 print:hidden">
+                                       ✅ Levantar Mantenimiento
+                                     </button>
+                                   )}
+                                   {unit.status === 'out_of_service' && (
+                                     <span className="text-[11px] text-slate-400 font-bold py-1">Unidad de baja</span>
+                                   )}
+                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                       )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {tools.length === 0 && !isLoading && (
+                <div className="bg-white p-12 text-center rounded-2xl border border-slate-100 text-slate-400 text-sm">
+                  No se encontraron herramientas.
                 </div>
               )}
             </div>
           </div>
-        </div>
-
-        {/* Form to send to maintenance */}
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 h-fit space-y-4">
-          <div className="space-y-1">
-            <h3 className="font-bold text-slate-800 text-base">Registrar Ingreso a Mantenimiento</h3>
-            <p className="text-xs text-slate-400">Envía una herramienta disponible a revisión técnica.</p>
-          </div>
-
-          <form onSubmit={handleSendToolToMaintenance} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5">SELECCIONAR HERRAMIENTA</label>
-              <select
-                required
-                value={selectedMaintToolId}
-                onChange={(e) => setSelectedMaintToolId(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-xs focus:outline-none bg-slate-50"
-              >
-                <option value="">-- Selecciona una Herramienta Disponible --</option>
-                {availableTools.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.code} - {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">MOTIVO / DIAGNÓSTICO INICIAL</label>
-              <textarea
-                required
-                placeholder="Detalla la avería, desgaste o motivo del mantenimiento..."
-                rows={3}
-                value={maintNotes}
-                onChange={(e) => setMaintNotes(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-red-500 hover:bg-red-600 transition text-white rounded-xl font-bold text-xs shadow-md"
-            >
-              Enviar a Mantenimiento
-            </button>
-          </form>
-        </div>
       </div>
     </div>
   );

@@ -1,5 +1,8 @@
 import axiosClient from '../../../shared/services/axiosClient';
-import type { DispatchSummary, PendingDispatch } from '../types';
+import type {
+  DispatchSummary, PendingDispatch, TrackingClient, TrackingClientInput,
+  TrackingGeneralSummary, TrackingLot, TrackingLotDetail, TrackingMovement,
+} from '../types';
 
 /**
  * Único punto de acceso a la API para el módulo Tracking.
@@ -22,4 +25,29 @@ export const trackingService = {
       quantity,
       dispatched_at: dispatchedAt,
     }),
+
+  // ---- Lotes (de Planning, solo lectura) ----
+  getLots: () => axiosClient.get<TrackingLot[]>('/tracking/lots'),
+  getLotDetail: (lotId: number) => axiosClient.get<TrackingLotDetail>(`/tracking/lots/${lotId}`),
+
+  // ---- Movimientos de salida ----
+  getMovements: (lotId?: number) =>
+    axiosClient.get<TrackingMovement[]>('/tracking/movements', {
+      params: lotId ? { lot_id: lotId } : undefined,
+    }),
+  createMovement: (data: {
+    lot_id: number; tracking_client_id: number; quantity: number; notes?: string;
+  }) => axiosClient.post('/tracking/movements', data),
+
+  // ---- Clientes ----
+  getClients: (search?: string) =>
+    axiosClient.get<TrackingClient[]>('/tracking/clients', { params: search ? { search } : undefined }),
+  createClient: (data: TrackingClientInput) => axiosClient.post('/tracking/clients', data),
+  updateClient: (id: number, data: Partial<TrackingClientInput>) =>
+    axiosClient.put(`/tracking/clients/${id}`, data),
+  deleteClient: (id: number) => axiosClient.delete(`/tracking/clients/${id}`),
+
+  // ---- Reportes ----
+  getGeneralSummary: () => axiosClient.get<TrackingGeneralSummary>('/tracking/summary'),
+  getLotSummary: (lotId: number) => axiosClient.get<TrackingLotDetail>(`/tracking/summary/lots/${lotId}`),
 };

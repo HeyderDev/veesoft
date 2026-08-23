@@ -42,7 +42,7 @@ export const modulesRegistry: ModuleDescriptor[] = [
     NavProvider: InventoryNavProvider,
     SidebarSections: InventorySidebarSections
   },
-  { id: 'tracking', name: 'Seguimiento', icon: '🌱', active: false },
+  { id: 'tracking', name: 'Seguimiento', icon: '🌱', active: true },
   { id: 'reportes', name: 'Reportes', icon: '📈', active: false },
   { id: 'configuracion', name: 'Configuración', icon: '⚙️', active: false },
 ];

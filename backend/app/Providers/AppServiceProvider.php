@@ -15,6 +15,7 @@ use App\Modules\Planning\Repositories\Contracts\ProductionGoalRepositoryInterfac
 use App\Modules\Planning\Repositories\Contracts\ProductionPhaseRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\SummaryRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\ViveroRepositoryInterface;
+use App\Modules\Shared\Support\CurrentVivero;
 use App\Modules\Planning\Repositories\Eloquent\DispatchRepository;
 use App\Modules\Planning\Repositories\Eloquent\LotCycleRepository;
 use App\Modules\Planning\Repositories\Eloquent\LotRepository;
@@ -23,7 +24,13 @@ use App\Modules\Planning\Repositories\Eloquent\ProductionPhaseRepository;
 use App\Modules\Planning\Repositories\Eloquent\SummaryRepository;
 use App\Modules\Planning\Repositories\Eloquent\ViveroRepository;
 use App\Modules\Tracking\Repositories\Contracts\DispatchReportRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingClientRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingLotRepositoryInterface;
+use App\Modules\Tracking\Repositories\Contracts\TrackingMovementRepositoryInterface;
 use App\Modules\Tracking\Repositories\Eloquent\DispatchReportRepository;
+use App\Modules\Tracking\Repositories\Eloquent\TrackingClientRepository;
+use App\Modules\Tracking\Repositories\Eloquent\TrackingLotRepository;
+use App\Modules\Tracking\Repositories\Eloquent\TrackingMovementRepository;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -49,9 +56,13 @@ class AppServiceProvider extends ServiceProvider
 
         // ---- Módulo Tracking ----
         $this->app->bind(DispatchReportRepositoryInterface::class, DispatchReportRepository::class);
+        $this->app->bind(TrackingLotRepositoryInterface::class, TrackingLotRepository::class);
+        $this->app->bind(TrackingMovementRepositoryInterface::class, TrackingMovementRepository::class);
+        $this->app->bind(TrackingClientRepositoryInterface::class, TrackingClientRepository::class);
 
         // ---- Módulo Inventory ----
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\ToolRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\ToolRepository::class);
+        $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\ToolUnitRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\ToolUnitRepository::class);
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\SupplyRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\SupplyRepository::class);
         $this->app->bind(\App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface::class, \App\Modules\Inventory\Repositories\Eloquent\MovementRepository::class);
 
@@ -62,6 +73,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
         $this->app->bind(PurchaseOrderRepositoryInterface::class, PurchaseOrderRepository::class);
         $this->app->bind(PurchaseRequestRepositoryInterface::class, PurchaseRequestRepository::class);
+<<<<<<< HEAD
+=======
+
+        // ---- Contexto de vivero activo (una instancia por request) ----
+        $this->app->singleton(CurrentVivero::class);
+>>>>>>> 727f1891df3d6119d5da307f211624a5f3ab9519
     }
 
     /**

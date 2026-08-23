@@ -2,6 +2,7 @@
 
 namespace App\Modules\Planning\Models;
 
+use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductionPhase extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToVivero;
 
     protected $fillable = [
         'vivero_id', 'code', 'name', 'description',

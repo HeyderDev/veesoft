@@ -14,10 +14,20 @@ class CreateSupplyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/'],
+            'description' => ['nullable', 'string', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/'],
             'unit' => 'nullable|string|max:50',
             'current_stock' => 'nullable|numeric|min:0',
+            'total_stock' => 'nullable|numeric|min:0',
             'min_stock' => 'nullable|numeric|min:0',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.regex' => 'El nombre del insumo solo puede contener letras.',
+            'description.regex' => 'La descripción solo puede contener letras.',
         ];
     }
 }

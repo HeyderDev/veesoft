@@ -16,24 +16,34 @@ use Illuminate\Support\Facades\Route;
 | Ningún otro módulo debe declarar rutas para estos recursos.
 */
 
-// Viveros
-Route::get('viveros/{vivero}/summary', [SummaryController::class, 'show']);
-Route::apiResource('viveros', ViveroController::class);
+Route::middleware('auth:sanctum')->group(function () {
+    // Viveros — fuera del middleware vivero.scope: estas rutas definen o reciben
+    // el vivero explícitamente (no dependen de un vivero "activo" ya elegido).
+    // Listar/ver: Admin y Operario (lo necesitan para elegir su espacio de trabajo).
+    Route::apiResource('viveros', ViveroController::class)->only(['index', 'show']);
 
-// Metas de producción
-Route::post('production-goals/{production_goal}/culminar', [ProductionGoalController::class, 'culminar']);
-Route::apiResource('production-goals', ProductionGoalController::class);
+    Route::middleware('role:Admin')->group(function () {
+        Route::get('viveros/{vivero}/summary', [SummaryController::class, 'show']);
+        Route::apiResource('viveros', ViveroController::class)->except(['index', 'show']);
+    });
 
-// Lotes
-Route::patch('lots/{lot}/capacity', [LotController::class, 'updateCapacity']);
-Route::patch('lots/{lot}/status', [LotController::class, 'updateStatus']);
-Route::patch('lots/{lot}/position', [LotController::class, 'updatePosition']);
-Route::apiResource('lots', LotController::class);
+    Route::middleware(['role:Admin', 'vivero.scope'])->group(function () {
+        // Metas de producción
+        Route::post('production-goals/{production_goal}/culminar', [ProductionGoalController::class, 'culminar']);
+        Route::apiResource('production-goals', ProductionGoalController::class);
 
-// Ciclo productivo del lote (Comenzar Ciclo / Terminar Despacho)
-Route::post('lots/{lot}/cycles', [LotCycleController::class, 'store']);
-Route::post('lots/{lot}/cycles/current/terminate-dispatch', [LotCycleController::class, 'terminateDispatch']);
-Route::post('lots/{lot}/cycles/current/reschedule', [LotCycleController::class, 'reschedule']);
+        // Lotes
+        Route::patch('lots/{lot}/capacity', [LotController::class, 'updateCapacity']);
+        Route::patch('lots/{lot}/status', [LotController::class, 'updateStatus']);
+        Route::patch('lots/{lot}/position', [LotController::class, 'updatePosition']);
+        Route::apiResource('lots', LotController::class);
 
-// Fases del sistema
-Route::apiResource('production-phases', ProductionPhaseController::class);
+        // Ciclo productivo del lote (Comenzar Ciclo / Terminar Despacho)
+        Route::post('lots/{lot}/cycles', [LotCycleController::class, 'store']);
+        Route::post('lots/{lot}/cycles/current/terminate-dispatch', [LotCycleController::class, 'terminateDispatch']);
+        Route::post('lots/{lot}/cycles/current/reschedule', [LotCycleController::class, 'reschedule']);
+
+        // Fases del sistema
+        Route::apiResource('production-phases', ProductionPhaseController::class);
+    });
+});

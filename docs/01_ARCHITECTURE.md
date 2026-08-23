@@ -1,6 +1,6 @@
 # 01_ARCHITECTURE.md
 
-> Versión: 1.0.0 · Última actualización: 2026-07-22 · Estado: Oficial
+> Versión: 1.1.0 · Última actualización: 2026-07-27 · Estado: Oficial
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
 # ERP LASTENIA
@@ -567,9 +567,9 @@ MySQL
 
 Nodo Móvil
 
-Flutter
+React (empaquetado como app nativa con Capacitor)
 
-SQLite
+SQLite (vía un plugin de SQLite nativo, ej. Capacitor SQLite)
 
 ↓
 
@@ -578,6 +578,12 @@ Nodo Central
 MySQL
 
 Synchronization conecta los tres nodos.
+
+El Nodo Móvil no es un proyecto Flutter independiente. Reutiliza el mismo código React de los módulos funcionales (mismas pantallas, mismos ViewModels, misma lógica de negocio), empaquetado como aplicación nativa Android mediante Capacitor.
+
+La diferencia frente al Nodo Administrador es una capa adicional de persistencia local: una base de datos SQLite real (no un cache de navegador) más una tabla de salida (outbox) que encola las escrituras hechas sin conexión. Cuando el dispositivo recupera conectividad, el Nodo Móvil sincroniza ese outbox contra el Nodo Central a través del mismo pipeline de eventos y cola que expone `Synchronization` para el Nodo Administrador — no un mecanismo de sincronización distinto.
+
+Justificación de esta decisión y las alternativas evaluadas (PWA, Flutter 100% nativo): `docs/03_MODULE_CONTRACTS/Synchronization.md` sección 6.
 
 ---
 

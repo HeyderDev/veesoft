@@ -1,6 +1,6 @@
 # 09_MASTER_PROMPTS/03_INFRASTRUCTURE_OWNER.md
 
-> Versión: 1.0.0 · Última actualización: 2026-07-22 · Estado: Oficial
+> Versión: 1.1.0 · Última actualización: 2026-07-27 · Estado: Oficial
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
 # Prompt Maestro — Responsable de Infraestructura (Shared → Synchronization)
@@ -111,8 +111,17 @@ TAREA 1 — Autenticación (Laravel Sanctum, modo [ESTRATEGIA_AUTH])
      `POST /api/v1/login`; `logout()` llama `POST /api/v1/logout`; al montar la app,
      verifica sesión con `GET /api/v1/me`.
    - Crea una pantalla de login mínima y funcional (no hace falta que sea elaborada) en
-     `frontend/src/shared/` o donde corresponda según lo que decidas al leer
-     `03_FRONTEND_GUIDE.md` — justifica la ubicación si no es un `modules/`.
+     `frontend/src/shared/pages/LoginPage.tsx`. El login no pertenece a ningún módulo de
+     negocio (`Planning`, `Inventory`, etc.) — es la puerta de entrada a todo el sistema,
+     por eso vive en `shared/`, igual que `AuthContext.tsx`.
+   - `shared/` hoy solo tiene `context/` y `services/` — `pages/` es una carpeta nueva.
+     `docs/01_ARCHITECTURE.md` exige autorización explícita para carpetas nuevas: esta
+     queda pre-autorizada por este prompt, pero documenta en tu Pull Request y al cerrar
+     la Misión A que la agregaste y por qué, para que quede registrado igual que cualquier
+     otra carpeta nueva del proyecto.
+   - No se crea ninguna pantalla de login ni de autenticación dentro de `Synchronization`
+     ni de ningún otro módulo — `Synchronization` no tiene componentes visuales propios,
+     es un módulo transversal de backend (colas, eventos, jobs).
 
 ═══════════════════════════════════════════════════════════════
 TAREA 2 — Roles y permisos reales

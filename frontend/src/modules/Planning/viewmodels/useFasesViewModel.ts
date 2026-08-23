@@ -12,7 +12,7 @@ export function useFasesViewModel(viveroId: number) {
   const fetchFases = async () => {
     try {
       const response = await planningService.getPhases();
-      setFasesData((response.data || []).filter(f => f.vivero_id === viveroId));
+      setFasesData(response.data || []);
     } catch (e) {
       console.error('Error fetching fases:', e);
     }

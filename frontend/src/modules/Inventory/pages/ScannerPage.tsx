@@ -1,5 +1,6 @@
 import { Camera, Search, CheckCircle2 } from 'lucide-react';
 import { ToolDetailsModal } from '../components/ToolDetailsModal';
+import { SupplyScannerModal } from '../components/SupplyScannerModal';
 import { WebScanner } from '../components/WebScanner';
 import { useScannerViewModel } from '../viewmodels/useScannerViewModel';
 
@@ -12,10 +13,13 @@ export const ScannerPage = () => {
     loadingCode,
     selectedTool,
     setSelectedTool,
+    selectedSupply,
+    setSelectedSupply,
     successMessage,
+    setSuccessMessage,
     handleScan,
     handleManualSubmit,
-    registerEvent
+    registerEvent,
   } = useScannerViewModel();
 
   return (
@@ -37,7 +41,7 @@ export const ScannerPage = () => {
           {isScanning ? (
             <div className="p-4 relative flex flex-col items-center">
               <WebScanner onScan={handleScan} />
-              <button 
+              <button
                 onClick={() => setIsScanning(false)}
                 className="mt-4 px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium transition-colors"
               >
@@ -45,7 +49,7 @@ export const ScannerPage = () => {
               </button>
             </div>
           ) : (
-            <button 
+            <button
               onClick={() => setIsScanning(true)}
               className="w-full h-64 flex flex-col items-center justify-center space-y-4 hover:bg-gray-50 transition-colors group cursor-pointer"
             >
@@ -72,7 +76,7 @@ export const ScannerPage = () => {
               </div>
               <input
                 type="text"
-                placeholder="Escribir código..."
+                placeholder="Escribir código de herramienta..."
                 className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none bg-gray-50 focus:bg-white transition-colors"
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
@@ -106,6 +110,17 @@ export const ScannerPage = () => {
             onRegisterEvent={registerEvent}
           />
         )}
+
+        {/* Modal Supply Details */}
+        <SupplyScannerModal
+          isOpen={!!selectedSupply}
+          onClose={() => setSelectedSupply(null)}
+          onSuccess={() => {
+            setSuccessMessage("Movimiento de insumo registrado exitosamente");
+            setTimeout(() => setSuccessMessage(null), 3000);
+          }}
+          preloadedSupply={selectedSupply}
+        />
       </div>
     </div>
   );
