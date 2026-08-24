@@ -8,6 +8,7 @@ use App\Modules\Logistics\Repositories\Contracts\SupplierRepositoryInterface;
 use App\Modules\Logistics\Traits\ValidatesEcuadorianTaxId;
 use App\Modules\Shared\Services\BaseService;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 /**
  * Reglas de negocio de Proveedor:
@@ -132,5 +133,78 @@ class SupplierService extends BaseService
     public function getSupplierByItem(string $itemSku): ?Supplier
     {
         return $this->supplierRepository->findBestForItemSku($itemSku);
+    }
+
+    public function catalog(int $supplierId)
+    {
+        $supplier = $this->supplierRepository->find($supplierId);
+
+        $supplies = $supplier->supplies()->orderBy('name')->get()->map(fn ($supply) => [
+            'item_type' => 'supply',
+            'item_id' => $supply->id,
+            'code' => $supply->sku,
+            'name' => $supply->name,
+            'unit' => $supply->unit,
+            'unit_price' => $supply->pivot->unit_price,
+        ]);
+        $tools = $supplier->tools()->orderBy('name')->get()->map(fn ($tool) => [
+            'item_type' => 'tool',
+            'item_id' => $tool->id,
+            'code' => 'HERR-'.$tool->id,
+            'name' => $tool->name,
+            'unit' => 'unidad',
+            'unit_price' => $tool->pivot->unit_price,
+        ]);
+
+        return $supplies->concat($tools)->sortBy('name')->values();
+    }
+
+    /** @param array<int, array{item_type: 'supply'|'tool', item_id: int, unit_price: float}> $items */
+    public function syncCatalog(int $supplierId, array $items)
+    {
+        $supplier = $this->supplierRepository->find($supplierId);
+
+        $supplies = collect($items)->where('item_type', 'supply')->mapWithKeys(fn (array $item) => [
+            $item['item_id'] => ['unit_price' => $item['unit_price']],
+        ])->all();
+        $tools = collect($items)->where('item_type', 'tool')->mapWithKeys(fn (array $item) => [
+            $item['item_id'] => ['unit_price' => $item['unit_price']],
+        ])->all();
+
+        // Los queries usan el scope del vivero activo y evitan asociar ítems ajenos.
+        \App\Modules\Inventory\Models\Supply::query()->whereIn('id', array_keys($supplies))->count() === count($supplies)
+            || throw new \DomainException('Uno de los insumos no pertenece al vivero activo.');
+        \App\Modules\Inventory\Models\Tool::query()->whereIn('id', array_keys($tools))->count() === count($tools)
+            || throw new \DomainException('Una de las herramientas no pertenece al vivero activo.');
+
+        $supplier->supplies()->sync($supplies);
+        $supplier->tools()->sync($tools);
+
+        return $this->catalog($supplierId);
+    }
+
+    public function certificateAlerts(int $days = 30)
+    {
+        $today = Carbon::today();
+        $deadline = $today->copy()->addDays($days);
+
+        return Supplier::query()
+            ->where('organic_certified', true)
+            ->whereNotNull('certificate_expires_at')
+            ->whereDate('certificate_expires_at', '<=', $deadline)
+            ->orderBy('certificate_expires_at')
+            ->get()
+            ->map(function (Supplier $supplier) use ($today) {
+                $expiresAt = Carbon::parse($supplier->certificate_expires_at);
+
+                return [
+                    'supplier_id' => $supplier->id,
+                    'supplier_name' => $supplier->name,
+                    'certificate_expires_at' => $expiresAt->toDateString(),
+                    'status' => $expiresAt->lt($today) ? 'expired' : 'due_soon',
+                    'days_remaining' => $today->diffInDays($expiresAt, false),
+                ];
+            })
+            ->values();
     }
 }

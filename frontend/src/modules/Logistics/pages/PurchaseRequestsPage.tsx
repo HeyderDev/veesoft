@@ -5,6 +5,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
 import { usePurchaseRequestsViewModel } from '../viewmodels/usePurchaseRequestsViewModel';
 import type { PurchaseRequestStatus } from '../types';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 const statusLabels: Record<PurchaseRequestStatus, string> = {
   pending: 'Pendiente',
@@ -19,10 +20,11 @@ const statusVariants: Record<PurchaseRequestStatus, 'warning' | 'success' | 'dan
 };
 
 export const PurchaseRequestsPage: React.FC = () => {
+  const { isAdmin } = useAuth();
   const {
-    requests, suppliers, isLoading,
+    requests, suppliers, inventoryItems, isLoading,
     isFormOpen, openCreate, closeForm, reason, setReason, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
-    reviewTarget, openReview, closeReview, reviewForm, setReviewForm, setUnitPrice, isReviewing, handleApprove, handleReject,
+    reviewTarget, openReview, closeReview, reviewForm, setReviewForm, isReviewing, handleApprove, handleReject,
   } = usePurchaseRequestsViewModel();
 
   return (
@@ -30,9 +32,9 @@ export const PurchaseRequestsPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Solicitudes de Aprovisionamiento</h1>
-          <p className="text-sm text-slate-500 mt-1">Pide insumos y conviértelos en una orden de compra al aprobar</p>
+          <p className="text-sm text-slate-500 mt-1">Solicita ítems del Inventario y conviértelos en una orden de compra al aprobar</p>
         </div>
-        <Button onClick={openCreate}>+ Nueva Solicitud</Button>
+        {!isAdmin && <Button onClick={openCreate}>+ Nueva Solicitud</Button>}
       </div>
 
       {isLoading ? (
@@ -65,7 +67,7 @@ export const PurchaseRequestsPage: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-500">{request.purchase_order?.order_number ?? '—'}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {request.status === 'pending' && (
+                    {isAdmin && request.status === 'pending' && (
                       <Button variant="ghost" onClick={() => openReview(request)}>Revisar</Button>
                     )}
                   </td>
@@ -99,51 +101,54 @@ export const PurchaseRequestsPage: React.FC = () => {
             </div>
             <div className="space-y-3">
               {items.map((item, index) => (
-                <div key={index} className="border border-slate-200 rounded-lg p-3 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      placeholder="Nombre *"
-                      value={item.item_name}
-                      onChange={e => updateItemRow(index, { item_name: e.target.value })}
-                      required
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
-                    />
-                    <input
-                      placeholder="SKU (código único, automático si se deja vacío)"
-                      title="SKU: código único del ítem para identificarlo en el inventario. Si lo dejas vacío, se genera automáticamente."
-                      value={item.item_sku}
-                      onChange={e => updateItemRow(index, { item_sku: e.target.value })}
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      placeholder="Unidad *"
-                      value={item.unit}
-                      onChange={e => updateItemRow(index, { unit: e.target.value })}
-                      required
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
-                    />
+                <div key={index} className="border border-slate-200 rounded-lg p-3 space-y-3">
+                  {(() => {
+                    const selectedItem = inventoryItems.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
+                    const unit = selectedItem?.unit ?? 'unidad';
+                    return <>
+                  <select
+                    value={item.item_id === '' ? '' : `${item.item_type}:${item.item_id}`}
+                    onChange={event => {
+                      const [item_type, item_id] = event.target.value.split(':');
+                      updateItemRow(index, { item_type: (item_type || 'supply') as 'supply' | 'tool', item_id: item_id ? Number(item_id) : '' });
+                    }}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                  >
+                    <option value="">Selecciona un ítem del Inventario…</option>
+                    {inventoryItems.map(inventoryItem => (
+                      <option key={`${inventoryItem.item_type}-${inventoryItem.item_id}`} value={`${inventoryItem.item_type}:${inventoryItem.item_id}`}>
+                        {inventoryItem.item_type === 'tool' ? 'Herramienta' : 'Insumo'} · {inventoryItem.name} ({inventoryItem.code}) · {inventoryItem.unit}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-[12rem_1fr] gap-2 items-end">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Cantidad ({unit}) *</label>
                     <input
                       type="number"
                       min={0.01}
                       step="0.01"
-                      placeholder="Cantidad"
+                      placeholder={`Ej.: 2.5 ${unit}`}
                       value={item.quantity}
                       onChange={e => updateItemRow(index, { quantity: Number(e.target.value) })}
                       required
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                     />
+                  </div>
+                    <p className="pb-2 text-xs text-slate-500">La unidad se toma del catálogo de Inventario.</p>
                   </div>
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeItemRow(index)}
-                      className="text-xs text-red-500 hover:text-red-600"
+                      className="w-full rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                     >
-                      Quitar ítem
+                      Quitar este ítem
                     </button>
                   )}
+                    </>;
+                  })()}
                 </div>
               ))}
             </div>
@@ -162,10 +167,7 @@ export const PurchaseRequestsPage: React.FC = () => {
         {reviewTarget && (
           <div className="p-6 space-y-5">
             <div>
-              <p className="text-xs text-slate-500 mb-2">
-                La solicitud no trae precio: ingresa aquí cuánto cobra el proveedor que elijas abajo por cada unidad
-                (kilo, unidad, litro, etc., según lo indicado por cada ítem) para calcular el total de la orden.
-              </p>
+              <p className="text-xs text-slate-500 mb-2">Al aprobar, el precio se toma del catálogo del proveedor seleccionado.</p>
               <div className="space-y-2">
                 {(reviewTarget.items ?? []).map(item => (
                   <div key={item.id} className="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-2">
@@ -173,43 +175,13 @@ export const PurchaseRequestsPage: React.FC = () => {
                       <p className="font-medium text-slate-700">{item.item_name}</p>
                       <p className="text-xs text-slate-400">{item.quantity} {item.unit}</p>
                     </div>
-                    <div className="text-right">
-                      <label className="block text-[10px] font-medium text-slate-500 mb-0.5">
-                        Precio por {item.unit || 'unidad'}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="0.00"
-                        value={reviewForm.unit_prices[item.id] ?? 0}
-                        onChange={e => setUnitPrice(item.id, Number(e.target.value))}
-                        className="w-24 px-2 py-1.5 border border-slate-300 rounded text-sm text-right"
-                      />
-                    </div>
                   </div>
                 ))}
-              </div>
-              <div className="flex items-center justify-between border-t border-slate-100 mt-3 pt-3">
-                <span className="text-sm font-medium text-slate-600">Total estimado de la orden</span>
-                <span className="text-lg font-bold text-slate-800">
-                  ${(reviewTarget.items ?? []).reduce((sum, item) => sum + Number(item.quantity) * (reviewForm.unit_prices[item.id] ?? 0), 0).toFixed(2)}
-                </span>
               </div>
             </div>
 
             <form onSubmit={handleApprove} className="space-y-4 border-t border-slate-100 pt-4">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Aprobar y generar orden</p>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">N° de Orden</label>
-                <input
-                  value={reviewForm.order_number}
-                  onChange={e => setReviewForm({ ...reviewForm, order_number: e.target.value })}
-                  placeholder="Correlativo automático…"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-                />
-                <p className="text-xs text-slate-400 mt-1">Se asigna automáticamente; puedes editarlo si necesitas otro formato.</p>
-              </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Proveedor *</label>
                 <select

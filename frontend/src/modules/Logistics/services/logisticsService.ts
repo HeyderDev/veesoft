@@ -1,7 +1,8 @@
 import axiosClient from '../../../shared/services/axiosClient';
 import type {
   PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, PurchaseRequest,
-  PurchaseRequestItemInput, QualityStatus, Supplier, SupplierEvaluationInput,
+  PurchaseRequestItemInput, QualityStatus, Supplier, SupplierEvaluationInput, SupplierCatalogItem,
+  CertificateAlert, UnregisteredSupply,
 } from '../types';
 
 /**
@@ -17,18 +18,26 @@ export const logisticsService = {
   evaluateSupplier: (id: number, data: SupplierEvaluationInput) =>
     axiosClient.post(`/suppliers/${id}/evaluate`, data),
   getSupplierPurchaseHistory: (id: number) => axiosClient.get<PurchaseOrder[]>(`/suppliers/${id}/purchase-orders`),
+  getSupplierCatalog: (id: number) => axiosClient.get<SupplierCatalogItem[]>(`/suppliers/${id}/catalog`),
+  updateSupplierCatalog: (id: number, items: { item_type: 'supply' | 'tool'; item_id: number; unit_price: number }[]) =>
+    axiosClient.put<SupplierCatalogItem[]>(`/suppliers/${id}/catalog`, { items }),
+  getCertificateAlerts: () => axiosClient.get<CertificateAlert[]>('/suppliers-certificates/alerts'),
+  getInventorySupplies: () => axiosClient.get<SupplierCatalogItem[]>('/supplies'),
+  getInventoryTools: () => axiosClient.get<SupplierCatalogItem[]>('/tools'),
 
   // ---- Órdenes de compra ----
   getPurchaseOrders: () => axiosClient.get<PurchaseOrder[]>('/purchase-orders'),
   createPurchaseOrder: (data: {
-    order_number: string; supplier_id: number; estimated_delivery_date?: string; items: PurchaseOrderItemInput[];
+    supplier_id: number; estimated_delivery_date?: string; items: PurchaseOrderItemInput[];
   }) => axiosClient.post<PurchaseOrder>('/purchase-orders', data),
   getPurchaseOrder: (id: number) => axiosClient.get<PurchaseOrder>(`/purchase-orders/${id}`),
   receivePurchaseOrder: (id: number, data: {
-    quality_status: QualityStatus; substrate_temperature?: number; observations?: string; photo_evidence_url?: string;
+    quality_status: QualityStatus; observations?: string; photo_evidence_url?: string;
   }) => axiosClient.post(`/purchase-orders/${id}/receive`, data),
   getPendingDeliveries: () => axiosClient.get<PendingDeliveryItem[]>('/purchase-orders/pending-deliveries'),
+  // Se conserva para el flujo de solicitudes existente, pendiente de rediseño en Fase 3.
   getNextOrderNumber: () => axiosClient.get<{ order_number: string }>('/purchase-orders/next-number'),
+  getUnregisteredSupplies: () => axiosClient.get<UnregisteredSupply[]>('/purchase-orders/unregistered-supplies'),
 
   // ---- Solicitudes de aprovisionamiento ----
   getPurchaseRequests: () => axiosClient.get<PurchaseRequest[]>('/purchase-requests'),
@@ -37,6 +46,5 @@ export const logisticsService = {
   getPurchaseRequest: (id: number) => axiosClient.get<PurchaseRequest>(`/purchase-requests/${id}`),
   reviewPurchaseRequest: (id: number, data: {
     decision: 'approved' | 'rejected'; order_number?: string; supplier_id?: number; estimated_delivery_date?: string;
-    unit_prices?: Record<number, number>;
   }) => axiosClient.post(`/purchase-requests/${id}/review`, data),
 };

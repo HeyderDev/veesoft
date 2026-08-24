@@ -2,7 +2,6 @@
 
 namespace App\Modules\Logistics\Repositories\Eloquent;
 
-use App\Modules\Logistics\Models\PurchaseOrderItem;
 use App\Modules\Logistics\Models\Supplier;
 use App\Modules\Logistics\Repositories\Contracts\SupplierRepositoryInterface;
 use App\Modules\Shared\Repositories\Eloquent\BaseRepository;
@@ -23,7 +22,7 @@ class SupplierRepository extends BaseRepository implements SupplierRepositoryInt
     public function findWithRelations(int $id)
     {
         return $this->model
-            ->with(['evaluations' => fn ($query) => $query->orderByDesc('created_at')])
+            ->with(['evaluations' => fn ($query) => $query->orderByDesc('created_at'), 'supplies'])
             ->findOrFail($id);
     }
 
@@ -37,13 +36,11 @@ class SupplierRepository extends BaseRepository implements SupplierRepositoryInt
 
     public function findBestForItemSku(string $itemSku)
     {
-        $supplierId = PurchaseOrderItem::query()
-            ->where('item_sku', $itemSku)
-            ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
-            ->join('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
-            ->where('suppliers.status', Supplier::STATUS_ACTIVE)
-            ->orderByDesc('suppliers.score')
-            ->value('suppliers.id');
+        $supplierId = $this->model
+            ->where('status', Supplier::STATUS_ACTIVE)
+            ->whereHas('supplies', fn ($query) => $query->where('sku', $itemSku))
+            ->orderByDesc('score')
+            ->value('id');
 
         return $supplierId ? $this->model->find($supplierId) : null;
     }

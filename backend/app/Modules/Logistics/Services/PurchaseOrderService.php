@@ -57,7 +57,7 @@ class PurchaseOrderService extends BaseService
     }
 
     /**
-     * @param  array<int, array{item_sku?: string, item_name: string, unit: string, quantity: float, unit_price: float}>  $items
+     * @param  array<int, array{item_type: 'supply'|'tool', item_id: int, quantity: float}>  $items
      */
     public function create(array $data): PurchaseOrder
     {
@@ -74,15 +74,45 @@ class PurchaseOrderService extends BaseService
             );
         }
 
-        $items = $data['items'];
+        $items = collect($data['items'])->map(function (array $item) use ($supplier) {
+            // Las solicitudes existentes conservan su flujo histórico hasta que se
+            // apruebe el diagrama solicitud -> orden -> recepción. La API de nuevas
+            // órdenes, en cambio, exige supply_id mediante su FormRequest.
+            if (! isset($item['item_type'])) {
+                return [
+                    'supply_id' => null,
+                    'item_sku' => $item['item_sku'] ?? null,
+                    'item_name' => $item['item_name'],
+                    'unit' => $item['unit'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                ];
+            }
+
+            $relation = $item['item_type'] === 'tool' ? $supplier->tools() : $supplier->supplies();
+            $catalogItem = $relation->whereKey($item['item_id'])->first();
+
+            if (! $catalogItem) {
+                throw new \DomainException('Cada ítem de la orden debe estar registrado en el catálogo del proveedor seleccionado.');
+            }
+
+            return [
+                'supply_id' => $item['item_type'] === 'supply' ? $catalogItem->id : null,
+                'tool_id' => $item['item_type'] === 'tool' ? $catalogItem->id : null,
+                'item_sku' => $item['item_type'] === 'supply' ? $catalogItem->sku : 'HERR-'.$catalogItem->id,
+                'item_name' => $catalogItem->name,
+                'unit' => $item['item_type'] === 'supply' ? $catalogItem->unit : 'unidad',
+                'quantity' => $item['quantity'],
+                'unit_price' => $catalogItem->pivot->unit_price,
+            ];
+        })->all();
         $total = collect($items)->sum(fn ($item) => $item['quantity'] * $item['unit_price']);
         $estimatedDeliveryDate = $data['estimated_delivery_date']
             ?? Carbon::today()->addDays(self::DEFAULT_LEAD_TIME_DAYS)->toDateString();
-        $orderNumber = $data['order_number'] ?? '';
 
-        $order = DB::transaction(function () use ($orderNumber, $supplier, $items, $total, $estimatedDeliveryDate, $data) {
+        $order = DB::transaction(function () use ($supplier, $items, $total, $estimatedDeliveryDate, $data) {
             $order = $this->purchaseOrderRepository->create([
-                'order_number' => $orderNumber !== '' ? $orderNumber : $this->purchaseOrderRepository->nextOrderNumber(),
+                'order_number' => $this->purchaseOrderRepository->nextOrderNumber(),
                 'supplier_id' => $supplier->id,
                 'created_by' => $data['created_by'] ?? null,
                 'status' => PurchaseOrder::STATUS_ISSUED,
@@ -94,7 +124,9 @@ class PurchaseOrderService extends BaseService
             foreach ($items as $item) {
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
-                    'item_sku' => ! empty($item['item_sku']) ? $item['item_sku'] : $this->generateItemSku(),
+                    'supply_id' => $item['supply_id'],
+                    'tool_id' => $item['tool_id'] ?? null,
+                    'item_sku' => $item['item_sku'],
                     'item_name' => $item['item_name'],
                     'unit' => $item['unit'],
                     'quantity' => $item['quantity'],
@@ -106,17 +138,6 @@ class PurchaseOrderService extends BaseService
         });
 
         return $this->purchaseOrderRepository->findWithRelations($order->id);
-    }
-
-    /**
-     * SKU autogenerado para ítems sin uno propio (mismo patrón que
-     * Inventory\Repositories\Eloquent\SupplyRepository::generateUniqueSku()).
-     */
-    private function generateItemSku(): string
-    {
-        $maxId = PurchaseOrderItem::max('id') ?? 0;
-
-        return 'OC-ITEM-'.str_pad($maxId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     public function receive(int $orderId, array $data): array
@@ -132,7 +153,6 @@ class PurchaseOrderService extends BaseService
                 'purchase_order_id' => $order->id,
                 'received_by' => $data['received_by'] ?? null,
                 'received_at' => now(),
-                'substrate_temperature' => $data['substrate_temperature'] ?? null,
                 'quality_status' => $data['quality_status'],
                 'observations' => $data['observations'] ?? null,
                 'photo_evidence_url' => $data['photo_evidence_url'] ?? null,
@@ -151,16 +171,9 @@ class PurchaseOrderService extends BaseService
             return $receipt;
         });
 
-        $temperature = $data['substrate_temperature'] ?? null;
-        $temperatureWarning = null;
-        if ($temperature !== null && ((float) $temperature < 18 || (float) $temperature > 24)) {
-            $temperatureWarning = "Advertencia: la temperatura del sustrato registrada ({$temperature}°C) está fuera del rango óptimo recomendado (18-24°C).";
-        }
-
         return [
             'receipt' => $receipt,
             'order' => $this->purchaseOrderRepository->findWithRelations($order->id),
-            'temperature_warning' => $temperatureWarning,
         ];
     }
 
@@ -199,6 +212,15 @@ class PurchaseOrderService extends BaseService
             })
             ->sortBy('estimated_delivery_date')
             ->values()
+            ->all();
+    }
+
+    public function unregisteredSupplies(): array
+    {
+        return \App\Modules\Inventory\Models\Supply::query()
+            ->whereDoesntHave('purchaseOrderItems')
+            ->orderBy('name')
+            ->get(['id', 'sku', 'name', 'unit'])
             ->all();
     }
 }

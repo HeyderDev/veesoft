@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { logisticsService } from '../services/logisticsService';
-import type { PurchaseRequest, PurchaseRequestItemInput, Supplier } from '../types';
+import type { PurchaseRequest, PurchaseRequestItemInput, Supplier, SupplierCatalogItem } from '../types';
+import type { Supply, Tool } from '../../Inventory/types';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -11,23 +13,34 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-const emptyItem: PurchaseRequestItemInput = { item_sku: '', item_name: '', unit: '', quantity: 1 };
+const emptyItem: PurchaseRequestItemInput = { item_type: 'supply', item_id: '', quantity: 1 };
 
 export function usePurchaseRequestsViewModel() {
+  const { isAdmin } = useAuth();
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<SupplierCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { success, error } = useToast();
 
   const fetchAll = async () => {
     setIsLoading(true);
     try {
-      const [requestsRes, suppliersRes] = await Promise.all([
+      const [requestsRes, suppliersRes, suppliesRes, toolsRes] = await Promise.all([
         logisticsService.getPurchaseRequests(),
-        logisticsService.getSuppliers(),
+        isAdmin ? logisticsService.getSuppliers() : Promise.resolve({ data: [] as Supplier[] }),
+        logisticsService.getInventorySupplies(),
+        logisticsService.getInventoryTools(),
       ]);
       setRequests(requestsRes.data || []);
       setSuppliers(suppliersRes.data || []);
+      const supplies = (suppliesRes.data as unknown as Supply[] || []).map(supply => ({
+        item_type: 'supply' as const, item_id: supply.id, code: supply.sku, name: supply.name, unit: supply.unit, unit_price: '0',
+      }));
+      const tools = (toolsRes.data as unknown as Tool[] || []).map(tool => ({
+        item_type: 'tool' as const, item_id: tool.id, code: `HERR-${tool.id}`, name: tool.name, unit: 'unidad', unit_price: '0',
+      }));
+      setInventoryItems([...supplies, ...tools]);
     } catch (err) {
       error('Error al cargar las solicitudes de aprovisionamiento');
       console.error(err);
@@ -36,7 +49,7 @@ export function usePurchaseRequestsViewModel() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [isAdmin]);
 
   // ---- Solicitud: crear ----
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -76,8 +89,8 @@ export function usePurchaseRequestsViewModel() {
   // ---- Solicitud: revisar (aprobar → genera orden, o rechazar) ----
   const [reviewTarget, setReviewTarget] = useState<PurchaseRequest | undefined>(undefined);
   const [reviewForm, setReviewForm] = useState<{
-    order_number: string; supplier_id: number | ''; estimated_delivery_date: string; unit_prices: Record<number, number>;
-  }>({ order_number: '', supplier_id: '', estimated_delivery_date: '', unit_prices: {} });
+    order_number: string; supplier_id: number | ''; estimated_delivery_date: string;
+  }>({ order_number: '', supplier_id: '', estimated_delivery_date: '' });
   const [isReviewing, setIsReviewing] = useState(false);
 
   const openReview = (request: PurchaseRequest) => {
@@ -86,17 +99,12 @@ export function usePurchaseRequestsViewModel() {
       order_number: '',
       supplier_id: '',
       estimated_delivery_date: '',
-      unit_prices: Object.fromEntries((request.items ?? []).map(item => [item.id, 0])),
     });
     logisticsService.getNextOrderNumber()
       .then(res => setReviewForm(prev => ({ ...prev, order_number: res.data?.order_number ?? '' })))
       .catch(err => console.error(err));
   };
   const closeReview = () => setReviewTarget(undefined);
-
-  const setUnitPrice = (itemId: number, price: number) => {
-    setReviewForm(prev => ({ ...prev, unit_prices: { ...prev.unit_prices, [itemId]: price } }));
-  };
 
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +116,6 @@ export function usePurchaseRequestsViewModel() {
         order_number: reviewForm.order_number,
         supplier_id: reviewForm.supplier_id,
         estimated_delivery_date: reviewForm.estimated_delivery_date || undefined,
-        unit_prices: reviewForm.unit_prices,
       });
       success('Solicitud aprobada: orden de compra generada');
       await fetchAll();
@@ -137,8 +144,8 @@ export function usePurchaseRequestsViewModel() {
   };
 
   return {
-    requests, suppliers, isLoading, fetchAll,
+    requests, suppliers, inventoryItems, isLoading, fetchAll,
     isFormOpen, openCreate, closeForm, reason, setReason, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
-    reviewTarget, openReview, closeReview, reviewForm, setReviewForm, setUnitPrice, isReviewing, handleApprove, handleReject,
+    reviewTarget, openReview, closeReview, reviewForm, setReviewForm, isReviewing, handleApprove, handleReject,
   };
 }

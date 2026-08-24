@@ -8,8 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasColumn('suppliers', 'vivero_id')) {
+            Schema::table('suppliers', function (Blueprint $table) {
+                $table->foreignId('vivero_id')->nullable()->after('id');
+            });
+        }
+
         Schema::table('suppliers', function (Blueprint $table) {
-            $table->foreignId('vivero_id')->nullable()->after('id')->constrained('viveros')->cascadeOnDelete();
+            $table->foreign('vivero_id')->references('id')->on('viveros')->cascadeOnDelete();
         });
     }
 

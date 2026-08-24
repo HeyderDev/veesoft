@@ -58,4 +58,12 @@ class PurchaseOrderController extends BaseApiController
             'Calendario de entregas pendientes obtenido'
         );
     }
+
+    public function unregisteredSupplies()
+    {
+        return $this->successResponse(
+            $this->purchaseOrderService->unregisteredSupplies(),
+            'Insumos sin orden de compra registrada obtenidos'
+        );
+    }
 }
