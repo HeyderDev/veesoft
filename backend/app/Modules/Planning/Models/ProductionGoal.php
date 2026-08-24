@@ -44,6 +44,11 @@ class ProductionGoal extends Model
         return $this->hasMany(Dispatch::class, 'production_goal_id');
     }
 
+    public function lotCycles(): HasMany
+    {
+        return $this->hasMany(LotCycle::class, 'production_goal_id');
+    }
+
     public function isCulminated(): bool
     {
         return $this->finished_at !== null;
