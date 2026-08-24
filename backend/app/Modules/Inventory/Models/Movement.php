@@ -70,6 +70,11 @@ class Movement extends Model
         return $this->belongsTo(ToolUnit::class);
     }
 
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class);
+    }
+
     public function operationalTask(): BelongsTo
     {
         // Operational tasks seem to not be in a module? Wait, they are in DB, but I'll need to check the exact namespace. 

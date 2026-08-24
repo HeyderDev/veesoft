@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tool extends Model
 {
-    use BelongsToVivero, HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToVivero;
 
     protected $fillable = [
         'vivero_id', 'name', 'description',

@@ -7,6 +7,7 @@ import MaintenancePage from '../pages/MaintenancePage';
 import ReportsPage from '../pages/ReportsPage';
 
 import { ScannerPage } from '../pages/ScannerPage';
+import StudentsPage from '../pages/StudentsPage';
 
 export const inventoryRoutes: RouteObject[] = [
   {
@@ -36,5 +37,9 @@ export const inventoryRoutes: RouteObject[] = [
   {
     path: 'reportes',
     element: <ReportsPage />,
+  },
+  {
+    path: 'estudiantes',
+    element: <StudentsPage />,
   },
 ];
