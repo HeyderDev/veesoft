@@ -51,7 +51,8 @@
       "Bash('C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe' 'C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--proyectoWeb-vivero\\\\d25ca494-4ecf-48be-9d85-a581569c194b\\\\scratchpad\\\\edit_cap5.py')",
       "Bash('C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe' 'C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--proyectoWeb-vivero\\\\d25ca494-4ecf-48be-9d85-a581569c194b\\\\scratchpad\\\\edit_cap6_resumen.py')",
       "Bash('C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe' 'C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--proyectoWeb-vivero\\\\d25ca494-4ecf-48be-9d85-a581569c194b\\\\scratchpad\\\\edit_4412_fix.py')",
-      "Bash('C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe' 'C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--proyectoWeb-vivero\\\\d25ca494-4ecf-48be-9d85-a581569c194b\\\\scratchpad\\\\edit_4412_fix2.py')"
+      "Bash('C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe' 'C:\\\\Users\\\\heyde\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--proyectoWeb-vivero\\\\d25ca494-4ecf-48be-9d85-a581569c194b\\\\scratchpad\\\\edit_4412_fix2.py')",
+      "Bash(pandoc -t markdown \"AVANCE 23-07.docx\" -o avance.md)"
     ]
   }
 }

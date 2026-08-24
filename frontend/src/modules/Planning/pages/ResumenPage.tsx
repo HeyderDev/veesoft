@@ -20,6 +20,7 @@ export const ResumenPage: React.FC<ResumenPageProps> = ({ viveroId }) => {
   const {
     summary, lots, isLoadingSummary,
     dispatchedSeedlings, isLoadingDispatched,
+    goalLotCycles, isLoadingGoalLotCycles,
     selectedYear, setSelectedYear,
     goalForm, setGoalForm, isSavingGoal, handleCreateGoal,
     rescheduleTarget, openReschedule, closeReschedule, isReschedulingSaving, handleConfirmReschedule,
@@ -165,6 +166,46 @@ export const ResumenPage: React.FC<ResumenPageProps> = ({ viveroId }) => {
 
           {/* Calendario a ancho completo */}
           <LotCalendarView lots={lots} onReschedule={openReschedule} />
+
+          {/* Histórico de ciclos de la meta actual */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <h3 className="font-bold text-slate-800 text-lg mb-1">Histórico de la meta</h3>
+            <p className="text-xs text-slate-500 mb-4">Todos los ciclos de lote asociados a "{summary.open_goal.title}"</p>
+            {isLoadingGoalLotCycles ? (
+              <Skeleton className="h-24 w-full rounded-lg" />
+            ) : goalLotCycles.length === 0 ? (
+              <p className="text-sm text-slate-400">Todavía no hay ciclos registrados para esta meta.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <th className="py-2 pr-4 font-medium">Lote</th>
+                      <th className="py-2 pr-4 font-medium">Iniciado</th>
+                      <th className="py-2 pr-4 font-medium">Estado</th>
+                      <th className="py-2 pr-4 font-medium">Última fase iniciada</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {goalLotCycles.map(cycle => (
+                      <tr key={cycle.id} className="border-b border-slate-50 last:border-0">
+                        <td className="py-2 pr-4 font-medium text-slate-700">{cycle.lot?.name ?? `Lote #${cycle.lot_id}`}</td>
+                        <td className="py-2 pr-4 text-slate-500">{cycle.started_at}</td>
+                        <td className="py-2 pr-4">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cycle.status === 'dispatched' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'}`}>
+                            {cycle.status === 'dispatched' ? 'Despachado' : 'En curso'}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4 text-slate-500">
+                          {cycle.phases?.slice().sort((a, b) => (a.planned_start_date > b.planned_start_date ? -1 : 1))[0]?.phase?.name ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           {/* Proyección vs Realidad, a ancho completo, con filtro de año */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">

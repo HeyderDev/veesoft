@@ -53,4 +53,11 @@ class ProductionGoalController extends BaseApiController
 
         return $this->successResponse($goal, 'Meta culminada');
     }
+
+    public function lotCycles(int $productionGoal)
+    {
+        $lotCycles = $this->goalService->getLotCycles($productionGoal);
+
+        return $this->successResponse($lotCycles, 'Historial de ciclos de la meta obtenido');
+    }
 }

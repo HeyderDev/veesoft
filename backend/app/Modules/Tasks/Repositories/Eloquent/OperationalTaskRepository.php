@@ -18,7 +18,7 @@ class OperationalTaskRepository extends BaseRepository implements OperationalTas
 
     public function paginateWithRelations(int $perPage = 15): LengthAwarePaginator
     {
-        return $this->model->with(['assignedTo', 'resources'])
+        return $this->model->with(['assignedTo', 'resources', 'lotCyclePhase.lotCycle.lot'])
             ->whereNull('lot_cycle_phase_id')
             ->latest()
             ->paginate($perPage);
@@ -26,7 +26,7 @@ class OperationalTaskRepository extends BaseRepository implements OperationalTas
 
     public function findWithRelations(int $id)
     {
-        return $this->model->with(['assignedTo', 'resources'])->findOrFail($id);
+        return $this->model->with(['assignedTo', 'resources', 'lotCyclePhase.lotCycle.lot'])->findOrFail($id);
     }
 
     public function getTasksByAssignee(int $userId): Collection
