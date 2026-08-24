@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
 import { useSuppliersViewModel } from '../viewmodels/useSuppliersViewModel';
+import type { Supplier, UnregisteredItem } from '../types';
 
 function scoreBadgeVariant(score: string): 'success' | 'warning' | 'danger' {
   const value = Number(score);
@@ -20,7 +21,13 @@ const evaluationCriteria: { key: 'compliance' | 'quality' | 'punctuality' | 'pri
   { key: 'compliance', label: 'Cumplimiento', weight: 'informativo' },
 ];
 
-export const SuppliersPage: React.FC = () => {
+interface SuppliersPageProps {
+  /** Ítem que viene desde el aviso de "Ítems sin orden de compra" de Órdenes, esperando vincularse al catálogo de un proveedor. */
+  pendingLinkItem?: UnregisteredItem | null;
+  onLinkHandled?: () => void;
+}
+
+export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, onLinkHandled }) => {
   const {
     suppliers, certificateAlerts, isLoading,
     isFormOpen, editSupplier, openCreate, openEdit, closeForm, form, setForm, isSaving, handleSave, handleDelete,
@@ -28,6 +35,15 @@ export const SuppliersPage: React.FC = () => {
     isCatalogOpen, catalogSupplier, availableSupplies, catalogItems, openCatalog, closeCatalog,
     addCatalogItem, removeCatalogItem, updateCatalogItem, saveCatalog, isSavingCatalog,
   } = useSuppliersViewModel();
+
+  const handleOpenCatalog = (supplier: Supplier) => {
+    if (pendingLinkItem) {
+      openCatalog(supplier, { item_type: pendingLinkItem.item_type, item_id: pendingLinkItem.item_id });
+      onLinkHandled?.();
+    } else {
+      openCatalog(supplier);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -38,6 +54,21 @@ export const SuppliersPage: React.FC = () => {
         </div>
         <Button onClick={openCreate}>+ Nuevo Proveedor</Button>
       </div>
+
+      {pendingLinkItem && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-amber-800">
+            Vincula <strong>{pendingLinkItem.name}</strong> al catálogo de un proveedor: haz clic en <strong>&quot;Catálogo&quot;</strong> del proveedor que lo suministrará.
+          </p>
+          <button
+            type="button"
+            onClick={() => onLinkHandled?.()}
+            className="text-xs font-medium text-amber-700 hover:text-amber-900 whitespace-nowrap"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
 
       {!isLoading && certificateAlerts.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -92,7 +123,7 @@ export const SuppliersPage: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
                     <Button variant="ghost" onClick={() => openEvaluate(supplier)}>Evaluar</Button>
-                    <Button variant="ghost" onClick={() => openCatalog(supplier)}>Catálogo</Button>
+                    <Button variant="ghost" onClick={() => handleOpenCatalog(supplier)}>Catálogo</Button>
                     <Button variant="ghost" onClick={() => openEdit(supplier)}>Editar</Button>
                     <Button variant="danger" onClick={() => handleDelete(supplier)}>Eliminar</Button>
                   </td>

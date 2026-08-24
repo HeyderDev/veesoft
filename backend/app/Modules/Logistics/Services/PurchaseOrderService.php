@@ -2,6 +2,8 @@
 
 namespace App\Modules\Logistics\Services;
 
+use App\Modules\Inventory\Models\Supply;
+use App\Modules\Inventory\Models\Tool;
 use App\Modules\Logistics\Events\PurchaseOrderReceived;
 use App\Modules\Logistics\Models\PurchaseOrder;
 use App\Modules\Logistics\Models\PurchaseOrderItem;
@@ -51,11 +53,6 @@ class PurchaseOrderService extends BaseService
         return $this->purchaseOrderRepository->paginateForSupplier($supplierId, $perPage);
     }
 
-    public function nextOrderNumber(): string
-    {
-        return $this->purchaseOrderRepository->nextOrderNumber();
-    }
-
     /**
      * @param  array<int, array{item_type: 'supply'|'tool', item_id: int, quantity: float}>  $items
      */
@@ -75,20 +72,6 @@ class PurchaseOrderService extends BaseService
         }
 
         $items = collect($data['items'])->map(function (array $item) use ($supplier) {
-            // Las solicitudes existentes conservan su flujo histórico hasta que se
-            // apruebe el diagrama solicitud -> orden -> recepción. La API de nuevas
-            // órdenes, en cambio, exige supply_id mediante su FormRequest.
-            if (! isset($item['item_type'])) {
-                return [
-                    'supply_id' => null,
-                    'item_sku' => $item['item_sku'] ?? null,
-                    'item_name' => $item['item_name'],
-                    'unit' => $item['unit'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                ];
-            }
-
             $relation = $item['item_type'] === 'tool' ? $supplier->tools() : $supplier->supplies();
             $catalogItem = $relation->whereKey($item['item_id'])->first();
 
@@ -201,7 +184,7 @@ class PurchaseOrderService extends BaseService
                 return $order->items->map(fn (PurchaseOrderItem $item) => [
                     'purchase_order_id' => $order->id,
                     'order_number' => $order->order_number,
-                    'estimated_delivery_date' => $order->estimated_delivery_date,
+                    'estimated_delivery_date' => $order->estimated_delivery_date?->toDateString(),
                     'supplier_name' => $order->supplier->name,
                     'item_sku' => $item->item_sku,
                     'item_name' => $item->item_name,
@@ -215,12 +198,66 @@ class PurchaseOrderService extends BaseService
             ->all();
     }
 
-    public function unregisteredSupplies(): array
+    /**
+     * Insumos y herramientas del inventario que nunca han aparecido en un ítem de
+     * orden de compra, para avisar en el panel de Órdenes. Cada ítem lleva el ID
+     * del proveedor (si existe alguno en su catálogo) que el frontend usa para
+     * decidir si abre directamente "Nueva Orden" o pide vincular un catálogo.
+     */
+    public function unregisteredItems(): array
     {
-        return \App\Modules\Inventory\Models\Supply::query()
+        $supplies = Supply::query()
             ->whereDoesntHave('purchaseOrderItems')
             ->orderBy('name')
             ->get(['id', 'sku', 'name', 'unit'])
-            ->all();
+            ->map(fn ($supply) => [
+                'item_type' => 'supply',
+                'item_id' => $supply->id,
+                'sku' => $supply->sku,
+                'name' => $supply->name,
+                'unit' => $supply->unit,
+                'supplier_id' => $this->bestSupplierIdFor('supply', $supply->id),
+            ]);
+
+        $tools = Tool::query()
+            ->whereDoesntHave('purchaseOrderItems')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($tool) => [
+                'item_type' => 'tool',
+                'item_id' => $tool->id,
+                'sku' => null,
+                'name' => $tool->name,
+                'unit' => 'unidad',
+                'supplier_id' => $this->bestSupplierIdFor('tool', $tool->id),
+            ]);
+
+        return $supplies->concat($tools)->sortBy('name')->values()->all();
+    }
+
+    /**
+     * Entre los proveedores que ofrecen el ítem en su catálogo, prioriza uno
+     * habilitado para recibir órdenes (activo + score >= mínimo); si ninguno lo
+     * cumple, devuelve el de mejor score para que el frontend igual lo preseleccione
+     * y muestre la advertencia existente del formulario de "Nueva Orden".
+     */
+    private function bestSupplierIdFor(string $itemType, int $itemId): ?int
+    {
+        $relationName = $itemType === 'tool' ? 'tools' : 'supplies';
+
+        $suppliers = Supplier::query()
+            ->whereHas($relationName, fn ($query) => $query->whereKey($itemId))
+            ->get(['id', 'status', 'score']);
+
+        if ($suppliers->isEmpty()) {
+            return null;
+        }
+
+        $eligible = $suppliers->first(
+            fn (Supplier $supplier) => $supplier->status === Supplier::STATUS_ACTIVE
+                && (float) $supplier->score >= SupplierService::MINIMUM_SCORE_FOR_ORDERS
+        );
+
+        return ($eligible ?? $suppliers->sortByDesc('score')->first())->id;
     }
 }

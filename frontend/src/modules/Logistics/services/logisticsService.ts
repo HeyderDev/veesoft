@@ -2,7 +2,7 @@ import axiosClient from '../../../shared/services/axiosClient';
 import type {
   PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, PurchaseRequest,
   PurchaseRequestItemInput, QualityStatus, Supplier, SupplierEvaluationInput, SupplierCatalogItem,
-  CertificateAlert, UnregisteredSupply,
+  CertificateAlert, UnregisteredItem,
 } from '../types';
 
 /**
@@ -35,9 +35,7 @@ export const logisticsService = {
     quality_status: QualityStatus; observations?: string; photo_evidence_url?: string;
   }) => axiosClient.post(`/purchase-orders/${id}/receive`, data),
   getPendingDeliveries: () => axiosClient.get<PendingDeliveryItem[]>('/purchase-orders/pending-deliveries'),
-  // Se conserva para el flujo de solicitudes existente, pendiente de rediseño en Fase 3.
-  getNextOrderNumber: () => axiosClient.get<{ order_number: string }>('/purchase-orders/next-number'),
-  getUnregisteredSupplies: () => axiosClient.get<UnregisteredSupply[]>('/purchase-orders/unregistered-supplies'),
+  getUnregisteredItems: () => axiosClient.get<UnregisteredItem[]>('/purchase-orders/unregistered-items'),
 
   // ---- Solicitudes de aprovisionamiento ----
   getPurchaseRequests: () => axiosClient.get<PurchaseRequest[]>('/purchase-requests'),
@@ -45,6 +43,6 @@ export const logisticsService = {
     axiosClient.post<PurchaseRequest>('/purchase-requests', data),
   getPurchaseRequest: (id: number) => axiosClient.get<PurchaseRequest>(`/purchase-requests/${id}`),
   reviewPurchaseRequest: (id: number, data: {
-    decision: 'approved' | 'rejected'; order_number?: string; supplier_id?: number; estimated_delivery_date?: string;
+    decision: 'approved' | 'rejected'; supplier_id?: number; estimated_delivery_date?: string;
   }) => axiosClient.post(`/purchase-requests/${id}/review`, data),
 };

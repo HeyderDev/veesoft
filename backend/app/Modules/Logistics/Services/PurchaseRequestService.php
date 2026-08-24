@@ -104,7 +104,6 @@ class PurchaseRequestService extends BaseService
         }
 
         $order = $this->purchaseOrderService->create([
-            'order_number' => $data['order_number'] ?? '',
             'supplier_id' => $data['supplier_id'],
             'created_by' => $reviewedBy,
             'estimated_delivery_date' => $data['estimated_delivery_date'] ?? null,

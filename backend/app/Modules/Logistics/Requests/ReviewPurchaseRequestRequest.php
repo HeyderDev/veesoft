@@ -15,7 +15,6 @@ class ReviewPurchaseRequestRequest extends FormRequest
     {
         return [
             'decision' => 'required|in:approved,rejected',
-            'order_number' => 'nullable|string|max:30|unique:purchase_orders,order_number',
             'supplier_id' => 'required_if:decision,approved|integer|exists:suppliers,id',
             'estimated_delivery_date' => 'nullable|date',
         ];

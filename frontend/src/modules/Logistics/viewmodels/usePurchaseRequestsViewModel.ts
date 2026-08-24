@@ -15,7 +15,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 
 const emptyItem: PurchaseRequestItemInput = { item_type: 'supply', item_id: '', quantity: 1 };
 
-export function usePurchaseRequestsViewModel() {
+export function usePurchaseRequestsViewModel(onApproved?: () => void) {
   const { isAdmin } = useAuth();
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -89,20 +89,16 @@ export function usePurchaseRequestsViewModel() {
   // ---- Solicitud: revisar (aprobar → genera orden, o rechazar) ----
   const [reviewTarget, setReviewTarget] = useState<PurchaseRequest | undefined>(undefined);
   const [reviewForm, setReviewForm] = useState<{
-    order_number: string; supplier_id: number | ''; estimated_delivery_date: string;
-  }>({ order_number: '', supplier_id: '', estimated_delivery_date: '' });
+    supplier_id: number | ''; estimated_delivery_date: string;
+  }>({ supplier_id: '', estimated_delivery_date: '' });
   const [isReviewing, setIsReviewing] = useState(false);
 
   const openReview = (request: PurchaseRequest) => {
     setReviewTarget(request);
     setReviewForm({
-      order_number: '',
       supplier_id: '',
       estimated_delivery_date: '',
     });
-    logisticsService.getNextOrderNumber()
-      .then(res => setReviewForm(prev => ({ ...prev, order_number: res.data?.order_number ?? '' })))
-      .catch(err => console.error(err));
   };
   const closeReview = () => setReviewTarget(undefined);
 
@@ -113,13 +109,13 @@ export function usePurchaseRequestsViewModel() {
     try {
       await logisticsService.reviewPurchaseRequest(reviewTarget.id, {
         decision: 'approved',
-        order_number: reviewForm.order_number,
         supplier_id: reviewForm.supplier_id,
         estimated_delivery_date: reviewForm.estimated_delivery_date || undefined,
       });
       success('Solicitud aprobada: orden de compra generada');
       await fetchAll();
       closeReview();
+      onApproved?.();
     } catch (err) {
       error(extractErrorMessage(err, 'Error al aprobar la solicitud'));
       console.error(err);
