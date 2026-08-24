@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { trackingService } from '../../Tracking/services/trackingService';
 import { planningService } from '../services/planningService';
-import type { Lote, ViveroSummary } from '../types';
+import type { Lote, LotCycleHistoryEntry, ViveroSummary } from '../types';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -27,6 +27,10 @@ export function useResumenViewModel(viveroId: number) {
   const [dispatchedSeedlings, setDispatchedSeedlings] = useState<number | undefined>(undefined);
   const [isLoadingDispatched, setIsLoadingDispatched] = useState(false);
 
+  // Histórico "lotes por meta, y dentro de cada meta por ciclo" (Fase 5).
+  const [goalLotCycles, setGoalLotCycles] = useState<LotCycleHistoryEntry[]>([]);
+  const [isLoadingGoalLotCycles, setIsLoadingGoalLotCycles] = useState(false);
+
   const fetchSummary = async (year: number) => {
     setIsLoadingSummary(true);
     try {
@@ -39,6 +43,7 @@ export function useResumenViewModel(viveroId: number) {
 
       const openGoalId = resSummary.data.open_goal?.id;
       setDispatchedSeedlings(undefined);
+      setGoalLotCycles([]);
       if (openGoalId) {
         setIsLoadingDispatched(true);
         try {
@@ -48,6 +53,16 @@ export function useResumenViewModel(viveroId: number) {
           console.error(e);
         } finally {
           setIsLoadingDispatched(false);
+        }
+
+        setIsLoadingGoalLotCycles(true);
+        try {
+          const resGoalLotCycles = await planningService.getGoalLotCycles(openGoalId);
+          setGoalLotCycles(resGoalLotCycles.data || []);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsLoadingGoalLotCycles(false);
         }
       }
     } catch (e) {
@@ -107,6 +122,7 @@ export function useResumenViewModel(viveroId: number) {
   return {
     summary, lots, isLoadingSummary,
     dispatchedSeedlings, isLoadingDispatched,
+    goalLotCycles, isLoadingGoalLotCycles,
     selectedYear, setSelectedYear,
     goalForm, setGoalForm, isSavingGoal, handleCreateGoal,
     rescheduleTarget, openReschedule, closeReschedule, isReschedulingSaving, handleConfirmReschedule,

@@ -2,7 +2,9 @@
 
 namespace App\Modules\Tasks\Services;
 
+use App\Modules\Planning\Services\LotCycleService;
 use App\Modules\Shared\Services\BaseService;
+use App\Modules\Shared\Support\GatedPhaseCatalog;
 use App\Modules\Tasks\Models\OperationalTask;
 use App\Modules\Tasks\Models\TaskResource;
 use App\Modules\Tasks\Repositories\Contracts\OperationalTaskRepositoryInterface;
@@ -11,8 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class OperationalTaskService extends BaseService
 {
-    public function __construct(OperationalTaskRepositoryInterface $repository)
-    {
+    public function __construct(
+        OperationalTaskRepositoryInterface $repository,
+        private LotCycleService $lotCycleService,
+    ) {
         parent::__construct($repository);
     }
 
@@ -130,13 +134,23 @@ class OperationalTaskService extends BaseService
 
     public function completeTask(int $taskId, int $completedBy): void
     {
-        $this->repository->find($taskId);
+        $task = $this->repository->find($taskId)->load('activityType');
 
         $this->repository->update($taskId, [
             'status' => 'completed',
             'completed_date' => now(),
             'completed_by' => $completedBy,
         ]);
+
+        // Si esta tarea satisface una actividad obligatoria (Siembra/Injerto/
+        // Despacho), avisa a Planning para que deje de congelar esa fase — ver
+        // GatedPhaseCatalog y LotCycleService::markGateSatisfied().
+        $systemCode = $task->activityType?->system_code;
+        $phaseCode = $systemCode ? GatedPhaseCatalog::phaseCodeForActivity($systemCode) : null;
+
+        if ($phaseCode && $task->lot_cycle_phase_id) {
+            $this->lotCycleService->markGateSatisfied($task->lot_cycle_phase_id, now(), $completedBy);
+        }
     }
 
     public function getTasksByAssignee(int $userId)
