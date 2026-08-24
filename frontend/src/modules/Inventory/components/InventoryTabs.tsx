@@ -38,6 +38,7 @@ export const InventoryTabs: React.FC<InventoryTabsProps> = ({ onTabChange }) => 
       {activeSection === 'insumos' && <SuppliesPage />}
       {activeSection === 'historial' && <MovementsPage />}
       {activeSection === 'mantenimiento' && <MaintenancePage />}
+      {activeSection === 'estudiantes' && <StudentsPage />}
       {activeSection === 'reportes' && <ReportsPage />}
     </div>
   );
