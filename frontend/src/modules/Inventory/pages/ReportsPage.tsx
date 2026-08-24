@@ -3,10 +3,12 @@ import { Download } from 'lucide-react';
 import { useToolsViewModel } from '../viewmodels/useToolsViewModel';
 import { useSuppliesViewModel } from '../viewmodels/useSuppliesViewModel';
 import { useMovementsViewModel } from '../viewmodels/useMovementsViewModel';
+import { useStudentsViewModel } from '../viewmodels/useStudentsViewModel';
 
-type ReportTab = 'herramientas' | 'insumos' | 'movimientos';
+type ReportTab = 'estudiantes' | 'herramientas' | 'insumos' | 'movimientos';
 
 const reportTabLabels: Record<ReportTab, string> = {
+  estudiantes: 'Estudiantes',
   herramientas: 'Herramientas',
   insumos: 'Insumos',
   movimientos: 'Movimientos',
@@ -16,6 +18,7 @@ export default function ReportsPage() {
   const { tools, loadTools } = useToolsViewModel();
   const { supplies, loadSupplies } = useSuppliesViewModel();
   const { movements, loadMovements } = useMovementsViewModel();
+  const { students, loadStudents } = useStudentsViewModel();
 
   const [activeTab, setActiveTab] = useState<ReportTab>('herramientas');
 
@@ -26,6 +29,7 @@ export default function ReportsPage() {
   const [iSearch, setISearch] = useState('');
   const [iAlertOnly, setIAlertOnly] = useState(false);
 
+  const [sSearch, setSSearch] = useState('');
   // Movimientos Filters
   const [mTipo, setMTipo] = useState('');
   const [mUsuario, setMUsuario] = useState('');
@@ -54,9 +58,65 @@ export default function ReportsPage() {
     loadMovements();
   };
 
-  // --- Filtered Data ---
+  // --- Loan calculations per student ---
+  const now = new Date();
+  const borrowedUnits: Record<number, { studentId: number; date: Date }> = {};
+  movements.forEach(ev => {
+    if (ev.type === 'BORROWED' || ev.type === 'BORROW') {
+      if (ev.tool_unit?.id) {
+        borrowedUnits[ev.tool_unit.id] = {
+          studentId: ev.student?.id,
+          date: new Date(ev.created_at),
+        };
+      }
+    } else if (ev.type === 'RETURN') {
+      if (ev.tool_unit?.id) {
+        delete borrowedUnits[ev.tool_unit.id];
+      }
+    }
+  });
 
-  // Herramientas
+  // Reset counters
+  let totalActiveLoans = 0;
+  let totalPendingLoans = 0;
+  students.forEach(s => {
+    (s as any).active_loans = 0;
+    (s as any).pending_loans = 0;
+  });
+
+  Object.values(borrowedUnits).forEach(({ studentId, date }) => {
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) {
+      totalActiveLoans++;
+      const s = students.find(st => st.id === studentId);
+      if (s) (s as any).active_loans++;
+    } else if (diffDays > 1) {
+      totalPendingLoans++;
+      const s = students.find(st => st.id === studentId);
+      if (s) (s as any).pending_loans++;
+    }
+  });
+
+  // Historic total remains as sum of all borrows
+  let totalHistoricLoans = 0;
+  students.forEach(s => {
+    totalHistoricLoans += s.total_borrows || 0;
+  });
+
+  // Use these totals in UI below (replace previous totalActiveLoans variable usage)
+  const totalStudents = students.length;
+  // Filtered students based on search input
+  const filteredStudents = students.filter(s => {
+    if (!sSearch) return true;
+    const term = sSearch.toLowerCase();
+    return (
+      (s.first_name?.toLowerCase().includes(term)) ||
+      (s.last_name?.toLowerCase().includes(term)) ||
+      (s.cedula?.toString().includes(term)) ||
+      (s.career?.toLowerCase().includes(term)) ||
+      (s.semester?.toString().includes(term))
+    );
+  });
   const filteredTools = tools.filter(t => {
     const matchSearch = hSearch === '' || t.name.toLowerCase().includes(hSearch.toLowerCase()) || t.description?.toLowerCase().includes(hSearch.toLowerCase());
     return matchSearch;
@@ -101,6 +161,7 @@ export default function ReportsPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-slate-100 pb-4 mb-6 print:hidden overflow-x-auto">
+          <button onClick={() => setActiveTab('estudiantes')} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${activeTab === 'estudiantes' ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Estudiantes</button>
           <button onClick={() => setActiveTab('herramientas')} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${activeTab === 'herramientas' ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Herramientas</button>
           <button onClick={() => setActiveTab('insumos')} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${activeTab === 'insumos' ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Insumos</button>
           <button onClick={() => setActiveTab('movimientos')} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${activeTab === 'movimientos' ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Movimientos</button>
@@ -114,6 +175,83 @@ export default function ReportsPage() {
           </div>
           <p className="text-xs text-slate-600 mt-0.5">Reporte de Inventario — {reportTabLabels[activeTab]}</p>
         </div>
+
+        {/* --- ESTUDIANTES TAB --- */}
+        {activeTab === 'estudiantes' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 text-center">
+              <div>
+                <p className="text-[10px] text-indigo-500 uppercase tracking-wider font-semibold">Total Estudiantes</p>
+                <p className="text-2xl font-extrabold text-indigo-900">{totalStudents}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-amber-500 uppercase tracking-wider font-semibold">Préstamos Activos (Mismo día)</p>
+                <p className="text-2xl font-extrabold text-amber-600">{totalActiveLoans}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-red-500 uppercase tracking-wider font-semibold">Préstamos Pendientes (&gt; 1 día)</p>
+                <p className="text-2xl font-extrabold text-red-600">{totalPendingLoans}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-emerald-500 uppercase tracking-wider font-semibold">Préstamos Históricos Totales</p>
+                <p className="text-2xl font-extrabold text-emerald-600">{totalHistoricLoans}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-4 rounded-2xl border border-slate-100 print:hidden">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">BUSCAR ESTUDIANTE</label>
+                <input type="text" placeholder="Nombre, apellido o cédula..." value={sSearch} onChange={e => setSSearch(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    <th className="px-5 py-3 font-bold text-slate-500">Estudiante</th>
+                    <th className="px-5 py-3 font-bold text-slate-500">Cédula</th>
+                    <th className="px-5 py-3 font-bold text-slate-500">Carrera</th>
+                    <th className="px-5 py-3 font-bold text-slate-500">Semestre</th>
+                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Préstamos Activos</th>
+                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Préstamos Pendientes</th>
+                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Total Préstamos</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredStudents.map(s => {
+                    const active = (s as any).active_loans || 0;
+                    const pending = (s as any).pending_loans || 0;
+                    const total = s.total_borrows || 0;
+                    return (
+                      <tr key={s.id}>
+                        <td className="px-5 py-3 font-bold text-slate-800">{s.first_name} {s.last_name}</td>
+                        <td className="px-5 py-3 font-mono text-slate-500">{s.cedula}</td>
+                        <td className="px-5 py-3 text-slate-600">{s.career || '-'}</td>
+                        <td className="px-5 py-3 text-slate-600">{s.semester || '-'}</td>
+                        <td className="px-5 py-3 text-center">
+                          {active > 0 ? <span className="inline-block px-2 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded font-bold">{active} Hoy</span> : <span className="text-slate-400">0</span>}
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          {pending > 0 ? <span className="inline-block px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded font-bold">{pending} {'>'}1d</span> : <span className="text-slate-400">0</span>}
+                        </td>
+                        <td className="px-5 py-3 text-center font-bold text-slate-600">{total}</td>
+                      </tr>
+                    );
+                  })}
+                  {filteredStudents.length === 0 && (
+                    <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">No hay estudiantes que coincidan con la búsqueda.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+)}
+
+
+        {/* Alert for pending loans */}
+        {/* Alert for pending loans removed per user request */}
+
 
         {/* --- HERRAMIENTAS TAB --- */}
         {activeTab === 'herramientas' && (
