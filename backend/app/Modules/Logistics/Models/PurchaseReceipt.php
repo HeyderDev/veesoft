@@ -18,13 +18,12 @@ class PurchaseReceipt extends Model
     public const QUALITY_CONDITIONAL = 'conditional';
 
     protected $fillable = [
-        'purchase_order_id', 'received_by', 'received_at', 'substrate_temperature',
+        'purchase_order_id', 'received_by', 'received_at',
         'quality_status', 'observations', 'photo_evidence_url',
     ];
 
     protected $casts = [
         'received_at' => 'datetime',
-        'substrate_temperature' => 'decimal:2',
     ];
 
     public function purchaseOrder(): BelongsTo

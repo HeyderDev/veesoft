@@ -40,7 +40,6 @@ Route::middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
         Route::delete('tool-units/{unit}', [ToolUnitController::class, 'destroy']);
 
         Route::apiResource('supplies', SupplyController::class)->except(['index', 'show']);
-        
         Route::post('students/import', [StudentController::class, 'importCsv']);
         Route::apiResource('students', StudentController::class)->except(['index', 'show']);
     });

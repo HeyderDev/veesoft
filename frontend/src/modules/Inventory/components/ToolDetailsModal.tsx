@@ -3,7 +3,6 @@ import { useState } from 'react';
 import clsx from 'clsx';
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
-import { inventoryService } from '../services/inventoryService';
 
 interface Props {
   tool: any; // Acutally tool-unit returned from code search, which has .tool relation

@@ -27,7 +27,6 @@ class Movement extends Model
         'tool_unit_id',
         'supply_id',
         'user_id',
-        'student_id',
         'operational_task_id',
         'type',
         'quantity',

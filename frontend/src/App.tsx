@@ -89,6 +89,7 @@ function AppShell() {
 function App() {
   return (
     <AuthProvider>
+
       <AuthGate>
         <ActiveViveroProvider>
           <ActiveViveroGate>

@@ -29,5 +29,17 @@ class DatabaseSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+
+        // Crear usuario operario
+        User::firstOrCreate(
+            ['email' => 'operario@vivero.com'],
+            [
+                'first_name' => 'Operario',
+                'last_name' => 'General',
+                'password' => Hash::make('password123'),
+                'role_id' => $operatorRole->id,
+                'status' => 'active',
+            ]
+        );
     }
 }

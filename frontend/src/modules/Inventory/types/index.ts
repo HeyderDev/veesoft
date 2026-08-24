@@ -48,7 +48,6 @@ export interface Movement {
   tool_unit_id: number | null;
   supply_id: number | null;
   user_id: number | null;
-  student_id: number | null;
   operational_task_id: number | null;
   type: string;
   quantity: number;

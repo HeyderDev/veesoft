@@ -124,11 +124,9 @@ class LogisticsCrudTest extends TestCase
 
         $receive = $this->postJson("/api/v1/purchase-orders/{$orderId}/receive", [
             'quality_status' => 'approved',
-            'substrate_temperature' => 30,
         ]);
         $receive->assertStatus(200)
-            ->assertJsonPath('data.order.status', 'received')
-            ->assertJsonPath('data.temperature_warning', fn ($value) => str_contains($value, 'Advertencia'));
+            ->assertJsonPath('data.order.status', 'received');
 
         $this->postJson("/api/v1/purchase-orders/{$orderId}/receive", [
             'quality_status' => 'approved',

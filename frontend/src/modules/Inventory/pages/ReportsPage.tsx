@@ -30,7 +30,6 @@ export default function ReportsPage() {
   const [iAlertOnly, setIAlertOnly] = useState(false);
 
   const [sSearch, setSSearch] = useState('');
-
   // Movimientos Filters
   const [mTipo, setMTipo] = useState('');
   const [mUsuario, setMUsuario] = useState('');
@@ -41,8 +40,7 @@ export default function ReportsPage() {
     loadTools();
     loadSupplies();
     loadMovements();
-    loadStudents();
-  }, [loadTools, loadSupplies, loadMovements, loadStudents]);
+  }, [loadTools, loadSupplies, loadMovements]);
 
   const handleDownloadPdf = () => {
     window.print();
