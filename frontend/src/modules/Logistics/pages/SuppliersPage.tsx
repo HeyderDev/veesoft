@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
 import { useSuppliersViewModel } from '../viewmodels/useSuppliersViewModel';
+import type { Supplier, UnregisteredItem } from '../types';
 
 function scoreBadgeVariant(score: string): 'success' | 'warning' | 'danger' {
   const value = Number(score);
@@ -20,12 +21,29 @@ const evaluationCriteria: { key: 'compliance' | 'quality' | 'punctuality' | 'pri
   { key: 'compliance', label: 'Cumplimiento', weight: 'informativo' },
 ];
 
-export const SuppliersPage: React.FC = () => {
+interface SuppliersPageProps {
+  /** Ítem que viene desde el aviso de "Ítems sin orden de compra" de Órdenes, esperando vincularse al catálogo de un proveedor. */
+  pendingLinkItem?: UnregisteredItem | null;
+  onLinkHandled?: () => void;
+}
+
+export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, onLinkHandled }) => {
   const {
-    suppliers, isLoading,
+    suppliers, certificateAlerts, isLoading,
     isFormOpen, editSupplier, openCreate, openEdit, closeForm, form, setForm, isSaving, handleSave, handleDelete,
     isEvaluateOpen, evaluatingSupplier, openEvaluate, closeEvaluate, evaluateForm, setEvaluateForm, isEvaluating, handleEvaluate,
+    isCatalogOpen, catalogSupplier, availableSupplies, catalogItems, openCatalog, closeCatalog,
+    addCatalogItem, removeCatalogItem, updateCatalogItem, saveCatalog, isSavingCatalog,
   } = useSuppliersViewModel();
+
+  const handleOpenCatalog = (supplier: Supplier) => {
+    if (pendingLinkItem) {
+      openCatalog(supplier, { item_type: pendingLinkItem.item_type, item_id: pendingLinkItem.item_id });
+      onLinkHandled?.();
+    } else {
+      openCatalog(supplier);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -36,6 +54,34 @@ export const SuppliersPage: React.FC = () => {
         </div>
         <Button onClick={openCreate}>+ Nuevo Proveedor</Button>
       </div>
+
+      {pendingLinkItem && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-amber-800">
+            Vincula <strong>{pendingLinkItem.name}</strong> al catálogo de un proveedor: haz clic en <strong>&quot;Catálogo&quot;</strong> del proveedor que lo suministrará.
+          </p>
+          <button
+            type="button"
+            onClick={() => onLinkHandled?.()}
+            className="text-xs font-medium text-amber-700 hover:text-amber-900 whitespace-nowrap"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {!isLoading && certificateAlerts.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h3 className="text-sm font-bold text-amber-900">Certificados orgánicos por vencer</h3>
+          <ul className="mt-1 text-sm text-amber-800">
+            {certificateAlerts.map(alert => (
+              <li key={alert.supplier_id}>
+                {alert.supplier_name}: {alert.status === 'expired' ? 'vencido' : `vence en ${alert.days_remaining} días`} ({alert.certificate_expires_at})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">
@@ -77,6 +123,7 @@ export const SuppliersPage: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
                     <Button variant="ghost" onClick={() => openEvaluate(supplier)}>Evaluar</Button>
+                    <Button variant="ghost" onClick={() => handleOpenCatalog(supplier)}>Catálogo</Button>
                     <Button variant="ghost" onClick={() => openEdit(supplier)}>Editar</Button>
                     <Button variant="danger" onClick={() => handleDelete(supplier)}>Eliminar</Button>
                   </td>
@@ -154,6 +201,56 @@ export const SuppliersPage: React.FC = () => {
               {editSupplier ? 'Guardar Cambios' : 'Registrar Proveedor'}
             </Button>
           </div>
+        </form>
+      </SlideOver>
+
+      <SlideOver isOpen={isCatalogOpen} onClose={closeCatalog} title="Catálogo del Proveedor" subtitle={catalogSupplier?.name}>
+        <form onSubmit={saveCatalog} className="p-6 space-y-4">
+          <p className="text-sm text-slate-500">Selecciona los insumos o herramientas que ofrece y registra el precio según su unidad de compra.</p>
+          {catalogItems.map((item, index) => (
+            <div key={index} className="rounded-lg border border-slate-200 p-3 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_8.75rem] gap-3 items-start">
+                <select
+                  value={item.item_id === '' ? '' : `${item.item_type}:${item.item_id}`}
+                  onChange={event => {
+                    const [item_type, item_id] = event.target.value.split(':');
+                    updateCatalogItem(index, { item_type: (item_type || 'supply') as 'supply' | 'tool', item_id: item_id ? Number(item_id) : '' });
+                  }}
+                  required
+                  className="min-w-0 w-full px-2 py-2 border border-slate-300 rounded text-sm"
+                >
+                  <option value="">Selecciona un ítem…</option>
+                  {availableSupplies.map(catalogItem => (
+                    <option key={`${catalogItem.item_type}-${catalogItem.item_id}`} value={`${catalogItem.item_type}:${catalogItem.item_id}`}>
+                      {catalogItem.item_type === 'tool' ? 'Herramienta' : 'Insumo'} · {catalogItem.name} ({catalogItem.code}) · {catalogItem.unit}
+                    </option>
+                  ))}
+                </select>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">Precio unitario</label>
+                  <input
+                    type="number" min={0} step="0.01" required
+                    value={item.unit_price}
+                    onChange={event => updateCatalogItem(index, { unit_price: Number(event.target.value) })}
+                    className="w-full px-2 py-2 border border-slate-300 rounded text-sm"
+                    aria-label="Precio unitario"
+                  />
+                  <p className="mt-1 text-xs text-slate-500 text-center">
+                    por {availableSupplies.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id)?.unit ?? 'unidad'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeCatalogItem(index)}
+                className="w-full rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                Quitar este ítem
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={addCatalogItem} className="text-sm font-medium text-emerald-600">+ Agregar ítem</button>
+          <Button type="submit" isLoading={isSavingCatalog} className="w-full">Guardar Catálogo</Button>
         </form>
       </SlideOver>
 

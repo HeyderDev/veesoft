@@ -16,9 +16,14 @@ class OperationalTask extends Model
     /** @use HasFactory<OperationalTaskFactory> */
     use HasFactory, BelongsToVivero;
 
+    protected $appends = [
+        'lot_id',
+    ];
+
     protected $fillable = [
         'vivero_id',
         'lot_cycle_phase_id',
+        'activity_type_id',
         'title',
         'description',
         'observations',
@@ -35,6 +40,11 @@ class OperationalTask extends Model
         'completed_date' => 'datetime',
     ];
 
+    public function getLotIdAttribute(): ?int
+    {
+        return $this->lotCyclePhase?->lotCycle?->lot_id;
+    }
+
     public function assignedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
@@ -48,6 +58,11 @@ class OperationalTask extends Model
     public function lotCyclePhase(): BelongsTo
     {
         return $this->belongsTo(LotCyclePhase::class, 'lot_cycle_phase_id');
+    }
+
+    public function activityType(): BelongsTo
+    {
+        return $this->belongsTo(ActivityType::class, 'activity_type_id');
     }
 
     public function resources(): HasMany

@@ -45,4 +45,9 @@ class Supply extends Model
     {
         return $this->hasMany(Movement::class);
     }
+
+    public function purchaseOrderItems(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Logistics\Models\PurchaseOrderItem::class);
+    }
 }

@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('viveros', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->string('name', 150);
             $table->string('location', 150);

@@ -30,47 +30,59 @@ class PrintController extends Controller
         try {
             // Generar el archivo binario ESC/POS real utilizando FilePrintConnector
             $connector = new FilePrintConnector($tempFile);
-            $connectorName = get_class($connector);
-            \Log::info("Conector: $connectorName (Archivo temporal)");
-
+            // Usar el perfil por defecto para que soporte QR, pero mantenemos CODE39 para el código de barras
             $printer = new Printer($connector);
+            
+            // Inicializar impresora para limpiar buffers colgados
+            $printer->initialize();
 
-            // PRUEBA COMPLETA: QR y CODE128 (Optimizado para 58mm)
+            // PRUEBA COMPLETA (Optimizado para 58mm)
             $printer->setJustification(Printer::JUSTIFY_CENTER);
 
             // Reducir tamaño de letra usando la Fuente B (más pequeña)
             $printer->selectPrintMode(Printer::MODE_FONT_B);
 
-            // Cabecera
+            // Cabecera compacta
             $printer->setEmphasis(true);
-            $printer->text("VIVERO DE CACAO\n\n");
+            $printer->text("VIVERO DE CACAO\n");
             $printer->setEmphasis(false);
 
-            // Nombre de la Herramienta
-            $printer->text($name . "\n\n");
+            // Nombre de la entidad (recortado si es muy largo)
+            $shortName = substr($name, 0, 24);
+            $printer->text($shortName . "\n");
             
-            // Ya no imprimimos el código arriba, solo abajo.
+            // Restaurar a modo normal
+            $printer->selectPrintMode();
 
-            // Imprimir el formato solicitado desde el frontend
+            // Imprimir el formato solicitado
             if ($format === 'qr') {
-                // Generar código QR más grande (tamaño 8)
-                $printer->qrCode($code, Printer::QR_ECLEVEL_M, 8, Printer::QR_MODEL_2);
+                try {
+                    // Tamaño 7 es aprox 30-35mm
+                    $printer->qrCode($code, Printer::QR_ECLEVEL_M, 7, Printer::QR_MODEL_2);
+                } catch (\Exception $e) {
+                    $printer->text("QR no soportado\n");
+                }
                 $printer->text("\n");
             } else {
-                // Generar CODE128 más grande (altura 80, anchura 3)
-                $printer->setBarcodeHeight(80); 
-                $printer->setBarcodeWidth(3);   
-                $printer->barcode('{B' . $code, Printer::BARCODE_CODE128);
+                // CODE39 es el más estándar para POS-58 baratos (sólo letras MAYUS y números)
+                $printer->setBarcodeHeight(60); 
+                $printer->setBarcodeWidth(2);   
+                try {
+                    $printer->barcode($code, Printer::BARCODE_CODE39);
+                } catch (\Exception $e) {
+                    $printer->text("Cod. Barras no soportado\n");
+                }
                 $printer->text("\n");
             }
 
-            // Código abajo como pie
+            // Código abajo como pie, en fuente pequeña para que quepa bien
+            $printer->selectPrintMode(Printer::MODE_FONT_B);
             $printer->text($code . "\n");
             
             // Restaurar modo normal
             $printer->selectPrintMode();
             
-            // Alimentar algunas líneas antes de terminar
+            // Alimentar y cortar (si lo soporta)
             $printer->feed(3);
             
             // Obligar a la impresora a procesar el final del documento (muy importante para POS-58)

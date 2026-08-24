@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlanningNavProvider, PlanningSidebarSections } from '../modules/Planning';
 import { InventoryNavProvider, InventorySidebarSections } from '../modules/Inventory';
+import { TasksSidebarSections, TasksNavProvider } from '../modules/Tasks';
 
 export interface ModuleDescriptor {
   id: string;
@@ -35,7 +36,11 @@ export const modulesRegistry: ModuleDescriptor[] = [
     NavProvider: PlanningNavProvider,
     SidebarSections: PlanningSidebarSections,
   },
-  { id: 'tasks', name: 'Tareas', icon: '✅', active: true },
+  { 
+    id: 'tasks', name: 'Tareas', icon: '✅', active: true,
+    NavProvider: TasksNavProvider,
+    SidebarSections: TasksSidebarSections 
+  },
   { id: 'logistics', name: 'Logística', icon: '🚚', active: true },
   {
     id: 'inventory', name: 'Inventario', icon: '📦', active: true,
