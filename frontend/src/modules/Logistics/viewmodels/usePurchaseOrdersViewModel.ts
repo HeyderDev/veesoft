@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { logisticsService } from '../services/logisticsService';
 import type {
-  PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, QualityStatus, Supplier,
+  PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, QualityStatus, Supplier, SupplierCatalogItem, UnregisteredSupply,
 } from '../types';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -13,26 +14,31 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-const emptyItem: PurchaseOrderItemInput = { item_sku: '', item_name: '', unit: '', quantity: 1, unit_price: 0 };
+const emptyItem: PurchaseOrderItemInput = { item_type: 'supply', item_id: '', quantity: 1 };
 
 export function usePurchaseOrdersViewModel() {
+  const { isAdmin } = useAuth();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [pendingDeliveries, setPendingDeliveries] = useState<PendingDeliveryItem[]>([]);
+  const [unregisteredSupplies, setUnregisteredSupplies] = useState<UnregisteredSupply[]>([]);
+  const [catalog, setCatalog] = useState<SupplierCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { success, error } = useToast();
 
   const fetchAll = async () => {
     setIsLoading(true);
     try {
-      const [ordersRes, suppliersRes, pendingRes] = await Promise.all([
+      const [ordersRes, suppliersRes, pendingRes, unregisteredRes] = await Promise.all([
         logisticsService.getPurchaseOrders(),
-        logisticsService.getSuppliers(),
+        isAdmin ? logisticsService.getSuppliers() : Promise.resolve({ data: [] as Supplier[] }),
         logisticsService.getPendingDeliveries(),
+        isAdmin ? logisticsService.getUnregisteredSupplies() : Promise.resolve({ data: [] as UnregisteredSupply[] }),
       ]);
       setOrders(ordersRes.data || []);
       setSuppliers(suppliersRes.data || []);
       setPendingDeliveries(pendingRes.data || []);
+      setUnregisteredSupplies(unregisteredRes.data || []);
     } catch (err) {
       error('Error al cargar las órdenes de compra');
       console.error(err);
@@ -41,23 +47,21 @@ export function usePurchaseOrdersViewModel() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [isAdmin]);
 
   // ---- Orden: crear ----
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [form, setForm] = useState<{ order_number: string; supplier_id: number | ''; estimated_delivery_date: string }>({
-    order_number: '', supplier_id: '', estimated_delivery_date: '',
+  const [form, setForm] = useState<{ supplier_id: number | ''; estimated_delivery_date: string }>({
+    supplier_id: '', estimated_delivery_date: '',
   });
   const [items, setItems] = useState<PurchaseOrderItemInput[]>([{ ...emptyItem }]);
   const [isSaving, setIsSaving] = useState(false);
 
   const openCreate = () => {
-    setForm({ order_number: '', supplier_id: '', estimated_delivery_date: '' });
+    setForm({ supplier_id: '', estimated_delivery_date: '' });
     setItems([{ ...emptyItem }]);
+    setCatalog([]);
     setIsFormOpen(true);
-    logisticsService.getNextOrderNumber()
-      .then(res => setForm(prev => ({ ...prev, order_number: res.data?.order_number ?? '' })))
-      .catch(err => console.error(err));
   };
   const closeForm = () => setIsFormOpen(false);
 
@@ -67,13 +71,25 @@ export function usePurchaseOrdersViewModel() {
     setItems(prev => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   };
 
+  useEffect(() => {
+    if (!form.supplier_id) {
+      setCatalog([]);
+      return;
+    }
+    logisticsService.getSupplierCatalog(form.supplier_id)
+      .then(response => setCatalog(response.data || []))
+      .catch(err => {
+        setCatalog([]);
+        console.error(err);
+      });
+  }, [form.supplier_id]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.supplier_id) return;
     setIsSaving(true);
     try {
       await logisticsService.createPurchaseOrder({
-        order_number: form.order_number,
         supplier_id: form.supplier_id,
         estimated_delivery_date: form.estimated_delivery_date || undefined,
         items,
@@ -93,13 +109,13 @@ export function usePurchaseOrdersViewModel() {
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [receivingOrder, setReceivingOrder] = useState<PurchaseOrder | undefined>(undefined);
   const [receiveForm, setReceiveForm] = useState<{
-    quality_status: QualityStatus; substrate_temperature: string; observations: string; photo_evidence_url: string;
-  }>({ quality_status: 'approved', substrate_temperature: '', observations: '', photo_evidence_url: '' });
+    quality_status: QualityStatus; observations: string; photo_evidence_url: string;
+  }>({ quality_status: 'approved', observations: '', photo_evidence_url: '' });
   const [isReceiving, setIsReceiving] = useState(false);
 
   const openReceive = (order: PurchaseOrder) => {
     setReceivingOrder(order);
-    setReceiveForm({ quality_status: 'approved', substrate_temperature: '', observations: '', photo_evidence_url: '' });
+    setReceiveForm({ quality_status: 'approved', observations: '', photo_evidence_url: '' });
     setIsReceiveOpen(true);
   };
   const closeReceive = () => setIsReceiveOpen(false);
@@ -109,14 +125,12 @@ export function usePurchaseOrdersViewModel() {
     if (!receivingOrder) return;
     setIsReceiving(true);
     try {
-      const response = await logisticsService.receivePurchaseOrder(receivingOrder.id, {
+      await logisticsService.receivePurchaseOrder(receivingOrder.id, {
         quality_status: receiveForm.quality_status,
-        substrate_temperature: receiveForm.substrate_temperature ? Number(receiveForm.substrate_temperature) : undefined,
         observations: receiveForm.observations || undefined,
         photo_evidence_url: receiveForm.photo_evidence_url || undefined,
       });
-      const warning = (response.data as { temperature_warning?: string | null })?.temperature_warning;
-      success(warning || 'Recepción registrada correctamente');
+      success('Recepción registrada correctamente');
       await fetchAll();
       setIsReceiveOpen(false);
     } catch (err) {
@@ -128,7 +142,7 @@ export function usePurchaseOrdersViewModel() {
   };
 
   return {
-    orders, suppliers, pendingDeliveries, isLoading, fetchAll,
+    orders, suppliers, pendingDeliveries, unregisteredSupplies, catalog, isLoading, fetchAll,
     isFormOpen, openCreate, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   };

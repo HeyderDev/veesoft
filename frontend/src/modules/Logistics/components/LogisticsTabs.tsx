@@ -3,6 +3,7 @@ import { SuppliersPage } from '../pages/SuppliersPage';
 import { PurchaseOrdersPage } from '../pages/PurchaseOrdersPage';
 import { PurchaseRequestsPage } from '../pages/PurchaseRequestsPage';
 import { PlanningOverviewPage } from '../pages/PlanningOverviewPage';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 type LogisticsSection = 'planning-overview' | 'suppliers' | 'purchase-orders' | 'purchase-requests';
 
@@ -22,7 +23,16 @@ interface LogisticsTabsProps {
  * secciones" como Planning con sus viveros) — es un módulo plano de 3 pantallas.
  */
 export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => {
-  const [activeSection, setActiveSection] = useState<LogisticsSection>('planning-overview');
+  const { isAdmin } = useAuth();
+  const [activeSection, setActiveSection] = useState<LogisticsSection>(
+    isAdmin ? 'planning-overview' : 'purchase-orders'
+  );
+
+  useEffect(() => {
+    if (!isAdmin && activeSection !== 'purchase-orders' && activeSection !== 'purchase-requests') {
+      setActiveSection('purchase-orders');
+    }
+  }, [isAdmin, activeSection]);
 
   useEffect(() => {
     if (!onTabChange) return;
@@ -43,7 +53,7 @@ export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => 
   return (
     <div className="flex flex-col h-full animate-fade-in">
       <div className="mb-6 flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-        {sectionTabs.map(tab => {
+        {sectionTabs.filter(tab => isAdmin || ['purchase-orders', 'purchase-requests'].includes(tab.id)).map(tab => {
           const isActive = activeSection === tab.id;
           return (
             <button

@@ -5,6 +5,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
 import { usePurchaseOrdersViewModel } from '../viewmodels/usePurchaseOrdersViewModel';
 import type { DeliveryUrgency, PurchaseOrderStatus } from '../types';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 const statusLabels: Record<PurchaseOrderStatus, string> = {
   draft: 'Borrador',
@@ -29,13 +30,17 @@ const urgencyVariants: Record<DeliveryUrgency, 'danger' | 'warning' | 'success'>
 };
 
 export const PurchaseOrdersPage: React.FC = () => {
+  const { isAdmin } = useAuth();
   const {
-    orders, suppliers, pendingDeliveries, isLoading,
+    orders, suppliers, pendingDeliveries, unregisteredSupplies, catalog, isLoading,
     isFormOpen, openCreate, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   } = usePurchaseOrdersViewModel();
 
-  const total = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const total = items.reduce((sum, item) => {
+    const catalogItem = catalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
+    return sum + item.quantity * Number(catalogItem?.unit_price ?? 0);
+  }, 0);
   const selectedSupplier = suppliers.find(s => s.id === form.supplier_id);
 
   return (
@@ -45,7 +50,7 @@ export const PurchaseOrdersPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Órdenes de Compra</h1>
           <p className="text-sm text-slate-500 mt-1">Generación y recepción de órdenes a proveedores</p>
         </div>
-        <Button onClick={openCreate}>+ Nueva Orden</Button>
+        {isAdmin && <Button onClick={openCreate}>+ Nueva Orden</Button>}
       </div>
 
       {isLoading ? (
@@ -65,6 +70,15 @@ export const PurchaseOrdersPage: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {!isLoading && unregisteredSupplies.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h3 className="text-sm font-bold text-amber-900">Insumos sin orden de compra</h3>
+          <p className="mt-1 text-sm text-amber-800">
+            {unregisteredSupplies.map(supply => `${supply.name} (${supply.sku})`).join(', ')}
+          </p>
         </div>
       )}
 
@@ -114,16 +128,6 @@ export const PurchaseOrdersPage: React.FC = () => {
       <SlideOver isOpen={isFormOpen} onClose={closeForm} title="Nueva Orden de Compra">
         <form onSubmit={handleSave} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">N° de Orden</label>
-            <input
-              value={form.order_number}
-              onChange={e => setForm({ ...form, order_number: e.target.value })}
-              placeholder="Correlativo automático…"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-            />
-            <p className="text-xs text-slate-400 mt-1">Se asigna automáticamente; puedes editarlo si necesitas otro formato.</p>
-          </div>
-          <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Proveedor *</label>
             <select
               value={form.supplier_id}
@@ -138,6 +142,9 @@ export const PurchaseOrdersPage: React.FC = () => {
             </select>
             {selectedSupplier && Number(selectedSupplier.score) < 3 && (
               <p className="text-xs text-red-500 mt-1">⚠ Este proveedor no cumple el score mínimo (3.00) para recibir órdenes.</p>
+            )}
+            {selectedSupplier && catalog.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">Este proveedor aún no tiene insumos en su catálogo.</p>
             )}
           </div>
           <div>
@@ -160,61 +167,62 @@ export const PurchaseOrdersPage: React.FC = () => {
             </div>
             <div className="space-y-3">
               {items.map((item, index) => (
-                <div key={index} className="border border-slate-200 rounded-lg p-3 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      placeholder="Nombre *"
-                      value={item.item_name}
-                      onChange={e => updateItemRow(index, { item_name: e.target.value })}
+                <div key={index} className="border border-slate-200 rounded-lg p-3 space-y-3">
+                  {(() => {
+                    const selectedItem = catalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
+                    const unit = selectedItem?.unit ?? 'unidad';
+                    const price = Number(selectedItem?.unit_price ?? 0);
+
+                    return <>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
+                    <select
+                      value={item.item_id === '' ? '' : `${item.item_type}:${item.item_id}`}
+                      onChange={e => {
+                        const [item_type, item_id] = e.target.value.split(':');
+                        updateItemRow(index, { item_type: (item_type || 'supply') as 'supply' | 'tool', item_id: item_id ? Number(item_id) : '' });
+                      }}
                       required
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
-                    />
-                    <input
-                      placeholder="SKU (código único, automático si se deja vacío)"
-                      title="SKU: código único del ítem para identificarlo en el inventario. Si lo dejas vacío, se genera automáticamente."
-                      value={item.item_sku}
-                      onChange={e => updateItemRow(index, { item_sku: e.target.value })}
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
-                    />
+                      disabled={!form.supplier_id || catalog.length === 0}
+                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm disabled:bg-slate-100"
+                    >
+                      <option value="">Selecciona un ítem…</option>
+                      {catalog.map(catalogItem => (
+                        <option key={`${catalogItem.item_type}-${catalogItem.item_id}`} value={`${catalogItem.item_type}:${catalogItem.item_id}`}>
+                          {catalogItem.item_type === 'tool' ? 'Herramienta' : 'Insumo'} · {catalogItem.name} ({catalogItem.code}) · {catalogItem.unit}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 whitespace-nowrap">
+                      ${price.toFixed(2)} por {unit}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 items-center">
-                    <input
-                      placeholder="Unidad *"
-                      value={item.unit}
-                      onChange={e => updateItemRow(index, { unit: e.target.value })}
-                      required
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,12rem)_1fr] gap-2 items-end">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Cantidad ({unit}) *</label>
                     <input
                       type="number"
                       min={0.01}
                       step="0.01"
-                      placeholder="Cantidad"
+                      placeholder={`Ej.: 2.5 ${unit}`}
                       value={item.quantity}
                       onChange={e => updateItemRow(index, { quantity: Number(e.target.value) })}
                       required
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                     />
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="Precio Unit."
-                      value={item.unit_price}
-                      onChange={e => updateItemRow(index, { unit_price: Number(e.target.value) })}
-                      required
-                      className="px-2 py-1.5 border border-slate-300 rounded text-sm"
-                    />
+                    </div>
+                    <p className="pb-2 text-xs text-slate-500">Puedes ingresar cantidades fraccionadas, por ejemplo 2,5 kg.</p>
                   </div>
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeItemRow(index)}
-                      className="text-xs text-red-500 hover:text-red-600"
+                      className="w-full rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                     >
-                      Quitar ítem
+                      Quitar este ítem
                     </button>
                   )}
+                    </>;
+                  })()}
                 </div>
               ))}
             </div>
@@ -248,17 +256,6 @@ export const PurchaseOrdersPage: React.FC = () => {
               <option value="conditional">Condicional</option>
               <option value="rejected">Rechazado</option>
             </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Temperatura del Sustrato (°C)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={receiveForm.substrate_temperature}
-              onChange={e => setReceiveForm({ ...receiveForm, substrate_temperature: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-              placeholder="Óptimo 18-24°C"
-            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Observaciones</label>

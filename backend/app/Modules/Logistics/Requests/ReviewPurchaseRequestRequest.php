@@ -18,8 +18,6 @@ class ReviewPurchaseRequestRequest extends FormRequest
             'order_number' => 'nullable|string|max:30|unique:purchase_orders,order_number',
             'supplier_id' => 'required_if:decision,approved|integer|exists:suppliers,id',
             'estimated_delivery_date' => 'nullable|date',
-            'unit_prices' => 'sometimes|array',
-            'unit_prices.*' => 'numeric|min:0',
         ];
     }
 }
