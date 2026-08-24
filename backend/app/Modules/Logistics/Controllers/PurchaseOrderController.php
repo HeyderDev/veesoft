@@ -18,14 +18,6 @@ class PurchaseOrderController extends BaseApiController
         return $this->paginatedResponse($orders, 'Órdenes de compra obtenidas');
     }
 
-    public function nextNumber()
-    {
-        return $this->successResponse(
-            ['order_number' => $this->purchaseOrderService->nextOrderNumber()],
-            'Siguiente número de orden sugerido'
-        );
-    }
-
     public function store(CreatePurchaseOrderRequest $request)
     {
         $data = $request->validated();
@@ -59,11 +51,11 @@ class PurchaseOrderController extends BaseApiController
         );
     }
 
-    public function unregisteredSupplies()
+    public function unregisteredItems()
     {
         return $this->successResponse(
-            $this->purchaseOrderService->unregisteredSupplies(),
-            'Insumos sin orden de compra registrada obtenidos'
+            $this->purchaseOrderService->unregisteredItems(),
+            'Ítems sin orden de compra registrada obtenidos'
         );
     }
 }

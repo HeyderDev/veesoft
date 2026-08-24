@@ -36,8 +36,7 @@ Route::middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
         Route::apiResource('suppliers', SupplierController::class);
 
         // Órdenes de compra
-        Route::get('purchase-orders/unregistered-supplies', [PurchaseOrderController::class, 'unregisteredSupplies']);
-        Route::get('purchase-orders/next-number', [PurchaseOrderController::class, 'nextNumber']);
+        Route::get('purchase-orders/unregistered-items', [PurchaseOrderController::class, 'unregisteredItems']);
         Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
     });
 

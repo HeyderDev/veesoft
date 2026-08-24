@@ -93,7 +93,7 @@ export function useSuppliersViewModel() {
   const [catalogItems, setCatalogItems] = useState<{ item_type: 'supply' | 'tool'; item_id: number | ''; unit_price: number }[]>([]);
   const [isSavingCatalog, setIsSavingCatalog] = useState(false);
 
-  const openCatalog = async (supplier: Supplier) => {
+  const openCatalog = async (supplier: Supplier, presetItem?: { item_type: 'supply' | 'tool'; item_id: number }) => {
     setCatalogSupplier(supplier);
     setIsCatalogOpen(true);
     try {
@@ -103,11 +103,18 @@ export function useSuppliersViewModel() {
       const supplies = (suppliesResponse.data as unknown as Supply[] || []).map(supply => ({ item_type: 'supply' as const, item_id: supply.id, code: supply.sku, name: supply.name, unit: supply.unit, unit_price: '0' }));
       const tools = (toolsResponse.data as unknown as Tool[] || []).map(tool => ({ item_type: 'tool' as const, item_id: tool.id, code: `HERR-${tool.id}`, name: tool.name, unit: 'unidad', unit_price: '0' }));
       setAvailableSupplies([...supplies, ...tools]);
-      setCatalogItems((catalogResponse.data || []).map(item => ({
+      const items = (catalogResponse.data || []).map(item => ({
         item_type: item.item_type,
         item_id: item.item_id,
         unit_price: Number(item.unit_price),
-      })));
+      }));
+      const alreadyLinked = presetItem && items.some(
+        item => item.item_type === presetItem.item_type && item.item_id === presetItem.item_id
+      );
+      if (presetItem && !alreadyLinked) {
+        items.push({ item_type: presetItem.item_type, item_id: presetItem.item_id, unit_price: 0 });
+      }
+      setCatalogItems(items);
     } catch (err) {
       error('No se pudo cargar el catálogo del proveedor');
       console.error(err);

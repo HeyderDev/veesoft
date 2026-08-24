@@ -2,15 +2,18 @@
 
 namespace App\Modules\Inventory\Models;
 
+use App\Modules\Logistics\Models\PurchaseOrderItem;
+use App\Modules\Logistics\Models\Supplier;
 use App\Modules\Shared\Traits\BelongsToVivero;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tool extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToVivero;
+    use BelongsToVivero, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'vivero_id', 'name', 'description',
@@ -26,9 +29,14 @@ class Tool extends Model
         return $this->hasMany(Movement::class);
     }
 
-    public function suppliers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function purchaseOrderItems(): HasMany
     {
-        return $this->belongsToMany(\App\Modules\Logistics\Models\Supplier::class)
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function suppliers(): BelongsToMany
+    {
+        return $this->belongsToMany(Supplier::class)
             ->withPivot('unit_price')
             ->withTimestamps();
     }
