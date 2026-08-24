@@ -93,9 +93,9 @@ class SupplyService extends BaseService
         return $this->supplyRepository->findBySku($sku);
     }
 
-    public function registerMovement(int $id, string $type, float $quantity, ?string $reason = null, ?string $observation = null, ?string $scannedCode = null)
+    public function registerMovement(int $id, string $type, float $quantity, ?string $reason = null, ?string $observation = null, ?string $scannedCode = null, ?int $studentId = null)
     {
-        return DB::transaction(function () use ($id, $type, $quantity, $reason, $observation, $scannedCode) {
+        return DB::transaction(function () use ($id, $type, $quantity, $reason, $observation, $scannedCode, $studentId) {
             $supply = $this->supplyRepository->find($id);
             $previousStock = $supply->current_stock;
             $newStock = $previousStock;
@@ -121,6 +121,7 @@ class SupplyService extends BaseService
             $movement = $this->movementRepository->create([
                 'supply_id' => $supply->id,
                 'user_id' => auth()->id(),
+                'student_id' => $studentId,
                 'type' => $type,
                 'quantity' => $quantity,
                 'previous_stock' => $previousStock,

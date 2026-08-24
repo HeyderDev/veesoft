@@ -61,6 +61,7 @@ class SupplyController extends BaseApiController
             'reason' => 'nullable|string',
             'observation' => 'nullable|string',
             'scanned_code' => 'nullable|string',
+            'student_id' => 'nullable|integer|exists:students,id',
         ]);
 
         try {
@@ -70,7 +71,8 @@ class SupplyController extends BaseApiController
                 $request->quantity,
                 $request->reason,
                 $request->observation,
-                $request->scanned_code
+                $request->scanned_code,
+                $request->student_id
             );
 
             return $this->successResponse($result, 'Movimiento registrado correctamente');

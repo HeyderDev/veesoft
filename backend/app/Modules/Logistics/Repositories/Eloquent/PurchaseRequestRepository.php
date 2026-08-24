@@ -20,6 +20,14 @@ class PurchaseRequestRepository extends BaseRepository implements PurchaseReques
             ->orderByDesc('created_at')->paginate($perPage);
     }
 
+    public function paginateForRequester(int $userId, int $perPage = 15): LengthAwarePaginator
+    {
+        return $this->model->where('requested_by', $userId)
+            ->with(['requester', 'items'])
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
+    }
+
     public function findWithRelations(int $id)
     {
         return $this->model->with(['requester', 'reviewer', 'items', 'purchaseOrder'])->findOrFail($id);

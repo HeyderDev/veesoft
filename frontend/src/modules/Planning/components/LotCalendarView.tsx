@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Lote } from '../types';
+import { isGatedPhaseCode } from '../types';
 import {
   addDays, addMonths, diffDays, formatDDMM, isoWeekNumber, monthLabel, monthLabelLong,
   parseDate, sameDate, startOfMonth, startOfWeekMonday, todayUTC, weekdayLabel,
@@ -127,6 +128,9 @@ interface LotCalendarViewProps {
 export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onReschedule }) => {
   const [mode, setMode] = useState<CalendarMode>('month');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  // Columna resaltada al pasar el mouse — misma mecánica en los 4 filtros (día/
+  // semana/mes/año) porque todos comparten el mismo modelo win.columns.
+  const [hoveredColKey, setHoveredColKey] = useState<string | null>(null);
 
   const activeLots = useMemo(
     () => lots.filter(l => l.active_cycle && (l.active_cycle.phases?.length ?? 0) > 0),
@@ -153,6 +157,18 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
   const todayInWindow = today >= win.start && today < win.end;
   const todayOffsetPct = todayInWindow ? toPct(today) : null;
   const bodyHeight = Math.max(activeLots.length, 1) * ROW_HEIGHT;
+
+  // Un solo handler para encabezado y cuerpo: mousemove burbujea desde cualquier
+  // hijo (incluida una barra de fase encima), así el hover de columna funciona
+  // sin importar qué haya debajo del cursor, en los 4 filtros por igual.
+  const handleTimelineMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    const col = win.columns.find(c => pct >= c.leftPct && pct < c.leftPct + c.widthPct);
+    setHoveredColKey(col ? col.key : null);
+  };
+  const handleTimelineMouseLeave = () => setHoveredColKey(null);
 
   const modeOptions: { id: CalendarMode; label: string }[] = [
     { id: 'day', label: 'Día' },
@@ -212,6 +228,10 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
             {item.name}
           </div>
         ))}
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 ml-2 pl-2 border-l border-slate-200">
+          <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-slate-400" style={{ outline: '1.5px dashed white', outlineOffset: -1 }} />
+          redondo = Siembra/Injerto/Despacho, un día hasta confirmarse en Tareas
+        </div>
       </div>
 
       {activeLots.length === 0 ? (
@@ -224,11 +244,18 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
             {/* Encabezado */}
             <div className="flex">
               <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
-              <div className="relative flex-1 border-b border-slate-200" style={{ height: mode === 'week' ? 40 : 24 }}>
+              <div
+                className="relative flex-1 border-b border-slate-200"
+                style={{ height: mode === 'week' ? 40 : 24 }}
+                onMouseMove={handleTimelineMouseMove}
+                onMouseLeave={handleTimelineMouseLeave}
+              >
                 {win.columns.map(col => (
                   <div
                     key={col.key}
-                    className="absolute top-0 h-6 flex items-center justify-center text-[11px] font-semibold text-slate-500 border-l border-slate-100 truncate px-1"
+                    className={`absolute top-0 h-6 flex items-center justify-center text-[11px] font-semibold border-l border-slate-100 truncate px-1 cursor-default transition-colors ${
+                      hoveredColKey === col.key ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'
+                    }`}
                     style={{ left: `${col.leftPct}%`, width: `${col.widthPct}%` }}
                   >
                     {col.label}
@@ -256,7 +283,9 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
             <div className="flex relative" style={{ height: bodyHeight }}>
               <div style={{ width: GUTTER_WIDTH }} className="shrink-0 relative z-10">
                 {activeLots.map((lot, i) => {
-                  const isDespacho = lot.active_cycle?.current_phase?.phase?.code === 'DESP';
+                  // Fases gateadas (Siembra/Injertación/Despacho) no tienen fecha fija
+                  // que reprogramar — avanzan solas al completarse su actividad.
+                  const isGated = isGatedPhaseCode(lot.active_cycle?.current_phase?.phase?.code ?? '');
                   return (
                     <div
                       key={lot.id}
@@ -264,7 +293,7 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
                       style={{ top: i * ROW_HEIGHT, height: ROW_HEIGHT }}
                     >
                       <span className="text-xs font-medium text-slate-700 truncate" title={lot.name}>{lot.name}</span>
-                      {!isDespacho && (
+                      {!isGated && (
                         <button
                           type="button"
                           onClick={() => onReschedule(lot)}
@@ -278,12 +307,29 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
                 })}
               </div>
 
-              <div className="relative flex-1 bg-slate-50/50 rounded-md overflow-hidden">
+              <div
+                className="relative flex-1 bg-slate-50/50 rounded-md overflow-hidden"
+                onMouseMove={handleTimelineMouseMove}
+                onMouseLeave={handleTimelineMouseLeave}
+              >
+                {/* Franja resaltada de la columna bajo el mouse — misma columna que el
+                    encabezado, en los 4 filtros. pointer-events-none: el mousemove lo
+                    captura el contenedor (burbujea desde las barras si hay alguna
+                    encima), esta franja es solo visual. */}
+                {win.columns.map(col => (
+                  <div
+                    key={`hover-${col.key}`}
+                    className={`absolute top-0 bottom-0 pointer-events-none transition-colors ${
+                      hoveredColKey === col.key ? 'bg-emerald-100/40' : ''
+                    }`}
+                    style={{ left: `${col.leftPct}%`, width: `${col.widthPct}%` }}
+                  />
+                ))}
                 {/* Líneas de cuadrícula (columnas superiores) */}
                 {win.columns.map(col => (
                   <div
                     key={`grid-${col.key}`}
-                    className="absolute top-0 bottom-0 border-l border-slate-200"
+                    className="absolute top-0 bottom-0 border-l border-slate-200 pointer-events-none"
                     style={{ left: `${col.leftPct}%` }}
                   />
                 ))}
@@ -318,31 +364,44 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
                     <div key={lot.id} className="absolute left-0 right-0" style={{ top: i * ROW_HEIGHT, height: ROW_HEIGHT }}>
                       {(cycle.phases ?? []).map(phase => {
                         const start = parseDate(phase.planned_start_date);
-                        // Despacho no tiene fin planificado: en vez de estirar la barra
-                        // indefinidamente, se limita a un recuadro de 1 día en la fecha de
-                        // llegada y, si ese día ya pasó y el lote sigue en despacho, la barra
-                        // crece día a día solo hasta hoy (nunca más allá).
+                        // Fases gateadas (Siembra/Injertación/Despacho) no tienen fin
+                        // planificado: representan un único día (el que arrancan) y solo
+                        // se alargan día a día, sin pasar de hoy, mientras su actividad
+                        // obligatoria siga sin confirmarse — ver GatedPhaseCatalog.
                         const openEndedEnd = start < today ? addDays(today, 1) : addDays(start, 1);
                         const rawEnd = phase.planned_end_date ? addDays(parseDate(phase.planned_end_date), 1) : openEndedEnd;
                         const end = rawEnd < win.end ? rawEnd : win.end;
                         const leftPct = toPct(start);
                         const widthPct = (diffDays(start, end) / win.totalDays) * 100;
                         const isCurrent = phase.id === currentPhaseId;
+                        const isGated = isGatedPhaseCode(phase.phase?.code ?? '');
+                        const isPending = isGated && !phase.gate_completed_at;
+                        const label = phase.phase?.name?.charAt(0).toUpperCase() ?? '';
 
                         return (
                           <div
                             key={phase.id}
-                            title={`${phase.phase?.name}: ${phase.planned_start_date} – ${phase.planned_end_date ?? 'en curso (hasta hoy)'}`}
-                            className="absolute top-1 bottom-1 rounded-sm"
+                            title={
+                              isGated
+                                ? `${phase.phase?.name} (actividad obligatoria): inició el ${phase.planned_start_date}` +
+                                  (phase.gate_completed_at ? ` — confirmada` : ' — esperando confirmación en Tareas')
+                                : `${phase.phase?.name}: ${phase.planned_start_date} – ${phase.planned_end_date}`
+                            }
+                            className={`absolute flex items-center justify-center text-[9px] font-bold text-white/90 ${
+                              isGated ? 'top-2.5 bottom-2.5 rounded-full' : 'top-1 bottom-1 rounded-sm'
+                            }`}
                             style={{
                               left: `${leftPct}%`,
                               width: `${widthPct}%`,
+                              minWidth: isGated ? 8 : undefined,
                               backgroundColor: phase.phase?.color_reference || '#94a3b8',
                               opacity: isCurrent ? 1 : 0.55,
-                              outline: isCurrent ? '2px solid white' : 'none',
+                              outline: isCurrent ? '2px solid white' : isPending ? '1.5px dashed white' : 'none',
                               outlineOffset: -1,
                             }}
-                          />
+                          >
+                            {isGated && widthPct > 2 ? label : null}
+                          </div>
                         );
                       })}
                     </div>

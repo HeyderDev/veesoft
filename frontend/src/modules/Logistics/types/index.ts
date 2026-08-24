@@ -40,11 +40,29 @@ export interface Supplier {
   evaluations?: SupplierEvaluation[];
 }
 
+export interface SupplierCatalogItem {
+  item_type: 'supply' | 'tool';
+  item_id: number;
+  code: string;
+  name: string;
+  unit: string;
+  unit_price: string;
+}
+
+export interface CertificateAlert {
+  supplier_id: number;
+  supplier_name: string;
+  certificate_expires_at: string;
+  status: 'expired' | 'due_soon';
+  days_remaining: number;
+}
+
 export type PurchaseOrderStatus = 'draft' | 'issued' | 'sent' | 'received' | 'cancelled';
 
 export interface PurchaseOrderItem {
   id: number;
   purchase_order_id: number;
+  supply_id: number | null;
   item_sku: string | null;
   item_name: string;
   unit: string;
@@ -53,11 +71,19 @@ export interface PurchaseOrderItem {
 }
 
 export interface PurchaseOrderItemInput {
-  item_sku?: string;
-  item_name: string;
-  unit: string;
+  item_type: 'supply' | 'tool';
+  item_id: number | '';
   quantity: number;
-  unit_price: number;
+}
+
+export interface UnregisteredItem {
+  item_type: 'supply' | 'tool';
+  item_id: number;
+  sku: string | null;
+  name: string;
+  unit: string;
+  /** ID de un proveedor que ya ofrece este ítem en su catálogo, si existe alguno. */
+  supplier_id: number | null;
 }
 
 export type QualityStatus = 'approved' | 'rejected' | 'conditional';
@@ -67,7 +93,6 @@ export interface PurchaseReceipt {
   purchase_order_id: number;
   received_by: number | null;
   received_at: string;
-  substrate_temperature: string | null;
   quality_status: QualityStatus;
   observations: string | null;
   photo_evidence_url: string | null;
@@ -107,6 +132,8 @@ export type PurchaseRequestStatus = 'pending' | 'approved' | 'rejected';
 export interface PurchaseRequestItem {
   id: number;
   purchase_request_id: number;
+  supply_id: number | null;
+  tool_id: number | null;
   item_sku: string | null;
   item_name: string;
   unit: string;
@@ -114,9 +141,8 @@ export interface PurchaseRequestItem {
 }
 
 export interface PurchaseRequestItemInput {
-  item_sku?: string;
-  item_name: string;
-  unit: string;
+  item_type: 'supply' | 'tool';
+  item_id: number | '';
   quantity: number;
 }
 

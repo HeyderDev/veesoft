@@ -13,6 +13,7 @@ class TaskResource extends Model
         'operational_task_id',
         'resource_type',
         'resource_id',
+        'quantity',
     ];
 
     public function task(): BelongsTo

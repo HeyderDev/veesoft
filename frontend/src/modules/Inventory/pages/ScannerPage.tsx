@@ -1,4 +1,4 @@
-import { Camera, Search, CheckCircle2 } from 'lucide-react';
+import { Camera, Search, CheckCircle2, User, X } from 'lucide-react';
 import { ToolDetailsModal } from '../components/ToolDetailsModal';
 import { SupplyScannerModal } from '../components/SupplyScannerModal';
 import { WebScanner } from '../components/WebScanner';
@@ -15,6 +15,8 @@ export const ScannerPage = () => {
     setSelectedTool,
     selectedSupply,
     setSelectedSupply,
+    activeStudent,
+    setActiveStudent,
     successMessage,
     setSuccessMessage,
     handleScan,
@@ -33,6 +35,29 @@ export const ScannerPage = () => {
               <CheckCircle2 className="text-green-500" size={20} />
               {successMessage}
             </div>
+          </div>
+        )}
+
+        {/* Active Student Alert */}
+        {activeStudent && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                <User size={20} className="text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-indigo-500 uppercase tracking-wide">Estudiante Activo</p>
+                <p className="font-semibold text-indigo-900">{activeStudent.first_name} {activeStudent.last_name}</p>
+                <p className="text-xs text-indigo-600 font-mono">C.I: {activeStudent.cedula}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveStudent(null)}
+              className="p-2 text-indigo-400 hover:bg-indigo-100 rounded-lg transition-colors"
+              title="Cerrar sesión de estudiante"
+            >
+              <X size={20} />
+            </button>
           </div>
         )}
 
@@ -76,7 +101,7 @@ export const ScannerPage = () => {
               </div>
               <input
                 type="text"
-                placeholder="Escribir código de herramienta..."
+                placeholder="Escribir código o cédula de estudiante..."
                 className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none bg-gray-50 focus:bg-white transition-colors"
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
@@ -120,6 +145,7 @@ export const ScannerPage = () => {
             setTimeout(() => setSuccessMessage(null), 3000);
           }}
           preloadedSupply={selectedSupply}
+          activeStudent={activeStudent}
         />
       </div>
     </div>

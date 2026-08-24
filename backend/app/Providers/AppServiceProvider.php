@@ -31,7 +31,10 @@ use App\Modules\Tracking\Repositories\Eloquent\DispatchReportRepository;
 use App\Modules\Tracking\Repositories\Eloquent\TrackingClientRepository;
 use App\Modules\Tracking\Repositories\Eloquent\TrackingLotRepository;
 use App\Modules\Tracking\Repositories\Eloquent\TrackingMovementRepository;
+use App\Modules\Planning\Events\GatedPhaseScheduled;
+use App\Modules\Tasks\Listeners\CreateTaskForGatedPhase;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -91,5 +94,11 @@ class AppServiceProvider extends ServiceProvider
         Factory::guessFactoryNamesUsing(
             fn (string $modelName) => 'Database\\Factories\\'.class_basename($modelName).'Factory'
         );
+
+        // Planning -> Tasks es la única dirección permitida vía eventos (Planning
+        // no puede depender de Tasks directamente, ver
+        // docs/03_MODULE_CONTRACTS/Planning.md §6). Registro explícito, no
+        // autodiscovery, para que quede grepeable.
+        Event::listen(GatedPhaseScheduled::class, CreateTaskForGatedPhase::class);
     }
 }

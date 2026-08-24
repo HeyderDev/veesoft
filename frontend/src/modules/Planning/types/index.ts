@@ -34,8 +34,25 @@ export interface LotCyclePhase {
   planned_start_date: string;
   /** Null para la fase de Despacho: no tiene fin planificado, termina al registrar el despacho. */
   planned_end_date: string | null;
+  /**
+   * Cuándo se completó la actividad obligatoria de esta fase (solo aplica a
+   * fases gateadas, ver GATED_PHASE_CODES). Mientras sea null en una fase
+   * gateada ya alcanzada, el backend la mantiene "actual" aunque haya vencido
+   * su planned_end_date — ver LotCycleService::computeCurrentPhase().
+   */
+  gate_completed_at: string | null;
   phase?: Fase;
 }
+
+/**
+ * Fases del ciclo que son, en la práctica, actividades obligatorias: Siembra,
+ * Injertación y Despacho (ver backend GatedPhaseCatalog). No se pueden avanzar
+ * sin su actividad completada, y su nombre/orden/duración no son editables.
+ */
+export const GATED_PHASE_CODES = ['SIEM', 'INJER', 'DESP'] as const;
+
+export const isGatedPhaseCode = (code: string): boolean =>
+  (GATED_PHASE_CODES as readonly string[]).includes(code);
 
 export interface LotCycleInfo {
   id: number;
@@ -45,6 +62,11 @@ export interface LotCycleInfo {
   status: 'in_progress' | 'dispatched';
   phases?: LotCyclePhase[];
   current_phase?: LotCyclePhase | null;
+}
+
+/** Fila del histórico "lotes por meta, y dentro de cada meta por ciclo" — GET /production-goals/{id}/lot-cycles. */
+export interface LotCycleHistoryEntry extends LotCycleInfo {
+  lot?: Pick<Lote, 'id' | 'code' | 'name'>;
 }
 
 /**

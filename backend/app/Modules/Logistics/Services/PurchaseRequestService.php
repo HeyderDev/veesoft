@@ -29,20 +29,30 @@ class PurchaseRequestService extends BaseService
         parent::__construct($purchaseRequestRepository);
     }
 
-    public function list(int $perPage = 15)
+    public function list(?\App\Modules\Shared\Models\User $user = null, int $perPage = 15)
     {
+        if ($user?->role?->name === 'Operario') {
+            return $this->purchaseRequestRepository->paginateForRequester($user->id, $perPage);
+        }
+
         return $this->purchaseRequestRepository->paginateWithRelations($perPage);
     }
 
-    public function getDetail(int $id)
+    public function getDetail(int $id, ?\App\Modules\Shared\Models\User $user = null)
     {
-        return $this->purchaseRequestRepository->findWithRelations($id);
+        $request = $this->purchaseRequestRepository->findWithRelations($id);
+
+        if ($user?->role?->name === 'Operario' && $request->requested_by !== $user->id) {
+            abort(403, 'No tienes permiso para ver esta solicitud.');
+        }
+
+        return $request;
     }
 
     /**
      * API pública consumida por otros módulos (ver docs/03_MODULE_CONTRACTS/Logistics.md).
      *
-     * @param  array<int, array{item_sku?: string, item_name: string, unit: string, quantity: float}>  $items
+     * @param  array<int, array{item_type: 'supply'|'tool', item_id: int, quantity: float}>  $items
      */
     public function createPurchaseRequest(array $items, string $reason, ?int $requestedBy = null): PurchaseRequest
     {
@@ -54,11 +64,17 @@ class PurchaseRequestService extends BaseService
             ]);
 
             foreach ($items as $item) {
+                $model = $item['item_type'] === 'tool'
+                    ? \App\Modules\Inventory\Models\Tool::query()->findOrFail($item['item_id'])
+                    : \App\Modules\Inventory\Models\Supply::query()->findOrFail($item['item_id']);
+
                 PurchaseRequestItem::create([
                     'purchase_request_id' => $request->id,
-                    'item_sku' => ! empty($item['item_sku']) ? $item['item_sku'] : $this->generateItemSku(),
-                    'item_name' => $item['item_name'],
-                    'unit' => $item['unit'],
+                    'supply_id' => $item['item_type'] === 'supply' ? $model->id : null,
+                    'tool_id' => $item['item_type'] === 'tool' ? $model->id : null,
+                    'item_sku' => $item['item_type'] === 'supply' ? $model->sku : 'HERR-'.$model->id,
+                    'item_name' => $model->name,
+                    'unit' => $item['item_type'] === 'supply' ? $model->unit : 'unidad',
                     'quantity' => $item['quantity'],
                 ]);
             }
@@ -67,17 +83,6 @@ class PurchaseRequestService extends BaseService
         });
 
         return $this->purchaseRequestRepository->findWithRelations($request->id);
-    }
-
-    /**
-     * SKU autogenerado para ítems sin uno propio (mismo patrón que
-     * Inventory\Repositories\Eloquent\SupplyRepository::generateUniqueSku()).
-     */
-    private function generateItemSku(): string
-    {
-        $maxId = PurchaseRequestItem::max('id') ?? 0;
-
-        return 'SOL-ITEM-'.str_pad($maxId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     public function review(int $id, string $decision, ?int $reviewedBy, array $data = []): PurchaseRequest
@@ -99,16 +104,13 @@ class PurchaseRequestService extends BaseService
         }
 
         $order = $this->purchaseOrderService->create([
-            'order_number' => $data['order_number'] ?? '',
             'supplier_id' => $data['supplier_id'],
             'created_by' => $reviewedBy,
             'estimated_delivery_date' => $data['estimated_delivery_date'] ?? null,
             'items' => $request->items->map(fn (PurchaseRequestItem $item) => [
-                'item_sku' => $item->item_sku,
-                'item_name' => $item->item_name,
-                'unit' => $item->unit,
+                'item_type' => $item->tool_id ? 'tool' : 'supply',
+                'item_id' => $item->tool_id ?? $item->supply_id,
                 'quantity' => (float) $item->quantity,
-                'unit_price' => $data['unit_prices'][$item->id] ?? 0,
             ])->all(),
         ]);
 

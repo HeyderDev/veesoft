@@ -5,6 +5,7 @@ namespace App\Modules\Logistics\Controllers;
 use App\Modules\Logistics\Requests\CreateSupplierRequest;
 use App\Modules\Logistics\Requests\EvaluateSupplierRequest;
 use App\Modules\Logistics\Requests\UpdateSupplierRequest;
+use App\Modules\Logistics\Requests\UpdateSupplierCatalogRequest;
 use App\Modules\Logistics\Services\PurchaseOrderService;
 use App\Modules\Logistics\Services\SupplierService;
 use App\Modules\Shared\Controllers\BaseApiController;
@@ -64,5 +65,23 @@ class SupplierController extends BaseApiController
         $orders = $this->purchaseOrderService->listForSupplier($supplier);
 
         return $this->paginatedResponse($orders, 'Historial de compras obtenido');
+    }
+
+    public function catalog(int $supplier)
+    {
+        return $this->successResponse($this->supplierService->catalog($supplier));
+    }
+
+    public function updateCatalog(UpdateSupplierCatalogRequest $request, int $supplier)
+    {
+        return $this->successResponse(
+            $this->supplierService->syncCatalog($supplier, $request->validated('items')),
+            'Catálogo del proveedor actualizado'
+        );
+    }
+
+    public function certificateAlerts()
+    {
+        return $this->successResponse($this->supplierService->certificateAlerts(), 'Alertas de certificados obtenidas');
     }
 }

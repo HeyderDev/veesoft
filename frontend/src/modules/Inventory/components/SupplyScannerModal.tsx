@@ -8,9 +8,10 @@ interface SupplyScannerModalProps {
   onClose: () => void;
   onSuccess: () => void;
   preloadedSupply?: any;
+  activeStudent?: any;
 }
 
-export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply }: SupplyScannerModalProps) {
+export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply, activeStudent }: SupplyScannerModalProps) {
   const [supply, setSupply] = useState<any | null>(null);
 
   const [type, setType] = useState('SALIDA');
@@ -39,9 +40,10 @@ export function SupplyScannerModal({ isOpen, onClose, onSuccess, preloadedSupply
         supply.id,
         type,
         Number(quantity),
+        activeStudent ? `Entrega a estudiante: ${activeStudent.name}` : undefined,
         undefined,
-        undefined,
-        supply.sku
+        supply.sku,
+        activeStudent?.id
       );
       
       Swal.fire({

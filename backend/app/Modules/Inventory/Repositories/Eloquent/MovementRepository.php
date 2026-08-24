@@ -16,7 +16,7 @@ class MovementRepository extends BaseRepository implements MovementRepositoryInt
 
     public function paginateWithRelations(int $perPage = 15, ?string $type = null, ?string $search = null, ?string $startDate = null, ?string $endDate = null): LengthAwarePaginator
     {
-        $query = $this->model->with(['tool', 'supply', 'user', 'toolUnit']);
+        $query = $this->model->with(['tool', 'supply', 'user', 'toolUnit', 'student']);
 
         if ($type) {
             $query->where('type', strtoupper($type));

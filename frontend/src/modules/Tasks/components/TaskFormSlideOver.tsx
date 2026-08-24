@@ -5,7 +5,8 @@ import { SlideOver } from '../../../components/ui/SlideOver';
 import type { 
   LotInfo,
   TaskCreateInput, 
-  TaskUpdateInput 
+  TaskUpdateInput,
+  ActivityType
 } from '../types';
 import { TaskResourcePicker } from './TaskResourcePicker';
 import { tasksService } from '../services/tasksService';
@@ -28,24 +29,62 @@ export const TaskFormSlideOver: React.FC<TaskFormSlideOverProps> = ({
 }) => {
   const f = form as Record<string, unknown>;
   const [lots, setLots] = useState<LotInfo[]>([]);
+  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
 
   useEffect(() => {
-    if (showLotSelector && isOpen) {
-      const loadLots = async () => {
-        try {
-          const res = await tasksService.getLots() as unknown as { data: LotInfo[] };
-          setLots(Array.isArray(res.data) ? res.data : []);
-        } catch {
-          setLots([]);
-        }
-      };
-      loadLots();
+    if (isOpen) {
+      if (showLotSelector) {
+        tasksService.getLots()
+          .then(res => setLots(Array.isArray((res as any).data) ? (res as any).data : []))
+          .catch(() => setLots([]));
+      }
+      
+      tasksService.getActivityTypes()
+        .then(res => setActivityTypes(Array.isArray(res) ? res : (res as any).data || []))
+        .catch(() => setActivityTypes([]));
     }
   }, [showLotSelector, isOpen]);
+
+  const handleActivityTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value ? Number(e.target.value) : null;
+    const prevType = activityTypes.find(a => a.id === f.activity_type_id);
+    const newType = activityTypes.find(a => a.id === val);
+    
+    const newForm = { ...form, activity_type_id: val };
+    
+    // Auto-fill title if it was empty or matched the previous type's name
+    if (newType) {
+      if (!f.title || (prevType && f.title === prevType.name)) {
+        newForm.title = newType.name;
+      }
+    }
+    
+    setForm(newForm);
+  };
 
   return (
     <SlideOver isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle}>
       <form onSubmit={onSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[calc(100vh-100px)]">
+        {/* Tipo de Actividad (Plantilla) */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Plantilla de Actividad (Opcional)
+          </label>
+          <select
+            id="task-activity-type"
+            value={(f.activity_type_id as string) ?? ''}
+            onChange={handleActivityTypeChange}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+          >
+            <option value="">Ninguna (Actividad libre)</option>
+            {activityTypes.map(type => (
+              <option key={type.id} value={type.id}>
+                {type.name} {type.is_system ? '(Sistema)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Título */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
+import { useActiveVivero } from '../../../shared/context/ActiveViveroContext';
 import { planningService } from '../../Planning/services/planningService';
-import type { MetaProduccion, Vivero, ViveroSummary } from '../../Planning/types';
+import type { MetaProduccion, ViveroSummary } from '../../Planning/types';
 import { tasksService } from '../../Tasks/services/tasksService';
 import { inventoryService } from '../../Inventory/services/inventoryService';
 import type { Supply } from '../../Inventory/types';
@@ -27,7 +28,6 @@ interface PlanningTaskRaw {
 }
 
 export interface ViveroOverview {
-  vivero: Vivero;
   openGoal: MetaProduccion | null;
   lotStatusCounts: ViveroSummary['lot_status_counts'] | null;
   pendingTaskCount: number;
@@ -64,52 +64,47 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 }
 
 export function usePlanningOverviewViewModel() {
-  const [viveroOverviews, setViveroOverviews] = useState<ViveroOverview[]>([]);
+  const { activeVivero } = useActiveVivero();
+  const [viveroOverview, setViveroOverview] = useState<ViveroOverview | null>(null);
   const [pendingTasks, setPendingTasks] = useState<PendingTaskOverview[]>([]);
   const [atRiskSupplies, setAtRiskSupplies] = useState<AtRiskSupply[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { error } = useToast();
 
   const fetchAll = async () => {
+    if (!activeVivero) {
+      setViveroOverview(null);
+      setPendingTasks([]);
+      setAtRiskSupplies([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const [viverosRes, tasksRes, supplies] = await Promise.all([
-        planningService.getViveros(),
+      // Todo lo que sigue queda filtrado al vivero activo: tasksService/inventoryService
+      // van con el header X-Vivero-Id (axiosClient), y el resumen se pide puntual para
+      // ese vivero — nunca se listan los demás viveros del sistema (ver ActiveViveroContext).
+      const [summaryRes, tasksRes, supplies] = await Promise.all([
+        planningService.getViveroSummary(activeVivero.id).catch(() => null),
         tasksService.getHistory({ status: 'pending', type: 'lot' }),
         inventoryService.getSupplies() as Promise<Supply[]>,
       ]);
 
-      const viveros = viverosRes.data || [];
       const rawTasks = (tasksRes.data || []) as unknown as PlanningTaskRaw[];
       const suppliesById = new Map<number, Supply>(supplies.map((s): [number, Supply] => [s.id, s]));
 
-      // ---- Planificación por vivero (reutiliza el mismo endpoint que Planning > Resumen) ----
-      const summaries = await Promise.all(
-        viveros.map(v => planningService.getViveroSummary(v.id).catch(() => null))
-      );
-
-      const taskCountByVivero = new Map<number, number>();
-      for (const task of rawTasks) {
-        const viveroId = task.lot_cycle_phase?.lot_cycle?.lot?.vivero_id;
-        if (viveroId) taskCountByVivero.set(viveroId, (taskCountByVivero.get(viveroId) ?? 0) + 1);
-      }
-
-      setViveroOverviews(viveros.map((vivero, index) => {
-        const summary = summaries[index]?.data;
-        return {
-          vivero,
-          openGoal: summary?.open_goal ?? null,
-          lotStatusCounts: summary?.lot_status_counts ?? null,
-          pendingTaskCount: taskCountByVivero.get(vivero.id) ?? 0,
-        };
-      }));
+      setViveroOverview({
+        openGoal: summaryRes?.data.open_goal ?? null,
+        lotStatusCounts: summaryRes?.data.lot_status_counts ?? null,
+        pendingTaskCount: rawTasks.length,
+      });
 
       // ---- Actividades pendientes + insumos que traen asignados ----
       const riskMap = new Map<number, AtRiskSupply>();
 
       const tasksOverview: PendingTaskOverview[] = rawTasks.map(task => {
         const lot = task.lot_cycle_phase?.lot_cycle?.lot;
-        const vivero = lot ? viveros.find(v => v.id === lot.vivero_id) : undefined;
         const resources = task.resources ?? [];
 
         const supplyResources: SupplyResourceView[] = resources
@@ -135,7 +130,7 @@ export function usePlanningOverviewViewModel() {
           title: task.title,
           planned_date: task.planned_date,
           priority: task.priority,
-          viveroName: vivero?.name ?? null,
+          viveroName: activeVivero.name,
           lotCode: lot?.code ?? null,
           supplyResources,
           toolResourceCount: resources.filter(r => r.resource_type === 'tool').length,
@@ -152,7 +147,7 @@ export function usePlanningOverviewViewModel() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [activeVivero?.id]);
 
-  return { viveroOverviews, pendingTasks, atRiskSupplies, isLoading, fetchAll };
+  return { activeVivero, viveroOverview, pendingTasks, atRiskSupplies, isLoading, fetchAll };
 }

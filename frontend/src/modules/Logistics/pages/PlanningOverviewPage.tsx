@@ -16,16 +16,23 @@ const priorityVariants: Record<'high' | 'medium' | 'low', 'danger' | 'warning' |
 };
 
 export const PlanningOverviewPage: React.FC = () => {
-  const { viveroOverviews, pendingTasks, atRiskSupplies, isLoading } = usePlanningOverviewViewModel();
+  const { activeVivero, viveroOverview, pendingTasks, atRiskSupplies, isLoading } = usePlanningOverviewViewModel();
 
-  const viverosConMeta = viveroOverviews.filter(v => v.openGoal).length;
+  const openGoal = viveroOverview?.openGoal ?? null;
+  const lotStatusCounts = viveroOverview?.lotStatusCounts ?? null;
+  const target = openGoal ? Number(openGoal.target_seedlings) : 0;
+  const produced = openGoal ? Number(openGoal.produced_seedlings ?? 0) : 0;
+  const progressPct = target > 0 ? Math.min(100, Math.round((produced / target) * 100)) : 0;
+  const totalLots = lotStatusCounts
+    ? lotStatusCounts.available + lotStatusCounts.occupied + lotStatusCounts.inactive
+    : 0;
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Panorama de Planificación</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Producción, actividades e insumos de otros módulos, para anticipar compras
+          Producción, actividades e insumos de {activeVivero ? activeVivero.name : 'este vivero'}, para anticipar compras
         </p>
       </div>
 
@@ -36,8 +43,24 @@ export const PlanningOverviewPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-            <p className="text-sm font-medium text-slate-500 mb-1">Viveros con meta activa</p>
-            <p className="text-3xl font-bold text-slate-800">{viverosConMeta} <span className="text-lg font-normal text-slate-400">/ {viveroOverviews.length}</span></p>
+            <p className="text-sm font-medium text-slate-500 mb-1">Meta activa</p>
+            {openGoal ? (
+              <>
+                <p className="text-sm font-semibold text-slate-800">{openGoal.title}</p>
+                <div className="mt-2 flex justify-between text-xs text-slate-500 mb-1">
+                  <span>{produced.toLocaleString('es')}/{target.toLocaleString('es')}</span>
+                  <span>{progressPct}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${progressPct}%` }} />
+                </div>
+              </>
+            ) : (
+              <p className="text-lg font-semibold text-slate-400">Sin meta activa</p>
+            )}
+            {lotStatusCounts && (
+              <p className="text-xs text-slate-400 mt-2">Lotes ocupados: {lotStatusCounts.occupied}/{totalLots}</p>
+            )}
           </div>
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500 mb-1">Actividades pendientes</p>
@@ -49,73 +72,6 @@ export const PlanningOverviewPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Por vivero */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-bold text-slate-800">Planificación por Vivero</h3>
-        </div>
-        {isLoading ? (
-          <div className="p-5 space-y-3">
-            {[1, 2].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
-          </div>
-        ) : viveroOverviews.length === 0 ? (
-          <p className="p-5 text-sm text-slate-500">No hay viveros registrados en Planificación.</p>
-        ) : (
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Vivero</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Meta Activa</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Avance</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Lotes (ocupados/total)</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Actividades pendientes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {viveroOverviews.map(({ vivero, openGoal, lotStatusCounts, pendingTaskCount }) => {
-                const target = openGoal ? Number(openGoal.target_seedlings) : 0;
-                const produced = openGoal ? Number(openGoal.produced_seedlings ?? 0) : 0;
-                const progressPct = target > 0 ? Math.min(100, Math.round((produced / target) * 100)) : 0;
-                const totalLots = lotStatusCounts
-                  ? lotStatusCounts.available + lotStatusCounts.occupied + lotStatusCounts.inactive
-                  : 0;
-
-                return (
-                  <tr key={vivero.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm font-medium text-slate-800">
-                      {vivero.name}
-                      <p className="text-xs text-slate-400 font-normal">{vivero.location}</p>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {openGoal ? openGoal.title : <span className="text-slate-400">Sin meta activa</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {openGoal ? (
-                        <div className="w-32">
-                          <div className="flex justify-between text-xs text-slate-500 mb-1">
-                            <span>{produced.toLocaleString('es')}/{target.toLocaleString('es')}</span>
-                            <span>{progressPct}%</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${progressPct}%` }} />
-                          </div>
-                        </div>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {lotStatusCounts ? `${lotStatusCounts.occupied}/${totalLots}` : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={pendingTaskCount > 0 ? 'info' : 'neutral'}>{pendingTaskCount}</Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
 
       {/* Insumos en riesgo */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

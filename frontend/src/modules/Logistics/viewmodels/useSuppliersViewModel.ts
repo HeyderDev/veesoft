@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { logisticsService } from '../services/logisticsService';
-import type { Supplier, SupplierEvaluationInput } from '../types';
+import type { CertificateAlert, Supplier, SupplierCatalogItem, SupplierEvaluationInput } from '../types';
+import type { Supply, Tool } from '../../Inventory/types';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -13,14 +14,18 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 
 export function useSuppliersViewModel() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [certificateAlerts, setCertificateAlerts] = useState<CertificateAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { success, error } = useToast();
 
   const fetchSuppliers = async () => {
     setIsLoading(true);
     try {
-      const response = await logisticsService.getSuppliers();
+      const [response, alertsResponse] = await Promise.all([
+        logisticsService.getSuppliers(), logisticsService.getCertificateAlerts(),
+      ]);
       setSuppliers(response.data || []);
+      setCertificateAlerts(alertsResponse.data || []);
     } catch (err) {
       error('Error al cargar los proveedores');
       console.error(err);
@@ -81,6 +86,62 @@ export function useSuppliersViewModel() {
     }
   };
 
+  // ---- Catálogo proveedor -> insumo ----
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [catalogSupplier, setCatalogSupplier] = useState<Supplier | undefined>();
+  const [availableSupplies, setAvailableSupplies] = useState<SupplierCatalogItem[]>([]);
+  const [catalogItems, setCatalogItems] = useState<{ item_type: 'supply' | 'tool'; item_id: number | ''; unit_price: number }[]>([]);
+  const [isSavingCatalog, setIsSavingCatalog] = useState(false);
+
+  const openCatalog = async (supplier: Supplier, presetItem?: { item_type: 'supply' | 'tool'; item_id: number }) => {
+    setCatalogSupplier(supplier);
+    setIsCatalogOpen(true);
+    try {
+      const [catalogResponse, suppliesResponse, toolsResponse] = await Promise.all([
+        logisticsService.getSupplierCatalog(supplier.id), logisticsService.getInventorySupplies(), logisticsService.getInventoryTools(),
+      ]);
+      const supplies = (suppliesResponse.data as unknown as Supply[] || []).map(supply => ({ item_type: 'supply' as const, item_id: supply.id, code: supply.sku, name: supply.name, unit: supply.unit, unit_price: '0' }));
+      const tools = (toolsResponse.data as unknown as Tool[] || []).map(tool => ({ item_type: 'tool' as const, item_id: tool.id, code: `HERR-${tool.id}`, name: tool.name, unit: 'unidad', unit_price: '0' }));
+      setAvailableSupplies([...supplies, ...tools]);
+      const items = (catalogResponse.data || []).map(item => ({
+        item_type: item.item_type,
+        item_id: item.item_id,
+        unit_price: Number(item.unit_price),
+      }));
+      const alreadyLinked = presetItem && items.some(
+        item => item.item_type === presetItem.item_type && item.item_id === presetItem.item_id
+      );
+      if (presetItem && !alreadyLinked) {
+        items.push({ item_type: presetItem.item_type, item_id: presetItem.item_id, unit_price: 0 });
+      }
+      setCatalogItems(items);
+    } catch (err) {
+      error('No se pudo cargar el catálogo del proveedor');
+      console.error(err);
+    }
+  };
+  const closeCatalog = () => setIsCatalogOpen(false);
+  const addCatalogItem = () => setCatalogItems(items => [...items, { item_type: 'supply', item_id: '', unit_price: 0 }]);
+  const removeCatalogItem = (index: number) => setCatalogItems(items => items.filter((_, itemIndex) => itemIndex !== index));
+  const updateCatalogItem = (index: number, patch: Partial<{ item_type: 'supply' | 'tool'; item_id: number | ''; unit_price: number }>) => {
+    setCatalogItems(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  };
+  const saveCatalog = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!catalogSupplier || catalogItems.some(item => !item.item_id)) return;
+    setIsSavingCatalog(true);
+    try {
+      await logisticsService.updateSupplierCatalog(catalogSupplier.id, catalogItems as { item_type: 'supply' | 'tool'; item_id: number; unit_price: number }[]);
+      success('Catálogo del proveedor actualizado');
+      setIsCatalogOpen(false);
+    } catch (err) {
+      error(extractErrorMessage(err, 'No se pudo actualizar el catálogo'));
+      console.error(err);
+    } finally {
+      setIsSavingCatalog(false);
+    }
+  };
+
   // ---- Proveedor: evaluar (HU-03) ----
   const [isEvaluateOpen, setIsEvaluateOpen] = useState(false);
   const [evaluatingSupplier, setEvaluatingSupplier] = useState<Supplier | undefined>(undefined);
@@ -114,8 +175,10 @@ export function useSuppliersViewModel() {
   };
 
   return {
-    suppliers, isLoading, fetchSuppliers,
+    suppliers, certificateAlerts, isLoading, fetchSuppliers,
     isFormOpen, editSupplier, openCreate, openEdit, closeForm, form, setForm, isSaving, handleSave, handleDelete,
     isEvaluateOpen, evaluatingSupplier, openEvaluate, closeEvaluate, evaluateForm, setEvaluateForm, isEvaluating, handleEvaluate,
+    isCatalogOpen, catalogSupplier, availableSupplies, catalogItems, openCatalog, closeCatalog,
+    addCatalogItem, removeCatalogItem, updateCatalogItem, saveCatalog, isSavingCatalog,
   };
 }
