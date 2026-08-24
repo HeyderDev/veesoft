@@ -99,6 +99,20 @@ class ProductionGoalService extends BaseService
         return $this->goalRepository->findOpenForVivero($viveroId);
     }
 
+    /**
+     * Historial de lotes/ciclos asociados a una meta, para la vista de
+     * histórico "por meta y, dentro de cada meta, por ciclo" (Fase 5).
+     */
+    public function getLotCycles(int $id)
+    {
+        $goal = $this->goalRepository->find($id);
+
+        return $goal->lotCycles()
+            ->with(['lot', 'phases.phase'])
+            ->orderByDesc('started_at')
+            ->get();
+    }
+
     public function activateIfNotStarted(int $id): void
     {
         $goal = $this->goalRepository->find($id);
