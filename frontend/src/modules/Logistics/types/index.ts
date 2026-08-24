@@ -76,11 +76,14 @@ export interface PurchaseOrderItemInput {
   quantity: number;
 }
 
-export interface UnregisteredSupply {
-  id: number;
-  sku: string;
+export interface UnregisteredItem {
+  item_type: 'supply' | 'tool';
+  item_id: number;
+  sku: string | null;
   name: string;
   unit: string;
+  /** ID de un proveedor que ya ofrece este ítem en su catálogo, si existe alguno. */
+  supplier_id: number | null;
 }
 
 export type QualityStatus = 'approved' | 'rejected' | 'conditional';

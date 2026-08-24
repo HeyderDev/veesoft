@@ -19,19 +19,24 @@ const statusVariants: Record<PurchaseRequestStatus, 'warning' | 'success' | 'dan
   rejected: 'danger',
 };
 
-export const PurchaseRequestsPage: React.FC = () => {
+interface PurchaseRequestsPageProps {
+  /** Se dispara justo después de aprobar una solicitud (genera una orden nueva). */
+  onRequestApproved?: () => void;
+}
+
+export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ onRequestApproved }) => {
   const { isAdmin } = useAuth();
   const {
     requests, suppliers, inventoryItems, isLoading,
     isFormOpen, openCreate, closeForm, reason, setReason, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     reviewTarget, openReview, closeReview, reviewForm, setReviewForm, isReviewing, handleApprove, handleReject,
-  } = usePurchaseRequestsViewModel();
+  } = usePurchaseRequestsViewModel(onRequestApproved);
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Solicitudes de Aprovisionamiento</h1>
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Solicitudes de Aprovisionamiento</h2>
           <p className="text-sm text-slate-500 mt-1">Solicita ítems del Inventario y conviértelos en una orden de compra al aprobar</p>
         </div>
         {!isAdmin && <Button onClick={openCreate}>+ Nueva Solicitud</Button>}

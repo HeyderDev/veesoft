@@ -7,6 +7,5 @@
  */
 export const logisticsRoutes = [
   { path: '/logistics', label: 'Proveedores' },
-  { path: '/logistics/purchase-orders', label: 'Órdenes de Compra' },
-  { path: '/logistics/purchase-requests', label: 'Solicitudes' },
+  { path: '/logistics/purchases', label: 'Compras' },
 ];

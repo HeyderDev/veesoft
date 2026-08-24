@@ -4,14 +4,14 @@ import { PurchaseOrdersPage } from '../pages/PurchaseOrdersPage';
 import { PurchaseRequestsPage } from '../pages/PurchaseRequestsPage';
 import { PlanningOverviewPage } from '../pages/PlanningOverviewPage';
 import { useAuth } from '../../../shared/context/AuthContext';
+import type { UnregisteredItem } from '../types';
 
-type LogisticsSection = 'planning-overview' | 'suppliers' | 'purchase-orders' | 'purchase-requests';
+type LogisticsSection = 'planning-overview' | 'suppliers' | 'purchases';
 
 const sectionTabs: { id: LogisticsSection; label: string; icon: string }[] = [
   { id: 'planning-overview', label: 'Panorama', icon: '📊' },
   { id: 'suppliers', label: 'Proveedores', icon: '🤝' },
-  { id: 'purchase-orders', label: 'Órdenes de Compra', icon: '📦' },
-  { id: 'purchase-requests', label: 'Solicitudes', icon: '📝' },
+  { id: 'purchases', label: 'Compras', icon: '📦' },
 ];
 
 interface LogisticsTabsProps {
@@ -25,12 +25,19 @@ interface LogisticsTabsProps {
 export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => {
   const { isAdmin } = useAuth();
   const [activeSection, setActiveSection] = useState<LogisticsSection>(
-    isAdmin ? 'planning-overview' : 'purchase-orders'
+    isAdmin ? 'planning-overview' : 'purchases'
   );
+  const [catalogLinkRequest, setCatalogLinkRequest] = useState<UnregisteredItem | null>(null);
+  const [ordersRefreshSignal, setOrdersRefreshSignal] = useState(0);
+
+  const handleRequestCatalogLink = (item: UnregisteredItem) => {
+    setCatalogLinkRequest(item);
+    setActiveSection('suppliers');
+  };
 
   useEffect(() => {
-    if (!isAdmin && activeSection !== 'purchase-orders' && activeSection !== 'purchase-requests') {
-      setActiveSection('purchase-orders');
+    if (!isAdmin && activeSection !== 'purchases') {
+      setActiveSection('purchases');
     }
   }, [isAdmin, activeSection]);
 
@@ -43,9 +50,23 @@ export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => 
   const renderSection = () => {
     switch (activeSection) {
       case 'planning-overview': return <PlanningOverviewPage />;
-      case 'suppliers': return <SuppliersPage />;
-      case 'purchase-orders': return <PurchaseOrdersPage />;
-      case 'purchase-requests': return <PurchaseRequestsPage />;
+      case 'suppliers': return (
+        <SuppliersPage
+          pendingLinkItem={catalogLinkRequest}
+          onLinkHandled={() => setCatalogLinkRequest(null)}
+        />
+      );
+      case 'purchases': return (
+        <div className="space-y-10">
+          <PurchaseRequestsPage onRequestApproved={() => setOrdersRefreshSignal(signal => signal + 1)} />
+          <div className="border-t border-slate-200 pt-8">
+            <PurchaseOrdersPage
+              onRequestSupplierCatalogLink={handleRequestCatalogLink}
+              refreshSignal={ordersRefreshSignal}
+            />
+          </div>
+        </div>
+      );
       default: return <PlanningOverviewPage />;
     }
   };
@@ -53,7 +74,7 @@ export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => 
   return (
     <div className="flex flex-col h-full animate-fade-in">
       <div className="mb-6 flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-        {sectionTabs.filter(tab => isAdmin || ['purchase-orders', 'purchase-requests'].includes(tab.id)).map(tab => {
+        {sectionTabs.filter(tab => isAdmin || tab.id === 'purchases').map(tab => {
           const isActive = activeSection === tab.id;
           return (
             <button

@@ -31,7 +31,7 @@ class PurchaseOrder extends Model
 
     protected $casts = [
         'issued_at' => 'datetime',
-        'estimated_delivery_date' => 'date',
+        'estimated_delivery_date' => 'date:Y-m-d',
         'total' => 'decimal:2',
     ];
 

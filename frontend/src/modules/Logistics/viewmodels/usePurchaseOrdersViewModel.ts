@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { logisticsService } from '../services/logisticsService';
 import type {
-  PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, QualityStatus, Supplier, SupplierCatalogItem, UnregisteredSupply,
+  PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, QualityStatus, Supplier, SupplierCatalogItem, UnregisteredItem,
 } from '../types';
 import { useAuth } from '../../../shared/context/AuthContext';
 
@@ -16,12 +16,18 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 
 const emptyItem: PurchaseOrderItemInput = { item_type: 'supply', item_id: '', quantity: 1 };
 
-export function usePurchaseOrdersViewModel() {
+/**
+ * `refreshSignal` fuerza un refetch cuando cambia (además del refetch normal por
+ * `isAdmin`): lo usa la pestaña "Compras" para refrescar Órdenes justo después de
+ * aprobar una Solicitud en la sección hermana, ya que ambas viven en la misma
+ * pantalla con estado independiente (ver `LogisticsTabs`).
+ */
+export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
   const { isAdmin } = useAuth();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [pendingDeliveries, setPendingDeliveries] = useState<PendingDeliveryItem[]>([]);
-  const [unregisteredSupplies, setUnregisteredSupplies] = useState<UnregisteredSupply[]>([]);
+  const [unregisteredItems, setUnregisteredItems] = useState<UnregisteredItem[]>([]);
   const [catalog, setCatalog] = useState<SupplierCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { success, error } = useToast();
@@ -33,12 +39,12 @@ export function usePurchaseOrdersViewModel() {
         logisticsService.getPurchaseOrders(),
         isAdmin ? logisticsService.getSuppliers() : Promise.resolve({ data: [] as Supplier[] }),
         logisticsService.getPendingDeliveries(),
-        isAdmin ? logisticsService.getUnregisteredSupplies() : Promise.resolve({ data: [] as UnregisteredSupply[] }),
+        isAdmin ? logisticsService.getUnregisteredItems() : Promise.resolve({ data: [] as UnregisteredItem[] }),
       ]);
       setOrders(ordersRes.data || []);
       setSuppliers(suppliersRes.data || []);
       setPendingDeliveries(pendingRes.data || []);
-      setUnregisteredSupplies(unregisteredRes.data || []);
+      setUnregisteredItems(unregisteredRes.data || []);
     } catch (err) {
       error('Error al cargar las órdenes de compra');
       console.error(err);
@@ -47,7 +53,7 @@ export function usePurchaseOrdersViewModel() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, [isAdmin]);
+  useEffect(() => { fetchAll(); }, [isAdmin, refreshSignal]);
 
   // ---- Orden: crear ----
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -63,6 +69,20 @@ export function usePurchaseOrdersViewModel() {
     setCatalog([]);
     setIsFormOpen(true);
   };
+
+  /**
+   * Abre "Nueva Orden" con el proveedor y el ítem de la notificación de "Ítems
+   * sin orden de compra" ya preseleccionados (solo aplica cuando ese ítem ya
+   * está en el catálogo de al menos un proveedor, ver `supplier_id`).
+   */
+  const openCreateForItem = (item: UnregisteredItem) => {
+    if (!item.supplier_id) return;
+    setForm({ supplier_id: item.supplier_id, estimated_delivery_date: '' });
+    setItems([{ item_type: item.item_type, item_id: item.item_id, quantity: 1 }]);
+    setCatalog([]);
+    setIsFormOpen(true);
+  };
+
   const closeForm = () => setIsFormOpen(false);
 
   const addItemRow = () => setItems(prev => [...prev, { ...emptyItem }]);
@@ -142,8 +162,8 @@ export function usePurchaseOrdersViewModel() {
   };
 
   return {
-    orders, suppliers, pendingDeliveries, unregisteredSupplies, catalog, isLoading, fetchAll,
-    isFormOpen, openCreate, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
+    orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading, fetchAll,
+    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   };
 }

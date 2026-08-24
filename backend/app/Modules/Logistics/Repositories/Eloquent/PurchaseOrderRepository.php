@@ -17,7 +17,7 @@ class PurchaseOrderRepository extends BaseRepository implements PurchaseOrderRep
 
     public function paginateWithRelations(int $perPage = 15): LengthAwarePaginator
     {
-        return $this->model->with(['supplier', 'creator', 'items'])
+        return $this->model->with(['supplier', 'creator', 'items', 'receipt'])
             ->orderByDesc('created_at')->paginate($perPage);
     }
 

@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
 import { usePurchaseOrdersViewModel } from '../viewmodels/usePurchaseOrdersViewModel';
-import type { DeliveryUrgency, PurchaseOrderStatus } from '../types';
+import type { DeliveryUrgency, PurchaseOrderStatus, QualityStatus, UnregisteredItem } from '../types';
 import { useAuth } from '../../../shared/context/AuthContext';
 
 const statusLabels: Record<PurchaseOrderStatus, string> = {
@@ -23,19 +23,46 @@ const statusVariants: Record<PurchaseOrderStatus, 'neutral' | 'info' | 'success'
   cancelled: 'danger',
 };
 
+const qualityStatusLabels: Record<QualityStatus, string> = {
+  approved: 'Aprobada',
+  conditional: 'Condicional',
+  rejected: 'Rechazada',
+};
+
+const qualityStatusVariants: Record<QualityStatus, 'success' | 'warning' | 'danger'> = {
+  approved: 'success',
+  conditional: 'warning',
+  rejected: 'danger',
+};
+
 const urgencyVariants: Record<DeliveryUrgency, 'danger' | 'warning' | 'success'> = {
   red: 'danger',
   yellow: 'warning',
   green: 'success',
 };
 
-export const PurchaseOrdersPage: React.FC = () => {
+interface PurchaseOrdersPageProps {
+  /** Ítem sin proveedor en catálogo: pide vincularlo desde Proveedores en lugar de abrir "Nueva Orden". */
+  onRequestSupplierCatalogLink?: (item: UnregisteredItem) => void;
+  /** Cambia (p.ej. un contador) para forzar un refetch — ver `usePurchaseOrdersViewModel`. */
+  refreshSignal?: unknown;
+}
+
+export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onRequestSupplierCatalogLink, refreshSignal }) => {
   const { isAdmin } = useAuth();
   const {
-    orders, suppliers, pendingDeliveries, unregisteredSupplies, catalog, isLoading,
-    isFormOpen, openCreate, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
+    orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading,
+    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
-  } = usePurchaseOrdersViewModel();
+  } = usePurchaseOrdersViewModel(refreshSignal);
+
+  const handleUnregisteredItemClick = (item: UnregisteredItem) => {
+    if (item.supplier_id) {
+      openCreateForItem(item);
+    } else {
+      onRequestSupplierCatalogLink?.(item);
+    }
+  };
 
   const total = items.reduce((sum, item) => {
     const catalogItem = catalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
@@ -47,7 +74,7 @@ export const PurchaseOrdersPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in pb-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Órdenes de Compra</h1>
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Órdenes de Compra</h2>
           <p className="text-sm text-slate-500 mt-1">Generación y recepción de órdenes a proveedores</p>
         </div>
         {isAdmin && <Button onClick={openCreate}>+ Nueva Orden</Button>}
@@ -64,21 +91,36 @@ export const PurchaseOrdersPage: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-slate-700">{delivery.item_name}</p>
                   <p className="text-xs text-slate-500">{delivery.order_number} · {delivery.supplier_name}</p>
-                  <p className="text-xs text-slate-400">Entrega: {delivery.estimated_delivery_date ?? 'sin definir'}</p>
+                  <p className="text-xs text-slate-400">{delivery.quantity} {delivery.unit}</p>
                 </div>
-                <Badge variant={urgencyVariants[delivery.urgency]}>{delivery.quantity} {delivery.unit}</Badge>
+                <Badge variant={urgencyVariants[delivery.urgency]}>{delivery.estimated_delivery_date ?? 'Sin definir'}</Badge>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {!isLoading && unregisteredSupplies.length > 0 && (
+      {!isLoading && unregisteredItems.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <h3 className="text-sm font-bold text-amber-900">Insumos sin orden de compra</h3>
-          <p className="mt-1 text-sm text-amber-800">
-            {unregisteredSupplies.map(supply => `${supply.name} (${supply.sku})`).join(', ')}
+          <h3 className="text-sm font-bold text-amber-900">Ítems sin orden de compra</h3>
+          <p className="mt-1 text-xs text-amber-700">
+            Insumos y herramientas del inventario que aún no están en ninguna orden. Haz clic en uno para generar su orden o vincularlo con un proveedor.
           </p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {unregisteredItems.map(item => (
+              <button
+                key={`${item.item_type}-${item.item_id}`}
+                type="button"
+                onClick={() => handleUnregisteredItemClick(item)}
+                title={item.supplier_id ? 'Crear orden de compra con este ítem' : 'Vincular este ítem al catálogo de un proveedor'}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+              >
+                <span>{item.item_type === 'tool' ? '🔧' : '📦'}</span>
+                {item.name}{item.sku ? ` (${item.sku})` : ''}
+                {!item.supplier_id && <span className="text-amber-500">· sin proveedor</span>}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -116,6 +158,14 @@ export const PurchaseOrdersPage: React.FC = () => {
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {(order.status === 'issued' || order.status === 'sent') && (
                       <Button variant="ghost" onClick={() => openReceive(order)}>Registrar Recepción</Button>
+                    )}
+                    {order.receipt && (
+                      <Badge
+                        variant={qualityStatusVariants[order.receipt.quality_status]}
+                        title={order.receipt.observations ?? undefined}
+                      >
+                        Calidad: {qualityStatusLabels[order.receipt.quality_status]}
+                      </Badge>
                     )}
                   </td>
                 </tr>
