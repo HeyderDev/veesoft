@@ -22,7 +22,7 @@ class PurchaseOrderSpendReportTest extends TestCase
     {
         parent::setUp();
 
-        $this->vivero = Vivero::create(['name' => 'Vivero Central']);
+        $this->vivero = Vivero::create(['name' => 'Vivero Central', 'location' => 'El Carmen', 'responsible' => 'Admin Test']);
         $role = Role::create(['name' => 'Admin']);
         $this->admin = User::factory()->create(['role_id' => $role->id]);
     }

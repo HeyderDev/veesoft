@@ -142,6 +142,7 @@ export default function MovementsPage() {
                   <td className="px-6 py-4 text-xs text-slate-500 italic">
                      <div className="flex flex-col gap-1 max-w-xs">
                        <span className="truncate" title={ev.details?.detalles || ev.reason || ''}>{ev.details?.detalles || ev.reason || '-'}</span>
+                       {ev.student && <span className="text-[10px] text-indigo-600 font-bold truncate" title={`Estudiante: ${ev.student.first_name} ${ev.student.last_name}`}>Estudiante: {ev.student.first_name} {ev.student.last_name}</span>}
                        {ev.observations && <span className="text-[10px] text-emerald-600 truncate" title={ev.observations}>Obs: {ev.observations}</span>}
                        {ev.operational_task_id && <span className="text-[10px] text-amber-600">Actividad ID: {ev.operational_task_id}</span>}
                     </div>

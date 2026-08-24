@@ -14,6 +14,7 @@ class CreateOperationalTaskRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'activity_type_id' => 'nullable|exists:activity_types,id',
             'title' => 'required|string|max:150',
             'description' => 'nullable|string',
             'observations' => 'nullable|string',
@@ -24,6 +25,7 @@ class CreateOperationalTaskRequest extends FormRequest
             'resources' => 'nullable|array',
             'resources.*.type' => 'required_with:resources|in:tool,supply',
             'resources.*.id' => 'required_with:resources|integer',
+            'resources.*.quantity' => 'nullable|numeric|min:0.01',
         ];
     }
 }

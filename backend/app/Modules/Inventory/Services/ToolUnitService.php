@@ -54,6 +54,25 @@ class ToolUnitService extends BaseService
             return $unit;
         }
 
+        if ($status === 'borrowed') {
+            if (empty($details['student_id'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'student_id' => 'Se requiere asignar un estudiante activo para prestar la herramienta.'
+                ]);
+            }
+        }
+
+        if ($status === 'available' && $unit->status === 'borrowed') {
+            $lastMovement = $unit->movements()->latest('id')->first();
+            if ($lastMovement && $lastMovement->student_id) {
+                if (empty($details['student_id']) || $details['student_id'] != $lastMovement->student_id) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'student_id' => 'Esta herramienta solo puede ser devuelta por el estudiante que la solicitó originalmente.'
+                    ]);
+                }
+            }
+        }
+
         return DB::transaction(function () use ($id, $status, $details, $unit) {
             $unit = $this->toolUnitRepository->update($id, ['status' => $status]);
 
@@ -65,13 +84,19 @@ class ToolUnitService extends BaseService
                 default => Movement::TYPE_ADJUSTMENT,
             };
 
+            $mergedDetails = array_merge([
+                'usuario' => auth()->user()?->name ?? 'Sistema',
+                'detalles' => "Cambio de estado a {$status}"
+            ], $details ?? []);
+
             $this->movementRepository->create([
                 'tool_id' => $unit->tool_id,
                 'tool_unit_id' => $unit->id,
                 'user_id' => auth()->id(),
+                'student_id' => $details['student_id'] ?? null,
                 'type' => $type,
                 'quantity' => 1,
-                'details' => $details ?? ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => "Cambio de estado a {$status}"],
+                'details' => $mergedDetails,
                 'observations' => $details['motivo'] ?? null,
             ]);
 

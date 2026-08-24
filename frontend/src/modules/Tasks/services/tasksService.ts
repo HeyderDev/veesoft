@@ -44,4 +44,17 @@ export const tasksService = {
   // ---- Lotes (de Planning) ----
   getLots: () =>
     axiosClient.get<LotInfo[]>('/lots'),
+
+  // ---- Activity Types ----
+  getActivityTypes: () =>
+    axiosClient.get<import('../types').ActivityType[]>('/activity-types'),
+
+  createActivityType: (data: { name: string; description?: string }) =>
+    axiosClient.post<import('../types').ActivityType>('/activity-types', data),
+
+  updateActivityType: (id: number, data: { name?: string; description?: string }) =>
+    axiosClient.put<import('../types').ActivityType>(`/activity-types/${id}`, data),
+
+  deleteActivityType: (id: number) =>
+    axiosClient.delete(`/activity-types/${id}`),
 };

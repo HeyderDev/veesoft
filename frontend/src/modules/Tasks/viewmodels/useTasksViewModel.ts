@@ -30,13 +30,15 @@ const EMPTY_CREATE_FORM: TaskCreateInput = {
   resources: []
 };
 
-export type TaskTab = 'general' | 'lot' | 'history' | 'report';
+export type TaskTab = 'general' | 'lot' | 'templates' | 'history' | 'report';
+
+import { useTasksNav } from '../hooks/useTasksNav';
 
 export function useTasksViewModel() {
   const { success, error } = useToast();
   
   // ---- Pestañas ----
-  const [activeTab, setActiveTab] = useState<TaskTab>('general');
+  const { activeSection: activeTab, setActiveSection: setActiveTab } = useTasksNav();
 
   // ---- Tareas Generales (paginadas) ----
   const [generalTasks, setGeneralTasks] = useState<OperationalTask[]>([]);
@@ -151,7 +153,7 @@ export function useTasksViewModel() {
   const openCreate = () => { 
     setCreateForm({
       ...EMPTY_CREATE_FORM,
-      // Si estamos en la pestaña de lotes y hay un lote seleccionado, podríamos preseleccionar (requeriría saber la fase activa, pero por ahora solo abrimos el form)
+      lot_id: activeTab === 'lot' ? selectedLotId : null,
     }); 
     setIsCreateOpen(true); 
   };

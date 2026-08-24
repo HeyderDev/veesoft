@@ -72,7 +72,7 @@ class OperationalTaskService extends BaseService
         $task = $this->repository->create($data);
         $this->syncResources($task, $resources);
 
-        return $task->load('resources');
+        return $task->load(['resources', 'lotCyclePhase.lotCycle.lot']);
     }
 
     public function createTaskForPhase(int $cycleLotPhaseId, array $data): OperationalTask
@@ -125,7 +125,7 @@ class OperationalTaskService extends BaseService
             $this->syncResources($task, $resources);
         }
 
-        return $task->load('resources');
+        return $task->load(['resources', 'lotCyclePhase.lotCycle.lot']);
     }
 
     public function completeTask(int $taskId, int $completedBy): void
@@ -170,6 +170,7 @@ class OperationalTaskService extends BaseService
                     'operational_task_id' => $task->id,
                     'resource_type' => $resource['type'],
                     'resource_id' => $resource['id'],
+                    'quantity' => $resource['quantity'] ?? 1,
                 ]);
             }
         }

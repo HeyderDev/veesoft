@@ -46,12 +46,36 @@ export const inventoryService = {
   getSupplyByCode: (code: string) =>
     axiosClient.get(`/supplies/code/${code}`).then(res => (res as any).data),
     
-  registerSupplyMovement: (supplyId: number, type: string, quantity: number, reason?: string, observation?: string, scannedCode?: string) =>
-    axiosClient.post(`/supplies/${supplyId}/movements`, { type, quantity, reason, observation, scanned_code: scannedCode }).then(res => (res as any).data),
+  registerSupplyMovement: (supplyId: number, type: string, quantity: number, reason?: string, observation?: string, scannedCode?: string, studentId?: number) =>
+    axiosClient.post(`/supplies/${supplyId}/movements`, { type, quantity, reason, observation, scanned_code: scannedCode, student_id: studentId }).then(res => (res as any).data),
 
   // Movements
   getMovements: (type?: string, q?: string, startDate?: string, endDate?: string) => 
     axiosClient.get<{ data: Movement[] }>('/movements', { params: { type, q, startDate, endDate } }).then(res => (res as any).data),
+
+  // Students
+  getStudents: (q?: string) => 
+    axiosClient.get('/students', { params: { search: q } }).then(res => res as any),
+    
+  getStudentByCedula: (cedula: string) =>
+    axiosClient.get(`/students/search/${cedula}`).then(res => res as any),
+
+  importStudents: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axiosClient.post('/students/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res as any);
+  },
+
+  createStudent: (data: any) =>
+    axiosClient.post('/students', data).then(res => res as any),
+
+  updateStudent: (id: number, data: any) =>
+    axiosClient.put(`/students/${id}`, data).then(res => res as any),
+
+  deleteStudent: (id: number) =>
+    axiosClient.delete(`/students/${id}`).then(res => res as any),
 
   // Shared / Tasks
   getTasks: (q?: string) =>
