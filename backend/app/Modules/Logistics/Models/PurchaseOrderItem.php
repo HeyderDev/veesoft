@@ -11,7 +11,7 @@ class PurchaseOrderItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'purchase_order_id', 'item_sku', 'item_name', 'unit', 'quantity', 'unit_price',
+        'purchase_order_id', 'supply_id', 'tool_id', 'item_sku', 'item_name', 'unit', 'quantity', 'unit_price',
     ];
 
     protected $casts = [
@@ -22,5 +22,15 @@ class PurchaseOrderItem extends Model
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function supply(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Inventory\Models\Supply::class);
+    }
+
+    public function tool(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Inventory\Models\Tool::class);
     }
 }

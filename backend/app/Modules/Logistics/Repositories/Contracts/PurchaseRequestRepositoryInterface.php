@@ -9,5 +9,7 @@ interface PurchaseRequestRepositoryInterface extends BaseRepositoryInterface
 {
     public function paginateWithRelations(int $perPage = 15): LengthAwarePaginator;
 
+    public function paginateForRequester(int $userId, int $perPage = 15): LengthAwarePaginator;
+
     public function findWithRelations(int $id);
 }

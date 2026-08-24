@@ -73,12 +73,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
         $this->app->bind(PurchaseOrderRepositoryInterface::class, PurchaseOrderRepository::class);
         $this->app->bind(PurchaseRequestRepositoryInterface::class, PurchaseRequestRepository::class);
-<<<<<<< HEAD
-=======
 
         // ---- Contexto de vivero activo (una instancia por request) ----
         $this->app->singleton(CurrentVivero::class);
->>>>>>> 727f1891df3d6119d5da307f211624a5f3ab9519
     }
 
     /**

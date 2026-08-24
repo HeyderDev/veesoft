@@ -25,4 +25,11 @@ class Tool extends Model
     {
         return $this->hasMany(Movement::class);
     }
+
+    public function suppliers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(\App\Modules\Logistics\Models\Supplier::class)
+            ->withPivot('unit_price')
+            ->withTimestamps();
+    }
 }
