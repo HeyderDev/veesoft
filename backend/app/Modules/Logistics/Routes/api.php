@@ -38,6 +38,10 @@ Route::middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
         // Órdenes de compra
         Route::get('purchase-orders/unregistered-items', [PurchaseOrderController::class, 'unregisteredItems']);
         Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
+
+        // Reporte de gasto: anual o para un rango de fechas arbitrario (p.ej. el de una
+        // Meta de Producción de Planning, resuelto por el frontend — ver Logistics.md §7).
+        Route::get('purchase-orders/spend-report', [PurchaseOrderController::class, 'spendReport']);
     });
 
     Route::get('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'show']);

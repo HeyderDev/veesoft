@@ -82,6 +82,8 @@ export interface UnregisteredItem {
   sku: string | null;
   name: string;
   unit: string;
+  /** Cantidad ya registrada en Inventory: la orden que reconcilia este aviso debe emitirse por esta misma cantidad, no editable. */
+  quantity: string;
   /** ID de un proveedor que ya ofrece este ítem en su catálogo, si existe alguno. */
   supplier_id: number | null;
 }
@@ -156,4 +158,26 @@ export interface PurchaseRequest {
   purchase_order_id: number | null;
   items?: PurchaseRequestItem[];
   purchase_order?: PurchaseOrder;
+}
+
+/**
+ * Reporte de gasto en compras (§ PurchaseSpendReportPanel): anual, o para el rango de
+ * fechas de una Meta de Producción de Planning (`MetaProduccion`, ver ../../Planning/types)
+ * que el frontend resuelve antes de pedir el reporte — Logistics no tiene su propio
+ * concepto de "meta", reutiliza el que ya existe en Planning.
+ */
+export interface PurchaseSpendSupplier {
+  supplier_id: number;
+  supplier_name: string;
+  orders_count: number;
+  total_spent: string;
+}
+
+export interface PurchaseSpendReport {
+  label: string;
+  start_date: string;
+  end_date: string;
+  total_spent: string;
+  orders_count: number;
+  suppliers: PurchaseSpendSupplier[];
 }

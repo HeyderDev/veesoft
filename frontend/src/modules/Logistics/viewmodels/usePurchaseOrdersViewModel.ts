@@ -61,11 +61,19 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
     supplier_id: '', estimated_delivery_date: '',
   });
   const [items, setItems] = useState<PurchaseOrderItemInput[]>([{ ...emptyItem }]);
+  /**
+   * Filas cuya cantidad no es editable, en paralelo a `items`: se activa para el ítem
+   * que viene del aviso "Ítems sin orden de compra" (`openCreateForItem`) — la orden
+   * que lo reconcilia debe emitirse exactamente por la cantidad ya registrada en
+   * Inventory, para que lo comprado cuadre con lo que ya está físicamente ahí.
+   */
+  const [quantityLocked, setQuantityLocked] = useState<boolean[]>([false]);
   const [isSaving, setIsSaving] = useState(false);
 
   const openCreate = () => {
     setForm({ supplier_id: '', estimated_delivery_date: '' });
     setItems([{ ...emptyItem }]);
+    setQuantityLocked([false]);
     setCatalog([]);
     setIsFormOpen(true);
   };
@@ -73,20 +81,28 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
   /**
    * Abre "Nueva Orden" con el proveedor y el ítem de la notificación de "Ítems
    * sin orden de compra" ya preseleccionados (solo aplica cuando ese ítem ya
-   * está en el catálogo de al menos un proveedor, ver `supplier_id`).
+   * está en el catálogo de al menos un proveedor, ver `supplier_id`). La cantidad
+   * se fija a la ya registrada en Inventory y queda bloqueada (`quantityLocked`).
    */
   const openCreateForItem = (item: UnregisteredItem) => {
     if (!item.supplier_id) return;
     setForm({ supplier_id: item.supplier_id, estimated_delivery_date: '' });
-    setItems([{ item_type: item.item_type, item_id: item.item_id, quantity: 1 }]);
+    setItems([{ item_type: item.item_type, item_id: item.item_id, quantity: Number(item.quantity) }]);
+    setQuantityLocked([true]);
     setCatalog([]);
     setIsFormOpen(true);
   };
 
   const closeForm = () => setIsFormOpen(false);
 
-  const addItemRow = () => setItems(prev => [...prev, { ...emptyItem }]);
-  const removeItemRow = (index: number) => setItems(prev => prev.filter((_, i) => i !== index));
+  const addItemRow = () => {
+    setItems(prev => [...prev, { ...emptyItem }]);
+    setQuantityLocked(prev => [...prev, false]);
+  };
+  const removeItemRow = (index: number) => {
+    setItems(prev => prev.filter((_, i) => i !== index));
+    setQuantityLocked(prev => prev.filter((_, i) => i !== index));
+  };
   const updateItemRow = (index: number, patch: Partial<PurchaseOrderItemInput>) => {
     setItems(prev => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   };
@@ -163,7 +179,7 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
 
   return {
     orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading, fetchAll,
-    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
+    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, quantityLocked, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   };
 }

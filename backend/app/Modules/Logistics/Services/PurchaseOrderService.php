@@ -26,6 +26,12 @@ use Illuminate\Support\Facades\DB;
  *   'cancelled'; en cualquier otro caso pasa a 'received'.
  * - El listado de pendientes clasifica cada ítem por urgencia según la fecha de entrega
  *   estimada de su orden: 'red' si ya venció, 'yellow' si es mañana, 'green' en otro caso.
+ * - El reporte de gasto (`spendReport`/`annualSpendReport`) solo cuenta como "gasto real"
+ *   las órdenes que no terminaron `cancelled` (no existe un flujo real que deje una orden
+ *   en `draft`: `create()` siempre las emite `issued` con `issued_at = now()`, ver arriba).
+ *   El rango de fechas lo decide quien llama: puede ser un año completo o el período de
+ *   una Meta de Producción de `Planning` — este Service no conoce ese módulo (ver
+ *   docs/03_MODULE_CONTRACTS/Logistics.md §8), el frontend resuelve las fechas.
  */
 class PurchaseOrderService extends BaseService
 {
@@ -202,25 +208,30 @@ class PurchaseOrderService extends BaseService
      * Insumos y herramientas del inventario que nunca han aparecido en un ítem de
      * orden de compra, para avisar en el panel de Órdenes. Cada ítem lleva el ID
      * del proveedor (si existe alguno en su catálogo) que el frontend usa para
-     * decidir si abre directamente "Nueva Orden" o pide vincular un catálogo.
+     * decidir si abre directamente "Nueva Orden" o pide vincular un catálogo, y la
+     * `quantity` ya registrada en Inventory: la orden que reconcilia este aviso debe
+     * emitirse por esa misma cantidad exacta (no editable en el frontend), para que
+     * lo comprado cuadre con lo que ya está físicamente en inventario.
      */
     public function unregisteredItems(): array
     {
         $supplies = Supply::query()
             ->whereDoesntHave('purchaseOrderItems')
             ->orderBy('name')
-            ->get(['id', 'sku', 'name', 'unit'])
+            ->get(['id', 'sku', 'name', 'unit', 'current_stock'])
             ->map(fn ($supply) => [
                 'item_type' => 'supply',
                 'item_id' => $supply->id,
                 'sku' => $supply->sku,
                 'name' => $supply->name,
                 'unit' => $supply->unit,
+                'quantity' => (string) $supply->current_stock,
                 'supplier_id' => $this->bestSupplierIdFor('supply', $supply->id),
             ]);
 
         $tools = Tool::query()
             ->whereDoesntHave('purchaseOrderItems')
+            ->withCount('units')
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(fn ($tool) => [
@@ -229,6 +240,7 @@ class PurchaseOrderService extends BaseService
                 'sku' => null,
                 'name' => $tool->name,
                 'unit' => 'unidad',
+                'quantity' => (string) $tool->units_count,
                 'supplier_id' => $this->bestSupplierIdFor('tool', $tool->id),
             ]);
 
@@ -259,5 +271,54 @@ class PurchaseOrderService extends BaseService
         );
 
         return ($eligible ?? $suppliers->sortByDesc('score')->first())->id;
+    }
+
+    /**
+     * Reporte de gasto en compras para un rango de fechas arbitrario, con desglose por
+     * proveedor. Alimenta tanto el reporte anual como el de una Meta de Producción de
+     * Planning (el frontend resuelve el rango a partir de `created_at`/`finished_at` de
+     * la meta elegida y llama aquí con esas fechas — ver `spendReport()` del controlador).
+     */
+    public function spendReport(Carbon $start, Carbon $end, string $label): array
+    {
+        $ordersQuery = PurchaseOrder::query()
+            ->whereIn('purchase_orders.status', [PurchaseOrder::STATUS_ISSUED, PurchaseOrder::STATUS_SENT, PurchaseOrder::STATUS_RECEIVED])
+            ->whereBetween('purchase_orders.issued_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()]);
+
+        $totalSpent = (float) (clone $ordersQuery)->sum('purchase_orders.total');
+        $ordersCount = (clone $ordersQuery)->count();
+
+        $suppliers = (clone $ordersQuery)
+            ->join('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
+            ->selectRaw('suppliers.id as supplier_id, suppliers.name as supplier_name, COUNT(*) as orders_count, SUM(purchase_orders.total) as total_spent')
+            ->groupBy('suppliers.id', 'suppliers.name')
+            ->orderByDesc('total_spent')
+            ->get()
+            ->map(fn ($row) => [
+                'supplier_id' => (int) $row->supplier_id,
+                'supplier_name' => $row->supplier_name,
+                'orders_count' => (int) $row->orders_count,
+                'total_spent' => number_format((float) $row->total_spent, 2, '.', ''),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'label' => $label,
+            'start_date' => $start->toDateString(),
+            'end_date' => $end->toDateString(),
+            'total_spent' => number_format($totalSpent, 2, '.', ''),
+            'orders_count' => $ordersCount,
+            'suppliers' => $suppliers,
+        ];
+    }
+
+    public function annualSpendReport(int $year): array
+    {
+        return $this->spendReport(
+            Carbon::create($year, 1, 1),
+            Carbon::create($year, 12, 31),
+            "Año {$year}",
+        );
     }
 }

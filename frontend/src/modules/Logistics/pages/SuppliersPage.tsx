@@ -3,6 +3,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
+import { PurchaseSpendReportPanel } from '../components/PurchaseSpendReportPanel';
 import { useSuppliersViewModel } from '../viewmodels/useSuppliersViewModel';
 import type { Supplier, UnregisteredItem } from '../types';
 
@@ -133,6 +134,8 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
           </table>
         </div>
       )}
+
+      <PurchaseSpendReportPanel />
 
       <SlideOver
         isOpen={isFormOpen}

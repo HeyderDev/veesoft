@@ -2,7 +2,7 @@ import axiosClient from '../../../shared/services/axiosClient';
 import type {
   PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, PurchaseRequest,
   PurchaseRequestItemInput, QualityStatus, Supplier, SupplierEvaluationInput, SupplierCatalogItem,
-  CertificateAlert, UnregisteredItem,
+  CertificateAlert, UnregisteredItem, PurchaseSpendReport,
 } from '../types';
 
 /**
@@ -45,4 +45,8 @@ export const logisticsService = {
   reviewPurchaseRequest: (id: number, data: {
     decision: 'approved' | 'rejected'; supplier_id?: number; estimated_delivery_date?: string;
   }) => axiosClient.post(`/purchase-requests/${id}/review`, data),
+
+  // ---- Reporte de gasto en compras para el rango de fechas de una Meta de Producción ----
+  getPurchaseSpendReport: (params: { start_date: string; end_date: string; label: string }) =>
+    axiosClient.get<PurchaseSpendReport>('/purchase-orders/spend-report', { params }),
 };

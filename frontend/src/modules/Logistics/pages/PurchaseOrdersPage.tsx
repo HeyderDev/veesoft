@@ -3,6 +3,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
+import { PurchaseSpendReportPanel } from '../components/PurchaseSpendReportPanel';
 import { usePurchaseOrdersViewModel } from '../viewmodels/usePurchaseOrdersViewModel';
 import type { DeliveryUrgency, PurchaseOrderStatus, QualityStatus, UnregisteredItem } from '../types';
 import { useAuth } from '../../../shared/context/AuthContext';
@@ -52,7 +53,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
   const { isAdmin } = useAuth();
   const {
     orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading,
-    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
+    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, quantityLocked, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   } = usePurchaseOrdersViewModel(refreshSignal);
 
@@ -175,6 +176,8 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
         </div>
       )}
 
+      <PurchaseSpendReportPanel />
+
       <SlideOver isOpen={isFormOpen} onClose={closeForm} title="Nueva Orden de Compra">
         <form onSubmit={handleSave} className="p-6 space-y-4">
           <div>
@@ -222,8 +225,14 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                     const selectedItem = catalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
                     const unit = selectedItem?.unit ?? 'unidad';
                     const price = Number(selectedItem?.unit_price ?? 0);
+                    const isLocked = quantityLocked[index] ?? false;
 
                     return <>
+                  {isLocked && (
+                    <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      🔒 Ítem del aviso "Sin orden de compra": la cantidad debe coincidir con lo ya registrado en inventario.
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
                     <select
                       value={item.item_id === '' ? '' : `${item.item_type}:${item.item_id}`}
@@ -232,7 +241,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                         updateItemRow(index, { item_type: (item_type || 'supply') as 'supply' | 'tool', item_id: item_id ? Number(item_id) : '' });
                       }}
                       required
-                      disabled={!form.supplier_id || catalog.length === 0}
+                      disabled={isLocked || !form.supplier_id || catalog.length === 0}
                       className="w-full px-3 py-2 border border-slate-300 rounded text-sm disabled:bg-slate-100"
                     >
                       <option value="">Selecciona un ítem…</option>
@@ -257,12 +266,15 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                       value={item.quantity}
                       onChange={e => updateItemRow(index, { quantity: Number(e.target.value) })}
                       required
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                      disabled={isLocked}
+                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm disabled:bg-slate-100 disabled:text-slate-500"
                     />
                     </div>
-                    <p className="pb-2 text-xs text-slate-500">Puedes ingresar cantidades fraccionadas, por ejemplo 2,5 kg.</p>
+                    <p className="pb-2 text-xs text-slate-500">
+                      {isLocked ? 'Cantidad fija: coincide con el registro de inventario.' : 'Puedes ingresar cantidades fraccionadas, por ejemplo 2,5 kg.'}
+                    </p>
                   </div>
-                  {items.length > 1 && (
+                  {items.length > 1 && !isLocked && (
                     <button
                       type="button"
                       onClick={() => removeItemRow(index)}
