@@ -1,52 +1,38 @@
 # 03_MODULE_CONTRACTS/Tasks.md
 
-> Versión: 1.0.0 · Última actualización: 2026-07-22 · Estado: Oficial
+> Versión: 1.2.0 · Última actualización: 2026-07-25 · Estado: Oficial
 > Autor: Equipo ERP Lastenia · Aprobado por: Arquitectura del Proyecto
 
 # Contrato del módulo Tasks
 
-**Estado:** No implementado en su propio módulo — **existe una tabla `OperationalTask` construida provisionalmente dentro de `Planning`** (`backend/app/Modules/Planning/Models/OperationalTask.php`) mientras no había dueño para este módulo. Es lo primero que debe revisar el compañero responsable de `Tasks` junto con el Arquitecto.
+**Estado:** Implementado e integrado. La entidad `OperationalTask` ya fue extraída de `Planning`, reestructurada bajo la carpeta `Tasks` y reconciliada. Las dependencias externas han sido actualizadas.
 
 ---
 
 ## 1. Responsabilidad
 
-Administración de actividades operativas del vivero: tareas asignadas a personal, con estado, responsable y fecha, generalmente ligadas a una fase de un ciclo productivo.
+Administración de actividades operativas del vivero: tareas asignadas a personal, con estado, responsable y fecha, que pueden estar ligadas a una fase de un ciclo productivo o ser de carácter general.
 
-## 2. Situación de partida (importante)
+## 2. Entidades Relevantes
 
-`OperationalTask` hoy vive en `Planning` con esta relación:
-```php
-// Planning/Models/CycleLotPhase.php
-public function operationalTasks(): HasMany
-{
-    return $this->hasMany(OperationalTask::class);
-}
-```
-```php
-// Shared/Models/User.php
-public function operationalTasks(): HasMany
-{
-    return $this->hasMany(OperationalTask::class, 'assigned_to');
-}
-```
+El módulo es dueño absoluto del modelo `OperationalTask`. Las relaciones hacia él desde otros módulos (como desde `User` o `LotCyclePhase`) no utilizan relaciones de Eloquent directas para preservar los límites del módulo. El acceso a los datos de las tareas operativas debe solicitarse exclusivamente a través del servicio expuesto `OperationalTaskService`.
 
-**Decisión pendiente de Fase 2** (no la tomes solo): mover `OperationalTask` (modelo + migración + factory) de `Planning/Models` a `Tasks/Models`, y reemplazar el acceso directo por un `TaskService` público que `Planning` consuma para crear tareas ligadas a una fase. La migración de la tabla ya existe (`2026_01_01_001300_create_operational_tasks_table.php`) — al mover el módulo, se actualiza el namespace del modelo, no se crea una tabla nueva.
+## 3. Servicios públicos ofrecidos
 
-## 3. Servicios públicos que debería ofrecer una vez migrado
+El servicio principal es `OperationalTaskService` y expone los siguientes métodos reales que otros módulos (como `Planning` o `Shared`) pueden consumir:
 
-| Método propuesto | Para qué lo consumiría `Planning` |
+| Método | Propósito |
 |---|---|
-| `createTaskForPhase(int $cycleLotPhaseId, array $data): OperationalTask` | Al generar un cronograma, crear las tareas operativas de cada fase. |
-| `getTasksByAssignee(int $userId): Collection` | Vista de tareas por operario. |
-| `completeTask(int $taskId): void` | Marcar tarea como realizada. |
+| `createTask(array $data): OperationalTask` | Crear una tarea genérica. |
+| `createTaskForPhase(int $cycleLotPhaseId, array $data): OperationalTask` | Al generar un cronograma, crear las tareas operativas ligadas a cada fase. |
+| `updateTask(int $id, array $data): OperationalTask` | Actualizar una tarea existente. |
+| `getTasksByAssignee(int $userId): Collection` | Recuperar todas las tareas asignadas a un usuario específico. |
+| `getTasksByPhase(int $cycleLotPhaseId): Collection` | Recuperar todas las tareas ligadas a una fase específica de un ciclo de producción. |
+| `completeTask(int $taskId): void` | Marcar una tarea como realizada y guardar su `completed_date`. |
 
 ## 4. Dependencias permitidas
 
-`Tasks` → `Shared` (usuarios). `Tasks` puede depender de `Planning` (para conocer fases/ciclos), nunca al revés una vez completada la migración — mientras la tabla siga en `Planning`, es `Planning` quien expone el acceso vía su propio `PlanningService`.
+- `Tasks` → `Shared` (User): Puede hacer referencia y relacionarse a `User` (assigned_to).
+- `Tasks` → `Planning` (LotCyclePhase): Puede hacer referencia a la fase de un ciclo para registrar tareas específicas del ciclo de producción.
 
-## 5. Antes de empezar
-
-1. Coordina con el Arquitecto el movimiento de `OperationalTask` fuera de `Planning`.
-2. Sigue la estructura de `Planning` como plantilla para el resto del módulo.
-3. Actualiza este documento y `docs/03_MODULE_CONTRACTS/Planning.md` §3 una vez migrada la tabla.
+Ningún otro módulo puede depender directamente de la base de datos o Repositorios de `Tasks`.

@@ -14,11 +14,12 @@ return new class extends Migration
     {
         Schema::create('operational_tasks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('lot_cycle_phase_id')->constrained('lot_cycle_phases')->cascadeOnDelete();
+            $table->foreignId('lot_cycle_phase_id')->nullable()->constrained('lot_cycle_phases')->cascadeOnDelete();
             $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
             $table->string('title', 150);
             $table->text('description')->nullable();
-            $table->string('priority', 30);
+            $table->text('observations')->nullable();
+            $table->string('priority', 30)->default('normal');
             $table->dateTime('planned_date');
             $table->dateTime('completed_date')->nullable();
             $table->string('status', 30)->default('pending');

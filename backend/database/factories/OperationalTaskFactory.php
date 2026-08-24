@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Modules\Planning\Models\OperationalTask;
+use App\Modules\Tasks\Models\OperationalTask;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
