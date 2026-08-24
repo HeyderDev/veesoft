@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Tasks\Controllers\OperationalTaskController;
+use App\Modules\Tasks\Controllers\ActivityTypeController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('tasks')->middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
@@ -19,4 +20,15 @@ Route::prefix('tasks')->middleware(['auth:sanctum', 'vivero.scope'])->group(func
     Route::get('/', [OperationalTaskController::class, 'index']);
     Route::get('/{id}', [OperationalTaskController::class, 'show']);
     Route::post('/{id}/complete', [OperationalTaskController::class, 'complete']);
+});
+
+Route::prefix('activity-types')->middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
+    Route::get('/', [ActivityTypeController::class, 'index']);
+    Route::get('/{id}', [ActivityTypeController::class, 'show']);
+    
+    Route::middleware('role:Admin')->group(function () {
+        Route::post('/', [ActivityTypeController::class, 'store']);
+        Route::put('/{id}', [ActivityTypeController::class, 'update']);
+        Route::delete('/{id}', [ActivityTypeController::class, 'destroy']);
+    });
 });

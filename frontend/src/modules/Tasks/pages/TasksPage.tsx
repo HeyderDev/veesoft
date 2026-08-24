@@ -4,6 +4,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { Modal } from '../../../components/ui/Modal';
 import { TaskFormSlideOver, StatusBadge, PriorityBadge } from '../components/TaskFormSlideOver';
 import { TaskReportPanel } from '../components/TaskReportPanel';
+import { TemplatesTab } from '../components/TemplatesTab';
 import { useTasksViewModel, type TaskTab } from '../viewmodels/useTasksViewModel';
 import type { LotInfo, OperationalTask } from '../types';
 import { tasksService } from '../services/tasksService';
@@ -156,6 +157,7 @@ export const TasksPage: React.FC = () => {
   const tabs: { id: TaskTab; label: string; icon: string }[] = [
     { id: 'general', label: 'Actividades Generales', icon: '📋' },
     { id: 'lot', label: 'Actividades por Lote', icon: '🌱' },
+    { id: 'templates', label: 'Plantillas de Actividad', icon: '⚙️' },
     ...(isAdmin ? [
       { id: 'history' as const, label: 'Historial', icon: '🕒' },
       { id: 'report' as const, label: 'Reporte General', icon: '📊' },
@@ -310,6 +312,9 @@ export const TasksPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* TAB: Plantillas */}
+      {activeTab === 'templates' && <TemplatesTab />}
 
       {/* TAB: Historial */}
       {activeTab === 'history' && (
