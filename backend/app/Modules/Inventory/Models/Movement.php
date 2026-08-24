@@ -27,6 +27,7 @@ class Movement extends Model
         'tool_unit_id',
         'supply_id',
         'user_id',
+        'student_id',
         'operational_task_id',
         'type',
         'quantity',
@@ -68,6 +69,11 @@ class Movement extends Model
     public function toolUnit(): BelongsTo
     {
         return $this->belongsTo(ToolUnit::class);
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class);
     }
 
     public function operationalTask(): BelongsTo

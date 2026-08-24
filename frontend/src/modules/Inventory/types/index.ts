@@ -32,12 +32,23 @@ export interface Supply {
   min_stock?: number;
 }
 
+export interface Student {
+  id: number;
+  cedula: string;
+  first_name: string;
+  last_name: string;
+  career?: string | null;
+  semester?: string | null;
+  vivero_id: number;
+}
+
 export interface Movement {
   id: number;
   tool_id: number | null;
   tool_unit_id: number | null;
   supply_id: number | null;
   user_id: number | null;
+  student_id: number | null;
   operational_task_id: number | null;
   type: string;
   quantity: number;
@@ -53,4 +64,5 @@ export interface Movement {
   tool?: Tool;
   tool_unit?: ToolUnit;
   supply?: Supply;
+  student?: Student;
 }

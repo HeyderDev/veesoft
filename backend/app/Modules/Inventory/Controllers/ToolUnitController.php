@@ -30,7 +30,12 @@ class ToolUnitController extends BaseApiController
 
     public function updateStatus(UpdateToolStatusRequest $request, int $unit)
     {
-        $updated = $this->toolUnitService->updateStatus($unit, $request->validated('status'), $request->validated('details'));
+        $details = $request->validated('details') ?? [];
+        if ($request->has('student_id')) {
+            $details['student_id'] = $request->input('student_id');
+        }
+
+        $updated = $this->toolUnitService->updateStatus($unit, $request->validated('status'), $details);
 
         return $this->successResponse($updated, 'Estado de la unidad actualizado');
     }
