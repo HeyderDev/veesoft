@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
-import { ReportesPage } from '../../Tracking/pages/ReportesPage';
 import { useActiveVivero } from '../../../shared/context/ActiveViveroContext';
 import { usePlanningNav, type PlanningSection } from '../hooks/usePlanningNav';
 import { ResumenPage } from '../pages/ResumenPage';
-import { ConfiguracionPage } from '../pages/ConfiguracionPage';
+import { HistorialPage } from '../pages/HistorialPage';
 import { LotesPage } from '../pages/LotesPage';
 import { FasesPage } from '../pages/FasesPage';
 
@@ -11,12 +10,14 @@ const sectionTabs: { id: PlanningSection; label: string; icon: string }[] = [
   { id: 'resumen', label: 'Resumen Operativo', icon: '📊' },
   { id: 'lotes', label: 'Lotes', icon: '🏗️' },
   { id: 'fases', label: 'Fases', icon: '🔄' },
-  { id: 'reportes', label: 'Reportes', icon: '📋' },
-  { id: 'config', label: 'Configuración', icon: '⚙️' },
+  { id: 'historial', label: 'Historial', icon: '🗂️' },
 ];
 
 interface PlanningTabsProps {
   onTabChange?: (tabLabel: string) => void;
+  /** Navega al módulo global de Configuración (ver App.tsx) — usado por el
+   * botón "Culminar Meta" que aparece en ResumenPage al 80% de progreso. */
+  onNavigateToSettings?: () => void;
 }
 
 /**
@@ -25,7 +26,7 @@ interface PlanningTabsProps {
  * sección) vive en PlanningNavContext, compartida con el panel del sidebar
  * (PlanningSidebarSections) para que ambos queden sincronizados.
  */
-export const PlanningTabs: React.FC<PlanningTabsProps> = ({ onTabChange }) => {
+export const PlanningTabs: React.FC<PlanningTabsProps> = ({ onTabChange, onNavigateToSettings }) => {
   const { activeVivero } = useActiveVivero();
   const { activeSection, setActiveSection } = usePlanningNav();
 
@@ -39,12 +40,11 @@ export const PlanningTabs: React.FC<PlanningTabsProps> = ({ onTabChange }) => {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'resumen': return <ResumenPage viveroId={activeVivero.id} />;
+      case 'resumen': return <ResumenPage viveroId={activeVivero.id} onNavigateToSettings={onNavigateToSettings} />;
       case 'lotes': return <LotesPage viveroId={activeVivero.id} />;
       case 'fases': return <FasesPage viveroId={activeVivero.id} />;
-      case 'reportes': return <ReportesPage viveroId={activeVivero.id} />;
-      case 'config': return <ConfiguracionPage />;
-      default: return <ResumenPage viveroId={activeVivero.id} />;
+      case 'historial': return <HistorialPage />;
+      default: return <ResumenPage viveroId={activeVivero.id} onNavigateToSettings={onNavigateToSettings} />;
     }
   };
 

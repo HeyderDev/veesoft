@@ -23,8 +23,9 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({ lote, onClose,
 
   if (!lote || !currentPhase || !nextPhase) return null;
 
-  // Las fases gateadas (Siembra/Injertación/Despacho) no tienen fecha fija que
-  // reprogramar: avanzan solas al completarse su actividad — ver LotCycleService.
+  // Las fases gateadas (Siembra/Injertación/Despacho) avanzan solas al
+  // completarse su actividad obligatoria en Tareas, no por una fecha elegida a
+  // mano — ver LotCycleService::markGateSatisfied().
   const gateBlocked = isGatedPhaseCode(currentPhase.phase?.code ?? '');
 
   const handleConfirm = () => onConfirm(lote.id, transitionDate);
@@ -47,8 +48,9 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({ lote, onClose,
         {gateBlocked ? (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs text-amber-800">
-              <strong>{currentPhase.phase?.name}</strong> no tiene una fecha fija que reprogramar: es una actividad
-              obligatoria que avanza sola en cuanto se completa en Tareas.
+              <strong>{currentPhase.phase?.name}</strong> es una actividad obligatoria: avanza sola en cuanto se
+              confirma su actividad en Tareas, no eligiendo una fecha a mano. Si se demora, esta fase se extiende
+              y el resto se recalcula automáticamente.
             </p>
           </div>
         ) : (

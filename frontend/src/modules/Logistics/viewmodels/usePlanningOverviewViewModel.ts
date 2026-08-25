@@ -8,8 +8,9 @@ import { inventoryService } from '../../Inventory/services/inventoryService';
 import type { Supply, Tool } from '../../Inventory/types';
 
 /**
- * Forma real de /tasks/history (incluye actividades generales y por lote), tal como la devuelve el backend de Tasks
- * (ver OperationalTaskRepository::getHistory: with(['resources', 'lotCyclePhase.lotCycle.lot'])).
+ * Forma real de /tasks (índice unificado, incluye actividades generales y por lote), tal
+ * como la devuelve el backend de Tasks (ver OperationalTaskRepository::paginateWithRelations:
+ * with(['resources', 'lotCyclePhase.lotCycle.lot'])).
  * El tipo OperationalTask de Tasks no declara este anidado, así que se tipa aquí localmente
  * en vez de tocar el módulo de otro compañero. `quantity` es un decimal de Laravel — llega
  * como string ("81.00"), no como number (misma nota que en el resto del módulo).
@@ -110,13 +111,15 @@ export function usePlanningOverviewViewModel() {
       // ese vivero — nunca se listan los demás viveros del sistema (ver ActiveViveroContext).
       const [summaryRes, tasksRes, supplies, tools] = await Promise.all([
         planningService.getViveroSummary(activeVivero.id).catch(() => null),
-        // Sin `type` para incluir las actividades generales del vivero y las de cada lote.
-        tasksService.getHistory({ status: 'pending' }),
+        // Sin `scope` para incluir las actividades generales del vivero y las de cada lote;
+        // per_page alto porque esto es una lectura interna para el panorama de riesgo de
+        // recursos, no una lista paginada de cara al usuario.
+        tasksService.getTasks({ status: 'pending' }, 1000),
         inventoryService.getSupplies() as Promise<Supply[]>,
         inventoryService.getTools() as Promise<Tool[]>,
       ]);
 
-      const rawTasks = (tasksRes.data || []) as unknown as PlanningTaskRaw[];
+      const rawTasks = (tasksRes.data?.data || []) as unknown as PlanningTaskRaw[];
       const now = new Date();
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       // El panorama operativo es prospectivo: no mezcla tareas atrasadas con la

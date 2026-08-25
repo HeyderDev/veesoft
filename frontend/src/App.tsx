@@ -5,6 +5,7 @@ import { TrackingModule } from './modules/Tracking';
 import { InventoryModule } from './modules/Inventory';
 import { TasksModule } from './modules/Tasks';
 import { LogisticsModule } from './modules/Logistics';
+import { ConfiguracionPage } from './modules/Settings/pages/ConfiguracionPage';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './shared/context/AuthContext';
 import { AuthGate } from './shared/components/AuthGate';
@@ -31,7 +32,13 @@ function AppShell() {
       case 'planning':
         return (
           <ToastProvider>
-            <PlanningModule onTabChange={setCurrentTab} />
+            <PlanningModule onTabChange={setCurrentTab} onNavigateToSettings={() => setCurrentModule('configuracion')} />
+          </ToastProvider>
+        );
+      case 'configuracion':
+        return (
+          <ToastProvider>
+            <ConfiguracionPage />
           </ToastProvider>
         );
       case 'tracking':

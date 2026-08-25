@@ -13,12 +13,7 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
     handleSaveFase, duracionActual, gatedPhases,
   } = useFasesViewModel(viveroId);
 
-  // Siembra, Injertación y Despacho son indefinidas: en la barra de proporciones
-  // reservan un ancho fijo pequeño (no proporcional a una duración real, que no
-  // tienen) en vez de estirarse — se mantienen en su posición de orden real.
-  const GATED_SEGMENT_PCT = 8;
   const sortedFases = fasesData.slice().sort((a, b) => a.execution_order - b.execution_order);
-  const barScale = 100 - gatedPhases.length * GATED_SEGMENT_PCT;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -29,13 +24,10 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
           <p className="section-subtitle">Configuración del flujo de producción de plántulas de cacao</p>
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm">
-          <span className="text-slate-400">Duración fija:</span>
+          <span className="text-slate-400">Duración calculada:</span>
           <span className="font-bold text-slate-800">{duracionActual} días</span>
           <span className="text-slate-400">·</span>
           <span className="text-emerald-600 font-semibold">~{Math.round(duracionActual / 30)} meses</span>
-          {gatedPhases.length > 0 && (
-            <span className="text-slate-400">+ {gatedPhases.map(f => f.name).join(', ')} (variables)</span>
-          )}
         </div>
       </div>
 
@@ -47,9 +39,12 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
           <p className="text-amber-700 mt-0.5 text-xs leading-relaxed">
             Esta duración aplica a <strong>todos los lotes de este vivero</strong> — no existe configuración por
             lote. Al cambiarla, los lotes con un ciclo en curso se reprograman automáticamente desde la fase en la
-            que se encuentran actualmente en adelante (lo ya transcurrido no se toca). Siembra, Injertación y
-            Despacho son la excepción: no tienen una duración configurable — cada una arranca en un único día y
-            permanece abierta hasta que se confirma su actividad correspondiente en Tareas.
+            que se encuentran actualmente en adelante (lo ya transcurrido no se toca).
+            {gatedPhases.length > 0 && (
+              <> {gatedPhases.map(f => f.name).join(', ')} son actividades obligatorias del sistema: arrancan
+              calculadas en 1 día, pero si la actividad asociada se confirma tarde en Tareas, esa fase se extiende
+              hasta ese día y el resto del calendario se recalcula solo — su duración de catálogo no es editable.</>
+            )}
           </p>
         </div>
       </div>
@@ -59,22 +54,8 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
         <h3 className="font-semibold text-slate-700 mb-5 text-sm">Vista de proporciones (por duración)</h3>
         <div className="flex h-10 rounded-xl overflow-hidden gap-0.5 mb-3">
           {sortedFases.map((fase) => {
+            const pct = (fase.estimated_duration_days / duracionActual) * 100;
             const isGated = isGatedPhaseCode(fase.code);
-
-            if (isGated) {
-              return (
-                <div
-                  key={fase.id}
-                  className="flex items-center justify-center text-slate-500 text-[9px] font-bold cursor-pointer bg-[repeating-linear-gradient(45deg,#e2e8f0,#e2e8f0_6px,#f1f5f9_6px,#f1f5f9_12px)]"
-                  style={{ width: `${GATED_SEGMENT_PCT}%` }}
-                  title={`${fase.name}: duración variable, termina cuando se confirma su actividad`}
-                >
-                  variable
-                </div>
-              );
-            }
-
-            const pct = (fase.estimated_duration_days / duracionActual) * barScale;
             return (
               <div
                 key={fase.id}
@@ -84,8 +65,10 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
                   backgroundColor: fase.color_reference || '#10b981',
                   opacity: hoveredFase && hoveredFase !== fase.id ? 0.5 : 1,
                   filter: hoveredFase === fase.id ? 'brightness(1.1)' : 'none',
+                  outline: isGated ? '1.5px dashed white' : 'none',
+                  outlineOffset: -1,
                 }}
-                title={`${fase.name}: ${fase.estimated_duration_days} días (${pct.toFixed(1)}%)`}
+                title={`${fase.name}: ${fase.estimated_duration_days} día(s) (${pct.toFixed(1)}%)${isGated ? ' — se extiende si la actividad se demora' : ''}`}
                 onMouseEnter={() => setHoveredFase(fase.id)}
                 onMouseLeave={() => setHoveredFase(null)}
               >
@@ -112,10 +95,10 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
           <div className="absolute left-[19px] top-5 bottom-5 w-0.5 bg-slate-200" />
 
           <div className="space-y-6">
-            {fasesData.slice().sort((a, b) => a.execution_order - b.execution_order).map((fase) => {
+            {sortedFases.map((fase) => {
               const isHovered = hoveredFase === fase.id;
               const isGated = isGatedPhaseCode(fase.code);
-              const pct = isGated ? 0 : Math.round((fase.estimated_duration_days / duracionActual) * 100);
+              const pct = Math.round((fase.estimated_duration_days / duracionActual) * 100);
 
               return (
                 <div key={fase.id}
@@ -139,10 +122,10 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
                           #{fase.execution_order}
                         </span>
                         <h4 className="font-bold text-slate-800">{fase.name}</h4>
-                        {isGatedPhaseCode(fase.code) && (
+                        {isGated && (
                           <span
                             className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold"
-                            title="Actividad obligatoria del sistema: no se puede avanzar sin completarla, y su nombre/orden/duración no son editables."
+                            title="Actividad obligatoria del sistema: arranca en 1 día y se extiende sola si la actividad se confirma tarde en Tareas. Nombre, orden y duración no son editables."
                           >
                             🔒 obligatoria
                           </span>
@@ -150,9 +133,9 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold" style={{ color: fase.color_reference || '#10b981' }}>
-                          {isGated ? 'Variable' : `${fase.estimated_duration_days} días`}
+                          {fase.estimated_duration_days} día{fase.estimated_duration_days === 1 ? '' : 's'}
                         </span>
-                        {!isGated && <span className="text-xs text-slate-400">({pct}%)</span>}
+                        <span className="text-xs text-slate-400">({pct}%)</span>
                         <button
                           id={`btn-editar-fase-${fase.id}`}
                           onClick={() => setEditFase(fase)}
@@ -167,14 +150,10 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
 
                     {/* Progress bar */}
                     <div className="mt-3">
-                      {isGated ? (
-                        <div className="w-full h-1.5 rounded-full bg-[repeating-linear-gradient(45deg,#e2e8f0,#e2e8f0_6px,#f1f5f9_6px,#f1f5f9_12px)]" />
-                      ) : (
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div className="h-full rounded-full"
-                            style={{ width: `${pct}%`, backgroundColor: fase.color_reference || '#10b981' }} />
-                        </div>
-                      )}
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full rounded-full"
+                          style={{ width: `${pct}%`, backgroundColor: fase.color_reference || '#10b981' }} />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -11,11 +11,12 @@ use App\Modules\Tasks\Services\OperationalTaskService;
 use Illuminate\Support\Carbon;
 
 /**
- * Crea la OperationalTask obligatoria de una fase gateada recién programada
- * (Siembra/Injerto/Despacho) — se dispara tanto al iniciar un ciclo como cada
- * vez que se genera perezosamente el siguiente tramo del calendario al cerrar
- * el gate anterior (ver LotCycleService::notifyOpenGate()). Registrado
- * explícitamente en AppServiceProvider::boot(), no por autodiscovery.
+ * Crea la OperationalTask obligatoria de una fase gateada (Siembra/Injerto/
+ * Despacho) al iniciar un ciclo — las 3 existen desde el día uno (el
+ * calendario completo se calcula de una sola vez, ver
+ * LotCycleService::startCycle()), así que las 3 tareas se crean juntas.
+ * Registrado explícitamente en AppServiceProvider::boot(), no por
+ * autodiscovery.
  */
 class CreateTaskForGatedPhase
 {
@@ -60,12 +61,11 @@ class CreateTaskForGatedPhase
         // la fase también en el pasado.
         $plannedDate = Carbon::parse($phase->planned_start_date)->max(Carbon::today());
 
+        // title/description/priority/resources se completan solos desde la
+        // plantilla en OperationalTaskService::createTask().
         $this->operationalTaskService->createTaskForPhase($phase->id, [
             'vivero_id' => $viveroId,
             'activity_type_id' => $activityType->id,
-            'title' => $activityType->name,
-            'description' => $activityType->description,
-            'priority' => $activityType->default_priority,
             'planned_date' => $plannedDate->toDateString(),
         ]);
     }

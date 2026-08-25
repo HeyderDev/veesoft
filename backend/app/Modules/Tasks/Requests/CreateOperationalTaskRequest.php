@@ -15,7 +15,10 @@ class CreateOperationalTaskRequest extends FormRequest
     {
         return [
             'activity_type_id' => 'nullable|exists:activity_types,id',
-            'title' => 'required|string|max:150',
+            // Si viene de una plantilla (activity_type_id), el título se copia
+            // de la plantilla en OperationalTaskService::createTask() — solo es
+            // obligatorio en el flujo "Libre".
+            'title' => 'required_without:activity_type_id|nullable|string|max:150',
             'description' => 'nullable|string',
             'observations' => 'nullable|string',
             'priority' => 'nullable|string|max:30',

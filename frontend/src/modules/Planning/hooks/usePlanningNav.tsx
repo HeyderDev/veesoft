@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type PlanningSection = 'resumen' | 'lotes' | 'fases' | 'reportes' | 'config';
+export type PlanningSection = 'resumen' | 'lotes' | 'fases' | 'historial';
 
 interface PlanningNavValue {
   activeSection: PlanningSection;

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { trackingService } from '../services/trackingService';
-import type { TrackingClient, TrackingLot, TrackingMovement } from '../types';
+import type { TrackingClient, TrackingLot, TrackingLotCapacity, TrackingMovement } from '../types';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -18,6 +18,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 export function useMovimientosViewModel(lotId: number) {
   const [lot, setLot] = useState<TrackingLot | null>(null);
   const [movements, setMovements] = useState<TrackingMovement[]>([]);
+  const [capacity, setCapacity] = useState<TrackingLotCapacity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [client, setClient] = useState<TrackingClient | null>(null);
@@ -33,6 +34,7 @@ export function useMovimientosViewModel(lotId: number) {
       const res = await trackingService.getLotDetail(lotId);
       setLot(res.data?.lot ?? null);
       setMovements(res.data?.movements?.data ?? []);
+      setCapacity(res.data?.capacity ?? null);
     } catch (err) {
       error('Error al cargar el historial del lote');
       console.error(err);
@@ -74,8 +76,12 @@ export function useMovimientosViewModel(lotId: number) {
     }
   };
 
+  // Saldo proyectado si se confirma este registro — como un movimiento
+  // bancario: se ve en vivo cuánto va a quedar disponible antes de confirmar.
+  const projectedRemaining = capacity ? Math.max(0, capacity.remaining - (quantity || 0)) : null;
+
   return {
-    lot, movements, isLoading, client, setClient, quantity, setQuantity,
+    lot, movements, capacity, projectedRemaining, isLoading, client, setClient, quantity, setQuantity,
     notes, setNotes, isSaving, handleRegister,
   };
 }

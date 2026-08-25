@@ -18,7 +18,8 @@ class OperationalTaskController extends BaseApiController
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->input('per_page', 15);
-        $tasks = $this->service->paginate($perPage);
+        $filters = $request->only(['search', 'status', 'scope', 'goal_id']);
+        $tasks = $this->service->paginate($filters, $perPage);
 
         return $this->paginatedResponse($tasks, 'Tareas operativas recuperadas con éxito');
     }
@@ -62,25 +63,57 @@ class OperationalTaskController extends BaseApiController
         return $this->successResponse(null, 'Tarea completada con éxito');
     }
 
-    public function byLot(int $lotId): JsonResponse
+    public function dispatchPreview(int $id): JsonResponse
     {
-        $tasks = $this->service->getTasksByLot($lotId);
+        $data = $this->service->getDispatchPreview($id);
 
-        return $this->successResponse($tasks, "Tareas del lote {$lotId} recuperadas con éxito");
+        return $this->successResponse($data, 'Previsualización de despacho recuperada con éxito');
     }
 
-    public function history(Request $request): JsonResponse
+    public function summary(Request $request): JsonResponse
     {
-        $filters = $request->only(['status', 'type']);
-        $tasks = $this->service->getHistory($filters);
+        $validated = $request->validate(['goal_id' => 'nullable|integer']);
+        $data = $this->service->getSummary(isset($validated['goal_id']) ? (int) $validated['goal_id'] : null);
 
-        return $this->successResponse($tasks, 'Historial de tareas recuperado con éxito');
+        return $this->successResponse($data, 'Resumen de actividades recuperado con éxito');
     }
 
-    public function report(): JsonResponse
+    public function calendar(Request $request): JsonResponse
     {
-        $data = $this->service->getReport();
+        $validated = $request->validate([
+            'year' => 'required|integer|min:2000|max:2100',
+            'month' => 'required|integer|min:1|max:12',
+            'goal_id' => 'nullable|integer',
+        ]);
 
-        return $this->successResponse($data, 'Reporte de tareas generado con éxito');
+        $data = $this->service->getCalendar(
+            (int) $validated['year'],
+            (int) $validated['month'],
+            isset($validated['goal_id']) ? (int) $validated['goal_id'] : null,
+        );
+
+        return $this->successResponse($data, 'Calendario de actividades recuperado con éxito');
+    }
+
+    public function goals(): JsonResponse
+    {
+        return $this->successResponse($this->service->getGoalsForSelector(), 'Metas recuperadas con éxito');
+    }
+
+    public function reportQuery(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'year' => 'required|integer|min:2000|max:2100',
+            'month' => 'nullable|integer|min:1|max:12',
+            'day' => 'nullable|integer|min:1|max:31',
+        ]);
+
+        $data = $this->service->getReportQuery(
+            (int) $validated['year'],
+            isset($validated['month']) ? (int) $validated['month'] : null,
+            isset($validated['day']) ? (int) $validated['day'] : null,
+        );
+
+        return $this->successResponse($data, 'Reporte de actividades generado con éxito');
     }
 }

@@ -6,6 +6,7 @@ use App\Modules\Inventory\Models\Movement;
 use App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface;
 use App\Modules\Inventory\Repositories\Contracts\SupplyRepositoryInterface;
 use App\Modules\Shared\Services\BaseService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class SupplyService extends BaseService
@@ -94,7 +95,11 @@ class SupplyService extends BaseService
 
     public function findBySku(string $sku)
     {
-        return $this->supplyRepository->findBySku($sku);
+        try {
+            return $this->supplyRepository->findBySku($sku);
+        } catch (ModelNotFoundException $e) {
+            throw new \DomainException("No se encontró ningún insumo con el código \"{$sku}\". Verifica que el código escaneado o ingresado sea correcto.");
+        }
     }
 
     public function registerMovement(int $id, string $type, float $quantity, ?string $reason = null, ?string $observation = null, ?string $scannedCode = null, ?int $studentId = null)

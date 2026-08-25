@@ -14,12 +14,10 @@ export const TasksSidebarSections: React.FC = () => {
   const { isAdmin } = useAuth();
 
   const sections: SidebarSectionItem[] = [
-    { id: 'general', label: 'Actividades Generales', icon: '📋' },
-    { id: 'lot', label: 'Actividades por Lote', icon: '🌱' },
-    { id: 'templates', label: 'Plantillas de Actividad', icon: '⚙️' },
+    { id: 'activities', label: 'Actividades', icon: '✅' },
+    { id: 'templates', label: 'Plantillas', icon: '⚙️' },
     ...(isAdmin ? [
-      { id: 'history' as const, label: 'Historial', icon: '🕒' },
-      { id: 'report' as const, label: 'Reporte General', icon: '📊' },
+      { id: 'reportes' as const, label: 'Reportes', icon: '📊' },
     ] : []),
   ];
 

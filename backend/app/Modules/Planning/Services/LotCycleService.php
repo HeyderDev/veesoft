@@ -18,13 +18,23 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Orquesta el ciclo de vida productivo de un lote: Comenzar Ciclo calcula el
- * calendario completo según la configuración de duraciones vigente DEL VIVERO al que
- * pertenece el lote (production_phases.estimated_duration_days — no existe
- * personalización por lote dentro de un mismo vivero, ver ProductionPhaseService);
- * Terminar Despacho cierra el ciclo y libera el lote para uno nuevo — no registra
- * cuánto se despachó. La cantidad real se reporta después, de forma independiente,
- * desde el módulo Tracking (ver DispatchReportService::createReport()), que es quien
- * crea el registro en `dispatches` y dispara la culminación de la meta si corresponde.
+ * calendario completo de las 6 fases según la configuración de duraciones
+ * vigente DEL VIVERO al que pertenece el lote (production_phases.
+ * estimated_duration_days — no existe personalización por lote dentro de un
+ * mismo vivero, ver ProductionPhaseService), incluidas Siembra/Injertación/
+ * Despacho (arrancan con 1 día por defecto, ver GatedPhaseCatalog). Si la
+ * actividad obligatoria de una de esas 3 fases se demora, esa fase se
+ * "congela" como actual más allá de su fecha planeada, y al confirmarse se
+ * extiende hasta la fecha real y las fases siguientes se recalculan en
+ * cascada — ver computeCurrentPhase() y markGateSatisfied(). closeCycleAfterDispatch()
+ * cierra el ciclo y libera el lote para uno nuevo; el camino normal desde Fase 6 es
+ * automático — al completar la actividad de Despacho (ver
+ * Tasks\Services\OperationalTaskService::completeTask()), Tracking\DispatchReportService::
+ * closeDispatchFromMovements() suma lo ya registrado en Seguimiento para ese ciclo, crea
+ * el `Dispatch`, llama a este método y dispara la culminación de la meta si corresponde.
+ * "Terminar Despacho" (terminateDispatch(), manual) y "Reportar Despacho" (createReport(),
+ * manual) siguen existiendo solo como respaldo para cerrar a mano ciclos viejos que hayan
+ * quedado despachados sin reporte antes de Fase 6.
  */
 class LotCycleService
 {
@@ -83,10 +93,25 @@ class LotCycleService
                 'status' => LotCycle::STATUS_IN_PROGRESS,
             ]);
 
-            // Genera solo el tramo conocido del calendario: desde el arranque hasta la
-            // primera fase gateada (Siembra/Injertación/Despacho) inclusive — ver
-            // scheduleBlockFrom(). El resto se genera solo cuando esa fase se completa.
-            $this->scheduleBlockFrom($lotCycle, $phasesToSchedule, 0, Carbon::parse($startedAt));
+            $currentStart = Carbon::parse($startedAt);
+
+            // Todas las fases se calculan de una — incluidas Siembra/Injertación/
+            // Despacho, con su duración por defecto (1 día, ver GatedPhaseCatalog):
+            // si su actividad se demora, se extienden y las posteriores se
+            // recalculan en cascada (ver markGateSatisfied()), pero el calendario
+            // siempre muestra un cálculo completo desde el día uno.
+            foreach ($phasesToSchedule as $phase) {
+                $currentEnd = $currentStart->copy()->addDays(max(0, $phase->estimated_duration_days - 1));
+
+                LotCyclePhase::create([
+                    'lot_cycle_id' => $lotCycle->id,
+                    'phase_id' => $phase->id,
+                    'planned_start_date' => $currentStart->toDateString(),
+                    'planned_end_date' => $currentEnd->toDateString(),
+                ]);
+
+                $currentStart = $currentEnd->copy()->addDay();
+            }
 
             $this->lotRepository->update($lot->id, ['current_status' => Lot::STATUS_OCCUPIED]);
 
@@ -99,7 +124,7 @@ class LotCycleService
         // phases.phase cargada y garantía de commit antes de que Tasks reaccione.
         $cycleWithPhases = $this->lotCycleRepository->findWithPhases($cycle->id);
 
-        $this->notifyOpenGate($cycleWithPhases);
+        $this->notifyOpenGates($cycleWithPhases);
 
         return $cycleWithPhases;
     }
@@ -116,16 +141,31 @@ class LotCycleService
         $cycleWithPhases = $this->lotCycleRepository->findWithPhases($cycle->id);
         $dispatchPhase = $cycleWithPhases->phases->first(fn ($phase) => $phase->phase->code === 'DESP');
 
-        if ($dispatchPhase && GatedPhaseCatalog::isGated($dispatchPhase->phase->code) && $dispatchPhase->gate_completed_at === null) {
+        if ($dispatchPhase && $dispatchPhase->gate_completed_at === null) {
             throw new \DomainException('No puedes terminar el despacho: la actividad obligatoria de Despacho todavía no está completada.');
         }
 
-        DB::transaction(function () use ($lot, $cycle) {
-            $this->lotCycleRepository->update($cycle->id, ['status' => LotCycle::STATUS_DISPATCHED]);
-            $this->lotRepository->update($lot->id, ['current_status' => Lot::STATUS_AVAILABLE]);
-        });
+        $this->closeCycleAfterDispatch($cycle->id);
 
         return $this->lotRepository->findWithCycles($lot->id);
+    }
+
+    /**
+     * Cierra el ciclo y libera el lote para uno nuevo — el mismo paso que hace
+     * "Terminar Despacho" a mano, ahora también reusado por
+     * Tracking\DispatchReportService::closeDispatchFromMovements() cuando se
+     * completa la actividad de Despacho (ver
+     * Tasks\Services\OperationalTaskService::completeTask()), que es el camino
+     * normal desde esta fase en adelante.
+     */
+    public function closeCycleAfterDispatch(int $lotCycleId): void
+    {
+        $cycle = $this->lotCycleRepository->find($lotCycleId);
+
+        DB::transaction(function () use ($cycle) {
+            $this->lotCycleRepository->update($cycle->id, ['status' => LotCycle::STATUS_DISPATCHED]);
+            $this->lotRepository->update($cycle->lot_id, ['current_status' => Lot::STATUS_AVAILABLE]);
+        });
     }
 
     /**
@@ -150,10 +190,10 @@ class LotCycleService
             throw new \DomainException('Este ciclo no tiene fases configuradas.');
         }
 
-        // Las fases gateadas (Siembra/Injertación/Despacho) no tienen una fecha de
-        // transición fija que reprogramar a mano: son indefinidas desde que arrancan
-        // (planned_end_date siempre null, igual que Despacho) y avanzan solas apenas
-        // se completa su actividad obligatoria — ver markGateSatisfied().
+        // Las fases gateadas (Siembra/Injertación/Despacho) solo avanzan al
+        // confirmarse su actividad obligatoria (ver markGateSatisfied()) — no se
+        // pueden reprogramar a mano, aunque tengan una fecha planeada como
+        // cualquier otra fase.
         if (GatedPhaseCatalog::isGated($currentPhase->phase->code)) {
             throw new \DomainException("La fase {$currentPhase->phase->name} avanza automáticamente al completarse su actividad obligatoria — no se puede reprogramar manualmente.");
         }
@@ -227,9 +267,12 @@ class LotCycleService
     /**
      * Recalcula fechas de forma secuencial a partir de `$fromIndex`, anclando el
      * inicio de esa fase en `$anchorStart` y encadenando las siguientes con la
-     * duración global vigente de cada una. Usado tanto por reschedule() (ancla en
-     * una fecha de transición elegida a mano) como por resyncActiveCyclesForPhaseChange()
-     * (ancla en la fecha de inicio ya fija de la fase actual).
+     * duración global vigente de cada una — tratando cada fase por igual
+     * (incluidas Siembra/Injertación/Despacho, cuya duración vigente por defecto
+     * es 1 día). Usado por reschedule() (ancla en una fecha de transición elegida
+     * a mano), resyncActiveCyclesForPhaseChange() (ancla en la fecha de inicio ya
+     * fija de la fase actual) y markGateSatisfied() (ancla en la fecha real de
+     * confirmación de una actividad obligatoria que se demoró).
      */
     private function cascadeFrom(Collection $orderedPhases, int $fromIndex, Carbon $anchorStart, Collection $durationsByPhaseId): void
     {
@@ -238,20 +281,6 @@ class LotCycleService
         for ($i = $fromIndex; $i < $orderedPhases->count(); $i++) {
             $phase = $orderedPhases[$i];
             $catalogPhase = $durationsByPhaseId[$phase->phase_id] ?? null;
-
-            // Fases gateadas (Siembra/Injertación/Despacho) no tienen fecha de fin
-            // planificada — son indefinidas hasta que se completa su actividad — ver
-            // scheduleBlockFrom(). No se sigue cascadeando más allá: las fases
-            // siguientes a una gateada no existen todavía (se crean recién cuando esa
-            // gateada se cierra, ver markGateSatisfied()).
-            if ($catalogPhase && GatedPhaseCatalog::isGated($catalogPhase->code)) {
-                $phase->update([
-                    'planned_start_date' => $cursor->toDateString(),
-                    'planned_end_date' => null,
-                ]);
-                break;
-            }
-
             $durationDays = $catalogPhase->estimated_duration_days ?? 1;
             $end = $cursor->copy()->addDays(max(0, $durationDays - 1));
 
@@ -267,14 +296,14 @@ class LotCycleService
     /**
      * Determina la fase "actual" comparando hoy contra el calendario calculado —
      * nunca se guarda como estado manual (ver docs/03_MODULE_CONTRACTS/Planning.md).
-     * Despacho no tiene `planned_end_date` (ver startCycle()): una vez alcanzada,
-     * permanece "actual" indefinidamente hasta que se registre el despacho.
      *
      * Fases gateadas (Siembra/Injertación/Despacho, ver GatedPhaseCatalog): si ya
      * empezaron pero su actividad obligatoria no está completada (`gate_completed_at`
-     * NULL), quedan "congeladas" como actual aunque ya haya pasado `planned_end_date`
-     * — el sistema deja de avanzar solo por fecha hasta que Tasks confirme el gate
-     * (ver OperationalTaskService::completeTask() -> markGateSatisfied()).
+     * NULL), quedan "congeladas" como actual aunque ya haya pasado su
+     * `planned_end_date` calculado — el sistema deja de avanzar solo por fecha
+     * hasta que Tasks confirme el gate (ver
+     * OperationalTaskService::completeTask() -> markGateSatisfied()), que en ese
+     * momento extiende la fecha de fin al día real de confirmación.
      *
      * Usa la relación `phases` YA CARGADA en `$cycle` (todos los llamadores eager-cargan
      * `phases.phase`, ver LotRepository/LotCycleRepository) en vez de volver a
@@ -316,12 +345,12 @@ class LotCycleService
     /**
      * Marca satisfecha la actividad obligatoria de una fase gateada (llamado desde
      * Tasks\Services\OperationalTaskService::completeTask() — dirección Tasks ->
-     * Planning permitida, ver docs/03_MODULE_CONTRACTS/Planning.md). Siembra,
-     * Injertación y Despacho son indefinidas desde que arrancan (planned_end_date
-     * siempre null, ver scheduleBlockFrom()) — no hay nada que "extender", solo
-     * cerrar esta fase y generar recién ahora el siguiente tramo del calendario,
-     * que hasta este momento no existía porque su fecha de inicio dependía de
-     * cuándo se completara esta actividad.
+     * Planning permitida, ver docs/03_MODULE_CONTRACTS/Planning.md). Si la
+     * confirmación llegó después de su `planned_end_date` calculado (por
+     * defecto, 1 día), extiende esa fecha hasta el día real de confirmación y
+     * recalcula en cascada las fases siguientes — ya existen todas desde
+     * startCycle(), así que esto es solo un ajuste de fechas, no una creación.
+     * Si se confirma a tiempo o antes, no hace falta tocar nada más.
      */
     public function markGateSatisfied(int $lotCyclePhaseId, Carbon $completedAt, ?int $userId = null): void
     {
@@ -331,107 +360,59 @@ class LotCycleService
             return;
         }
 
-        $cycleId = $phase->lot_cycle_id;
+        $wasLate = $phase->planned_end_date !== null && $completedAt->toDateString() > $phase->planned_end_date->toDateString();
+        $previousEndDate = $phase->planned_end_date;
 
-        // La fase gateada no puede "cerrar" antes de haber empezado — si se
-        // confirma la actividad antes de la fecha en que la fase arrancó (p. ej.
-        // por error, o completando una tarea futura fuera de orden), la fase
-        // siguiente se ancla igual en planned_start_date, nunca antes, para que
-        // el calendario nunca quede con fechas superpuestas o invertidas.
-        $anchorDate = $completedAt->copy()->max(Carbon::parse($phase->planned_start_date));
-
-        DB::transaction(function () use ($phase, $completedAt, $anchorDate, $userId) {
+        DB::transaction(function () use ($phase, $completedAt, $wasLate, $previousEndDate, $userId) {
             $phase->update(['gate_completed_at' => $completedAt]);
 
-            $cycle = $phase->lotCycle;
-            $viveroId = $cycle->lot->vivero_id;
-            $catalogPhases = $this->phaseRepository->allOrderedByExecutionForVivero($viveroId);
-            $catalogIndex = $catalogPhases->search(fn ($p) => $p->id === $phase->phase_id);
-
-            if ($catalogIndex === false) {
+            if (! $wasLate) {
                 return;
             }
 
-            $created = $this->scheduleBlockFrom($cycle, $catalogPhases, $catalogIndex + 1, $anchorDate->copy()->addDay());
+            $cycle = $phase->lotCycle;
+            $orderedPhases = $cycle->phases->sortBy('planned_start_date')->values();
+            $index = $orderedPhases->search(fn ($p) => $p->id === $phase->id);
 
-            if ($created->isEmpty()) {
-                return; // era la última fase del catálogo (p. ej. Despacho) — nada que generar.
+            if ($index === false) {
+                return;
             }
 
-            LotCycleReschedule::create([
-                'lot_cycle_id' => $cycle->id,
-                'from_phase_id' => $phase->phase_id,
-                'to_phase_id' => $created->first()->phase_id,
-                'previous_transition_date' => $phase->planned_start_date,
-                'new_transition_date' => $anchorDate->toDateString(),
-                'rescheduled_by' => $userId,
-            ]);
+            $phase->update(['planned_end_date' => $completedAt->toDateString()]);
+
+            $durationsByPhaseId = $this->phaseRepository
+                ->allOrderedByExecutionForVivero($cycle->lot->vivero_id)
+                ->keyBy('id');
+
+            $this->cascadeFrom($orderedPhases, $index + 1, $completedAt->copy()->addDay(), $durationsByPhaseId);
+
+            $nextPhase = $orderedPhases->get($index + 1);
+
+            if ($nextPhase) {
+                LotCycleReschedule::create([
+                    'lot_cycle_id' => $cycle->id,
+                    'from_phase_id' => $phase->phase_id,
+                    'to_phase_id' => $nextPhase->phase_id,
+                    'previous_transition_date' => $previousEndDate,
+                    'new_transition_date' => $completedAt->toDateString(),
+                    'rescheduled_by' => $userId,
+                ]);
+            }
         });
-
-        // Fuera de la transacción, con el ciclo recargado (mismo motivo que
-        // startCycle()): si el bloque generado incluyó una fase gateada nueva,
-        // avisa a Tasks para que le cree su actividad obligatoria.
-        $this->notifyOpenGate($this->lotCycleRepository->findWithPhases($cycleId));
     }
 
     /**
-     * Si el ciclo tiene una fase gateada (Siembra/Injertación/Despacho) recién
-     * creada y sin actividad asociada todavía (`gate_completed_at` null), avisa a
-     * Tasks para que le cree la tarea obligatoria correspondiente — ver
-     * GatedPhaseScheduled. Por construcción, un ciclo tiene como máximo una fase
-     * gateada abierta a la vez (scheduleBlockFrom() siempre se detiene justo
-     * después de crear una).
+     * Avisa a Tasks (vía evento, dirección permitida) de cada fase gateada sin
+     * actividad todavía en el ciclo recién creado — con el calendario completo
+     * generado de una sola vez en startCycle(), las 3 (Siembra/Injertación/
+     * Despacho) ya existen desde el día uno, así que las 3 tareas obligatorias
+     * se crean juntas al iniciar el ciclo, no una por una a medida que se llega
+     * a cada fase.
      */
-    private function notifyOpenGate(LotCycle $cycle): void
+    private function notifyOpenGates(LotCycle $cycle): void
     {
-        $openGate = $cycle->phases->first(
-            fn ($phase) => GatedPhaseCatalog::isGated($phase->phase->code) && $phase->gate_completed_at === null
-        );
-
-        if ($openGate) {
-            event(new GatedPhaseScheduled($openGate));
-        }
-    }
-
-    /**
-     * Crea secuencialmente las filas de LotCyclePhase que hacen falta desde
-     * $fromCatalogIndex (posición en el catálogo ordenado del vivero), anclando el
-     * inicio del primer tramo en $anchorStart y encadenando los siguientes con la
-     * duración vigente de cada fase. Se detiene apenas crea una fase gateada
-     * (Siembra/Injertación/Despacho, inclusive) — esa fase queda con
-     * planned_end_date null (indefinida) y las fases posteriores a ella no se
-     * generan todavía: su fecha de inicio depende de cuándo se complete la
-     * actividad de esa fase gateada (ver markGateSatisfied()). Usado tanto por
-     * startCycle() (arranque del ciclo) como por markGateSatisfied() (al cerrarse
-     * un gate) — ambos casos generan "el siguiente tramo conocido" del calendario.
-     */
-    private function scheduleBlockFrom(LotCycle $cycle, Collection $catalogPhases, int $fromCatalogIndex, Carbon $anchorStart): Collection
-    {
-        $created = collect();
-        $cursor = $anchorStart;
-
-        for ($i = $fromCatalogIndex; $i < $catalogPhases->count(); $i++) {
-            $catalogPhase = $catalogPhases[$i];
-            $isGated = GatedPhaseCatalog::isGated($catalogPhase->code);
-
-            $lotCyclePhase = LotCyclePhase::create([
-                'lot_cycle_id' => $cycle->id,
-                'phase_id' => $catalogPhase->id,
-                'planned_start_date' => $cursor->toDateString(),
-                'planned_end_date' => $isGated
-                    ? null
-                    : $cursor->copy()->addDays(max(0, $catalogPhase->estimated_duration_days - 1))->toDateString(),
-            ]);
-
-            $created->push($lotCyclePhase);
-
-            if ($isGated) {
-                break;
-            }
-
-            $cursor = Carbon::parse($lotCyclePhase->planned_end_date)->addDay();
-        }
-
-        return $created;
+        $cycle->phases
+            ->filter(fn ($phase) => GatedPhaseCatalog::isGated($phase->phase->code) && $phase->gate_completed_at === null)
+            ->each(fn ($phase) => event(new GatedPhaseScheduled($phase)));
     }
 }

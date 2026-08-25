@@ -2,6 +2,7 @@ import axiosClient from '../../../shared/services/axiosClient';
 import type {
   DispatchSummary, PendingDispatch, TrackingClient, TrackingClientInput,
   TrackingGeneralSummary, TrackingLot, TrackingLotDetail, TrackingMovement,
+  TrackingProductionSummary,
 } from '../types';
 
 /**
@@ -29,6 +30,7 @@ export const trackingService = {
   // ---- Lotes (de Planning, solo lectura) ----
   getLots: () => axiosClient.get<TrackingLot[]>('/tracking/lots'),
   getLotDetail: (lotId: number) => axiosClient.get<TrackingLotDetail>(`/tracking/lots/${lotId}`),
+  getProductionSummary: () => axiosClient.get<TrackingProductionSummary>('/tracking/production-summary'),
 
   // ---- Movimientos de salida ----
   getMovements: (lotId?: number) =>

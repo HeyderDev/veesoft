@@ -9,7 +9,7 @@ interface TasksNavValue {
 const TasksNavContext = createContext<TasksNavValue | undefined>(undefined);
 
 export const TasksNavProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeSection, setActiveSection] = useState<TaskTab>('general');
+  const [activeSection, setActiveSection] = useState<TaskTab>('activities');
 
   return (
     <TasksNavContext.Provider value={{ activeSection, setActiveSection }}>

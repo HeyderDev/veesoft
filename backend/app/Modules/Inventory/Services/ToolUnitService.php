@@ -7,6 +7,7 @@ use App\Modules\Inventory\Models\ToolUnit;
 use App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface;
 use App\Modules\Inventory\Repositories\Contracts\ToolUnitRepositoryInterface;
 use App\Modules\Shared\Services\BaseService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class ToolUnitService extends BaseService
@@ -106,7 +107,11 @@ class ToolUnitService extends BaseService
 
     public function findByCode(string $code)
     {
-        return $this->toolUnitRepository->findByCode($code);
+        try {
+            return $this->toolUnitRepository->findByCode($code);
+        } catch (ModelNotFoundException $e) {
+            throw new \DomainException("No se encontró ninguna herramienta con el código \"{$code}\". Verifica que el código escaneado o ingresado sea correcto.");
+        }
     }
 
     public function deleteUnit(int $id, ?string $motivo = null)

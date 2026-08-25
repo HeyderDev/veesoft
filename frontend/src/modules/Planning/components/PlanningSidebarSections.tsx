@@ -5,8 +5,7 @@ const sections: { id: PlanningSection; label: string; icon: string }[] = [
   { id: 'resumen', label: 'Resumen Operativo', icon: '📊' },
   { id: 'lotes', label: 'Lotes', icon: '🏗️' },
   { id: 'fases', label: 'Fases', icon: '🔄' },
-  { id: 'reportes', label: 'Reportes', icon: '📋' },
-  { id: 'config', label: 'Configuración', icon: '⚙️' },
+  { id: 'historial', label: 'Historial', icon: '🗂️' },
 ];
 
 /**

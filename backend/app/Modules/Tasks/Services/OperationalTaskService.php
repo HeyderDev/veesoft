@@ -2,12 +2,17 @@
 
 namespace App\Modules\Tasks\Services;
 
+use App\Modules\Planning\Models\ProductionGoal;
 use App\Modules\Planning\Services\LotCycleService;
+use App\Modules\Planning\Services\ProductionGoalService;
 use App\Modules\Shared\Services\BaseService;
+use App\Modules\Shared\Support\CurrentVivero;
 use App\Modules\Shared\Support\GatedPhaseCatalog;
+use App\Modules\Tasks\Models\ActivityType;
 use App\Modules\Tasks\Models\OperationalTask;
 use App\Modules\Tasks\Models\TaskResource;
 use App\Modules\Tasks\Repositories\Contracts\OperationalTaskRepositoryInterface;
+use App\Modules\Tracking\Services\DispatchReportService;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -16,13 +21,16 @@ class OperationalTaskService extends BaseService
     public function __construct(
         OperationalTaskRepositoryInterface $repository,
         private LotCycleService $lotCycleService,
+        private ProductionGoalService $productionGoalService,
+        private CurrentVivero $currentVivero,
+        private DispatchReportService $dispatchReportService,
     ) {
         parent::__construct($repository);
     }
 
-    public function paginate(int $perPage = 15)
+    public function paginate(array $filters = [], int $perPage = 15)
     {
-        return $this->repository->paginateWithRelations($perPage);
+        return $this->repository->paginateWithRelations($filters, $perPage);
     }
 
     public function findById(int $id)
@@ -38,6 +46,37 @@ class OperationalTaskService extends BaseService
             throw ValidationException::withMessages([
                 'planned_date' => 'No se permiten actividades con fechas planificadas anteriores a hoy.',
             ]);
+        }
+
+        $viveroId = $data['vivero_id'] ?? $this->currentVivero->id();
+
+        // Si la actividad nace de una plantilla, completa con los valores de la
+        // plantilla todo lo que no haya venido explícito en el payload — así el
+        // flujo "Desde Plantilla" del frontend solo necesita mandar
+        // activity_type_id + fecha (+ lote/asignado). Los cambios futuros a la
+        // plantilla no afectan tareas ya creadas: esto es una copia, no una
+        // referencia viva.
+        if (! empty($data['activity_type_id'])) {
+            $activityType = ActivityType::with('resources')->find($data['activity_type_id']);
+
+            if ($activityType) {
+                if (empty($data['title'])) {
+                    $data['title'] = $activityType->name;
+                }
+                if (empty($data['description'])) {
+                    $data['description'] = $activityType->description;
+                }
+                if (empty($data['priority'])) {
+                    $data['priority'] = $activityType->default_priority;
+                }
+                if (! array_key_exists('resources', $data)) {
+                    $data['resources'] = $activityType->resources->map(fn ($r) => [
+                        'type' => $r->resource_type,
+                        'id' => $r->resource_id,
+                        'quantity' => $r->quantity,
+                    ])->all();
+                }
+            }
         }
 
         // Resolver lot_id al current phase id
@@ -70,13 +109,15 @@ class OperationalTaskService extends BaseService
         unset($data['lot_id']);
 
         $data['status'] = 'pending';
+        $data['vivero_id'] = $viveroId;
+        $data['production_goal_id'] = $viveroId ? $this->productionGoalService->findOpenForVivero($viveroId)?->id : null;
         $resources = $data['resources'] ?? [];
         unset($data['resources']);
 
         $task = $this->repository->create($data);
         $this->syncResources($task, $resources);
 
-        return $task->load(['resources', 'lotCyclePhase.lotCycle.lot']);
+        return $task->load(['resources', 'activityType', 'lotCyclePhase.lotCycle.lot']);
     }
 
     public function createTaskForPhase(int $cycleLotPhaseId, array $data): OperationalTask
@@ -134,7 +175,7 @@ class OperationalTaskService extends BaseService
 
     public function completeTask(int $taskId, int $completedBy): void
     {
-        $task = $this->repository->find($taskId)->load('activityType');
+        $task = $this->repository->find($taskId)->load('activityType', 'lotCyclePhase');
 
         $this->repository->update($taskId, [
             'status' => 'completed',
@@ -150,7 +191,31 @@ class OperationalTaskService extends BaseService
 
         if ($phaseCode && $task->lot_cycle_phase_id) {
             $this->lotCycleService->markGateSatisfied($task->lot_cycle_phase_id, now(), $completedBy);
+
+            // Despacho: además de satisfacer el gate, cierra el ciclo — suma lo ya
+            // registrado en Seguimiento para este ciclo (nunca un valor mandado por
+            // el cliente), crea el Dispatch real y libera el lote. Ver
+            // Tracking\Services\DispatchReportService::closeDispatchFromMovements().
+            if ($systemCode === 'DISPATCH') {
+                $this->dispatchReportService->closeDispatchFromMovements($task->lotCyclePhase->lot_cycle_id);
+            }
         }
+    }
+
+    /**
+     * Cuánto se despachó según los movimientos de salida ya registrados en
+     * Seguimiento para el ciclo de esta tarea — para el paso 1 de la doble
+     * confirmación al completar la actividad de Despacho.
+     */
+    public function getDispatchPreview(int $taskId): array
+    {
+        $task = $this->repository->find($taskId)->load('activityType', 'lotCyclePhase');
+
+        if ($task->activityType?->system_code !== 'DISPATCH' || ! $task->lot_cycle_phase_id) {
+            throw new \DomainException('Esta actividad no es la de Despacho de un lote.');
+        }
+
+        return $this->dispatchReportService->previewFromMovements($task->lotCyclePhase->lot_cycle_id);
     }
 
     public function getTasksByAssignee(int $userId)
@@ -158,19 +223,56 @@ class OperationalTaskService extends BaseService
         return $this->repository->getTasksByAssignee($userId);
     }
 
-    public function getTasksByLot(int $lotId)
+    /**
+     * @param  int|null  $goalId  Meta a consultar — si no viene, la meta abierta del
+     *                            vivero (comportamiento de siempre). Permite ver los
+     *                            números de una meta ya culminada sin perder de vista
+     *                            cuál es la meta realmente abierta ahora mismo (ver
+     *                            `open_goal` en la respuesta, usado para defaultear el
+     *                            selector de meta en el frontend).
+     */
+    public function getSummary(?int $goalId = null): array
     {
-        return $this->repository->getTasksByLot($lotId);
+        $viveroId = $this->currentVivero->id();
+        $openGoal = $viveroId ? $this->productionGoalService->findOpenForVivero($viveroId) : null;
+        $resolvedGoalId = $goalId !== null ? $this->resolveGoalId($goalId, $viveroId) : $openGoal?->id;
+
+        $summary = $this->repository->getSummary($viveroId, $resolvedGoalId);
+        $summary['open_goal'] = $openGoal ? ['id' => $openGoal->id, 'title' => $openGoal->title] : null;
+
+        return $summary;
     }
 
-    public function getHistory(array $filters = [])
+    public function getCalendar(int $year, int $month, ?int $goalId = null): array
     {
-        return $this->repository->getHistory($filters);
+        $viveroId = $this->currentVivero->id();
+        $resolvedGoalId = $goalId !== null
+            ? $this->resolveGoalId($goalId, $viveroId)
+            : $this->productionGoalService->findOpenForVivero($viveroId)?->id;
+
+        return $this->repository->getCalendar($viveroId, $resolvedGoalId, $year, $month);
     }
 
-    public function getReport(): array
+    public function getReportQuery(int $year, ?int $month, ?int $day): array
     {
-        return $this->repository->getReport();
+        return $this->repository->getReportQuery($this->currentVivero->id(), $year, $month, $day);
+    }
+
+    /**
+     * Lista liviana de metas del vivero, para el selector de meta en la
+     * sección Actividades (permite ver el listado/cards/calendario de una
+     * meta ya culminada, no solo la abierta).
+     */
+    public function getGoalsForSelector(): array
+    {
+        return $this->productionGoalService->listForVivero($this->currentVivero->id());
+    }
+
+    private function resolveGoalId(int $goalId, ?int $viveroId): int
+    {
+        ProductionGoal::where('id', $goalId)->where('vivero_id', $viveroId)->firstOrFail();
+
+        return $goalId;
     }
 
     private function syncResources(OperationalTask $task, array $resources): void

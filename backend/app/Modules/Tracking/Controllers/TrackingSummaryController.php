@@ -18,4 +18,9 @@ class TrackingSummaryController extends BaseApiController
     {
         return $this->successResponse($this->summaryService->getLotSummary($lot));
     }
+
+    public function production()
+    {
+        return $this->successResponse($this->summaryService->getProductionSummary());
+    }
 }

@@ -1,6 +1,6 @@
 import axiosClient from '../../../shared/services/axiosClient';
 import type {
-  Fase, Lote, LotCreateInput, LotCycleHistoryEntry, LotCycleInfo, MetaProduccion, Vivero, ViveroSummary,
+  Fase, Lote, LotCreateInput, LotCycleHistoryEntry, LotCycleInfo, MetaHistorialEntry, MetaProduccion, Vivero, ViveroSummary,
 } from '../types';
 
 /**
@@ -22,6 +22,7 @@ export const planningService = {
   culminarGoal: (id: number) => axiosClient.post(`/production-goals/${id}/culminar`),
   getGoalLotCycles: (goalId: number) =>
     axiosClient.get<LotCycleHistoryEntry[]>(`/production-goals/${goalId}/lot-cycles`),
+  getGoalsHistory: () => axiosClient.get<MetaHistorialEntry[]>('/production-goals/history'),
 
   // ---- Lotes ----
   getLots: () => axiosClient.get<Lote[]>('/lots'),

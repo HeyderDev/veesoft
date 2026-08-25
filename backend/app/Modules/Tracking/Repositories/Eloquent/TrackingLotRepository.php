@@ -10,7 +10,7 @@ class TrackingLotRepository implements TrackingLotRepositoryInterface
 {
     public function allWithVivero(): Collection
     {
-        return Lot::with('vivero')->orderBy('code')->get();
+        return Lot::with(['vivero', 'activeCycle.phases.phase'])->orderBy('code')->get();
     }
 
     public function find(int $id): Lot

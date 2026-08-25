@@ -2,10 +2,12 @@
 
 namespace App\Modules\Planning\Services;
 
+use App\Modules\Planning\Models\LotCycle;
 use App\Modules\Planning\Models\ProductionGoal;
 use App\Modules\Planning\Repositories\Contracts\ProductionGoalRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\ViveroRepositoryInterface;
 use App\Modules\Shared\Services\BaseService;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Reglas de negocio de la Meta de Producción:
@@ -89,9 +91,65 @@ class ProductionGoalService extends BaseService
             throw new \DomainException('No se puede culminar una meta que todavía no ha iniciado.');
         }
 
-        $this->goalRepository->update($id, ['finished_at' => now()]);
+        // Culminar normaliza el status a completed siempre — antes podía quedar
+        // "active" con finished_at puesto si nunca llegó al target, dos señales
+        // independientes de "está culminada" que se prestaban a confusión.
+        $this->goalRepository->update($id, [
+            'finished_at' => now(),
+            'status' => ProductionGoal::STATUS_COMPLETED,
+        ]);
 
         return $this->goalRepository->findWithRelations($id);
+    }
+
+    /**
+     * Historial de metas del vivero (abiertas y culminadas) con sus números:
+     * despachado (ya viene en paginateWithRelations vía withSum), ciclos
+     * productivos, lotes distintos usados y actividades completadas. Una meta
+     * culminada nunca se borra ni pierde su historial — solo deja de poder
+     * recibir ciclos/actividades nuevos (ver LotCycleService::startCycle() y
+     * OperationalTaskService::createTask(), que resuelven la meta vía
+     * findOpenForVivero()).
+     */
+    public function getHistory(): array
+    {
+        $goals = $this->goalRepository->paginateWithRelations(perPage: 100);
+
+        return collect($goals->items())->map(fn (ProductionGoal $goal) => [
+            'id' => $goal->id,
+            'title' => $goal->title,
+            'status' => $goal->status,
+            'finished_at' => $goal->finished_at,
+            'created_at' => $goal->created_at,
+            'target_seedlings' => $goal->target_seedlings,
+            'produced_seedlings' => $goal->produced_seedlings,
+            'lot_cycles_count' => LotCycle::where('production_goal_id', $goal->id)->count(),
+            'distinct_lots_count' => LotCycle::where('production_goal_id', $goal->id)->distinct('lot_id')->count('lot_id'),
+            'tasks_completed_count' => DB::table('operational_tasks')
+                ->where('production_goal_id', $goal->id)
+                ->where('status', 'completed')
+                ->count(),
+        ])->all();
+    }
+
+    /**
+     * Lista liviana de metas del vivero (para el selector de meta en
+     * Actividades — ver Tasks\Services\OperationalTaskService::getGoalsForSelector()).
+     */
+    public function listForVivero(int $viveroId): array
+    {
+        return ProductionGoal::where('vivero_id', $viveroId)
+            ->withSum('dispatches as produced_seedlings', 'quantity')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (ProductionGoal $goal) => [
+                'id' => $goal->id,
+                'title' => $goal->title,
+                'status' => $goal->status,
+                'finished_at' => $goal->finished_at,
+                'target_seedlings' => $goal->target_seedlings,
+                'produced_seedlings' => $goal->produced_seedlings,
+            ])->all();
     }
 
     public function findOpenForVivero(int $viveroId)

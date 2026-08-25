@@ -5,7 +5,10 @@ import { Modal } from '../../../components/ui/Modal';
 import { useToast } from '../../../components/ui/Toast';
 import { tasksService } from '../services/tasksService';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { TaskResourcePicker } from './TaskResourcePicker';
 import type { ActivityType } from '../types';
+
+type ResourceInput = { type: 'tool' | 'supply'; id: number; quantity?: number };
 
 export const TemplatesTab: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -18,6 +21,8 @@ export const TemplatesTab: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<ActivityType | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [defaultPriority, setDefaultPriority] = useState('normal');
+  const [resources, setResources] = useState<ResourceInput[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Delete State
@@ -44,6 +49,8 @@ export const TemplatesTab: React.FC = () => {
     setEditingTemplate(null);
     setName('');
     setDescription('');
+    setDefaultPriority('normal');
+    setResources([]);
     setIsModalOpen(true);
   };
 
@@ -51,6 +58,8 @@ export const TemplatesTab: React.FC = () => {
     setEditingTemplate(tpl);
     setName(tpl.name);
     setDescription(tpl.description || '');
+    setDefaultPriority(tpl.default_priority || 'normal');
+    setResources((tpl.resources || []).map(r => ({ type: r.resource_type, id: r.resource_id, quantity: r.quantity })));
     setIsModalOpen(true);
   };
 
@@ -59,11 +68,12 @@ export const TemplatesTab: React.FC = () => {
     if (!name.trim()) return;
     setIsSaving(true);
     try {
+      const payload = { name, description, default_priority: defaultPriority, resources };
       if (editingTemplate) {
-        await tasksService.updateActivityType(editingTemplate.id, { name, description });
+        await tasksService.updateActivityType(editingTemplate.id, payload);
         success('Plantilla actualizada correctamente');
       } else {
-        await tasksService.createActivityType({ name, description });
+        await tasksService.createActivityType(payload);
         success('Plantilla creada correctamente');
       }
       setIsModalOpen(false);
@@ -95,7 +105,9 @@ export const TemplatesTab: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Plantillas de Actividad</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Define plantillas preestablecidas para agilizar la asignación de tareas.</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Define plantillas preestablecidas (nombre, prioridad, herramientas e insumos por defecto) para agilizar el registro de actividades.
+          </p>
         </div>
         {isAdmin && (
           <Button onClick={openCreateModal} id="btn-new-template">
@@ -121,6 +133,7 @@ export const TemplatesTab: React.FC = () => {
                   <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre</th>
                   <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Descripción</th>
                   <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
+                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Recursos por defecto</th>
                   {isAdmin && <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Acciones</th>}
                 </tr>
               </thead>
@@ -140,17 +153,26 @@ export const TemplatesTab: React.FC = () => {
                         </span>
                       )}
                     </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-500">
+                      {tpl.resources && tpl.resources.length > 0 ? (
+                        `${tpl.resources.length} recurso${tpl.resources.length === 1 ? '' : 's'}`
+                      ) : (
+                        <span className={tpl.is_system ? 'text-amber-600 font-medium' : 'text-slate-300 italic'}>
+                          {tpl.is_system ? 'Sin definir — completar' : 'Ninguno'}
+                        </span>
+                      )}
+                    </td>
                     {isAdmin && (
                       <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                        {!tpl.is_system ? (
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openEditModal(tpl)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                              title="Editar plantilla"
-                            >
-                              ✏️
-                            </button>
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openEditModal(tpl)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                            title="Editar plantilla"
+                          >
+                            ✏️
+                          </button>
+                          {!tpl.is_system ? (
                             <button
                               onClick={() => setDeletingId(tpl.id)}
                               className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
@@ -158,10 +180,10 @@ export const TemplatesTab: React.FC = () => {
                             >
                               🗑️
                             </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Protegido</span>
-                        )}
+                          ) : (
+                            <span className="text-xs text-slate-400 italic ml-1">No se puede eliminar</span>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -177,6 +199,7 @@ export const TemplatesTab: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingTemplate ? 'Editar Plantilla de Actividad' : 'Nueva Plantilla de Actividad'}
+        subtitle={editingTemplate?.is_system ? 'Plantilla del sistema: el código interno no se puede cambiar, pero sí el resto de los datos.' : undefined}
       >
         <form onSubmit={handleSave} className="p-6 space-y-4">
           <div>
@@ -199,6 +222,23 @@ export const TemplatesTab: React.FC = () => {
               rows={3}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Prioridad por defecto</label>
+            <select
+              value={defaultPriority}
+              onChange={e => setDefaultPriority(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="low">Baja</option>
+              <option value="medium">Media</option>
+              <option value="high">Alta</option>
+              <option value="normal">Normal</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Herramientas e Insumos por defecto</label>
+            <TaskResourcePicker selectedResources={resources} onChange={setResources} />
           </div>
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={isSaving} className="flex-1">

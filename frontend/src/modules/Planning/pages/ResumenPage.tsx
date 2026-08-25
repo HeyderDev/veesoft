@@ -14,9 +14,10 @@ function formatMonth(value: string): string {
 
 interface ResumenPageProps {
   viveroId: number;
+  onNavigateToSettings?: () => void;
 }
 
-export const ResumenPage: React.FC<ResumenPageProps> = ({ viveroId }) => {
+export const ResumenPage: React.FC<ResumenPageProps> = ({ viveroId, onNavigateToSettings }) => {
   const {
     summary, lots, isLoadingSummary,
     dispatchedSeedlings, isLoadingDispatched,
@@ -112,6 +113,15 @@ export const ResumenPage: React.FC<ResumenPageProps> = ({ viveroId }) => {
               </p>
               <p className="text-xs text-slate-400 truncate">{summary.open_goal.title}</p>
               <p className="text-[10px] text-slate-300 mt-0.5">Plántulas despachadas · fuente: Reportes</p>
+              {target > 0 && (dispatchedSeedlings ?? 0) / target >= 0.8 && onNavigateToSettings && (
+                <button
+                  type="button"
+                  onClick={onNavigateToSettings}
+                  className="mt-3 w-full text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg py-1.5 transition-colors"
+                >
+                  Culminar Meta →
+                </button>
+              )}
             </div>
             <KpiCard
               title="En Producción"

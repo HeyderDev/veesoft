@@ -87,6 +87,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModul
           </p>
         </div>
         <ul className="space-y-0.5 px-3">
+          {isAdmin && (
+            <li>
+              <button
+                id="sidebar-nav-configuracion"
+                onClick={() => setCurrentModule('configuracion')}
+                className={`sidebar-item ${currentModule === 'configuracion' ? 'sidebar-item-active' : 'sidebar-item-inactive'}`}
+              >
+                <NavIcon>⚙️</NavIcon>
+                <span>Configuración</span>
+              </button>
+            </li>
+          )}
           <li>
             <button className="sidebar-item sidebar-item-inactive opacity-50 cursor-not-allowed" disabled>
               <NavIcon>🔔</NavIcon>
