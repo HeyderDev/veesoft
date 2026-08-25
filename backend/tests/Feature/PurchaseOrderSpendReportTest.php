@@ -45,15 +45,23 @@ class PurchaseOrderSpendReportTest extends TestCase
 
     private function createOrder(Supplier $supplier, string $issuedAt, float $total): PurchaseOrder
     {
-        return PurchaseOrder::create([
+        $order = PurchaseOrder::create([
             'vivero_id' => $this->vivero->id,
             'order_number' => (string) random_int(1, 999999),
             'supplier_id' => $supplier->id,
-            'status' => PurchaseOrder::STATUS_ISSUED,
+            'status' => PurchaseOrder::STATUS_RECEIVED,
             'issued_at' => $issuedAt,
             'estimated_delivery_date' => now()->addDays(5)->toDateString(),
             'total' => $total,
         ]);
+
+        \App\Modules\Logistics\Models\PurchaseReceipt::create([
+            'purchase_order_id' => $order->id,
+            'received_at' => $issuedAt,
+            'quality_status' => \App\Modules\Logistics\Models\PurchaseReceipt::QUALITY_APPROVED,
+        ]);
+
+        return $order;
     }
 
     public function test_spend_report_totals_and_supplier_breakdown_for_a_custom_range(): void

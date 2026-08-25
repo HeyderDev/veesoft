@@ -16,25 +16,35 @@ export function useSuppliersViewModel() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [certificateAlerts, setCertificateAlerts] = useState<CertificateAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMoreSuppliers, setHasMoreSuppliers] = useState(false);
+  const [isLoadingMoreSuppliers, setIsLoadingMoreSuppliers] = useState(false);
+  const [suppliersPage, setSuppliersPage] = useState(1);
   const { success, error } = useToast();
 
-  const fetchSuppliers = async () => {
-    setIsLoading(true);
+  const fetchSuppliers = async (page = 1, append = false) => {
+    append ? setIsLoadingMoreSuppliers(true) : setIsLoading(true);
     try {
       const [response, alertsResponse] = await Promise.all([
-        logisticsService.getSuppliers(), logisticsService.getCertificateAlerts(),
+        logisticsService.getSuppliers(page),
+        logisticsService.getCertificateAlerts(),
       ]);
-      setSuppliers(response.data || []);
+      const suppliersPageData = response as unknown as { data: Supplier[]; meta?: { current_page: number; last_page: number } };
+      setSuppliers(previous => (append ? [...previous, ...(suppliersPageData.data || [])] : suppliersPageData.data || []));
+      setSuppliersPage(page);
+      setHasMoreSuppliers((suppliersPageData.meta?.current_page ?? page) < (suppliersPageData.meta?.last_page ?? page));
       setCertificateAlerts(alertsResponse.data || []);
     } catch (err) {
       error('Error al cargar los proveedores');
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsLoadingMoreSuppliers(false);
     }
   };
 
-  useEffect(() => { fetchSuppliers(); }, []);
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
 
   // ---- Proveedor: crear / editar ----
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -47,14 +57,31 @@ export function useSuppliersViewModel() {
       setForm(editSupplier);
     } else {
       setForm({
-        name: '', tax_id: '', email: '', phone: '', organic_certified: false,
-        certification: { has_certificate: false, certificate_number: '', certifying_entity: '', issued_at: '', expires_at: '', file_path: null },
+        name: '',
+        tax_id: '',
+        email: '',
+        phone: '',
+        organic_certified: false,
+        certification: {
+          has_certificate: false,
+          certificate_number: '',
+          certifying_entity: '',
+          issued_at: '',
+          expires_at: '',
+          file_path: null,
+        },
       });
     }
   }, [editSupplier, isFormOpen]);
 
-  const openCreate = () => { setEditSupplier(undefined); setIsFormOpen(true); };
-  const openEdit = (supplier: Supplier) => { setEditSupplier(supplier); setIsFormOpen(true); };
+  const openCreate = () => {
+    setEditSupplier(undefined);
+    setIsFormOpen(true);
+  };
+  const openEdit = (supplier: Supplier) => {
+    setEditSupplier(supplier);
+    setIsFormOpen(true);
+  };
   const closeForm = () => setIsFormOpen(false);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -101,19 +128,34 @@ export function useSuppliersViewModel() {
     setIsCatalogOpen(true);
     try {
       const [catalogResponse, suppliesResponse, toolsResponse] = await Promise.all([
-        logisticsService.getSupplierCatalog(supplier.id), logisticsService.getInventorySupplies(), logisticsService.getInventoryTools(),
+        logisticsService.getSupplierCatalog(supplier.id),
+        logisticsService.getInventorySupplies(),
+        logisticsService.getInventoryTools(),
       ]);
-      const supplies = (suppliesResponse.data as unknown as Supply[] || []).map(supply => ({ item_type: 'supply' as const, item_id: supply.id, code: supply.sku, name: supply.name, unit: supply.unit, unit_price: '0' }));
-      const tools = (toolsResponse.data as unknown as Tool[] || []).map(tool => ({ item_type: 'tool' as const, item_id: tool.id, code: `HERR-${tool.id}`, name: tool.name, unit: 'unidad', unit_price: '0' }));
+      const supplies = ((suppliesResponse.data as unknown as Supply[]) || []).map(supply => ({
+        item_type: 'supply' as const,
+        item_id: supply.id,
+        code: supply.sku,
+        name: supply.name,
+        unit: supply.unit,
+        unit_price: '0',
+      }));
+      const tools = ((toolsResponse.data as unknown as Tool[]) || []).map(tool => ({
+        item_type: 'tool' as const,
+        item_id: tool.id,
+        code: `HERR-${tool.id}`,
+        name: tool.name,
+        unit: 'unidad',
+        unit_price: '0',
+      }));
       setAvailableSupplies([...supplies, ...tools]);
       const items = (catalogResponse.data || []).map(item => ({
         item_type: item.item_type,
         item_id: item.item_id,
         unit_price: Number(item.unit_price),
       }));
-      const alreadyLinked = presetItem && items.some(
-        item => item.item_type === presetItem.item_type && item.item_id === presetItem.item_id
-      );
+      const alreadyLinked =
+        presetItem && items.some(item => item.item_type === presetItem.item_type && item.item_id === presetItem.item_id);
       if (presetItem && !alreadyLinked) {
         items.push({ item_type: presetItem.item_type, item_id: presetItem.item_id, unit_price: 0 });
       }
@@ -126,15 +168,21 @@ export function useSuppliersViewModel() {
   const closeCatalog = () => setIsCatalogOpen(false);
   const addCatalogItem = () => setCatalogItems(items => [...items, { item_type: 'supply', item_id: '', unit_price: 0 }]);
   const removeCatalogItem = (index: number) => setCatalogItems(items => items.filter((_, itemIndex) => itemIndex !== index));
-  const updateCatalogItem = (index: number, patch: Partial<{ item_type: 'supply' | 'tool'; item_id: number | ''; unit_price: number }>) => {
-    setCatalogItems(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  const updateCatalogItem = (
+    index: number,
+    patch: Partial<{ item_type: 'supply' | 'tool'; item_id: number | ''; unit_price: number }>,
+  ) => {
+    setCatalogItems(items => items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   };
   const saveCatalog = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!catalogSupplier || catalogItems.some(item => !item.item_id)) return;
     setIsSavingCatalog(true);
     try {
-      await logisticsService.updateSupplierCatalog(catalogSupplier.id, catalogItems as { item_type: 'supply' | 'tool'; item_id: number; unit_price: number }[]);
+      await logisticsService.updateSupplierCatalog(
+        catalogSupplier.id,
+        catalogItems as { item_type: 'supply' | 'tool'; item_id: number; unit_price: number }[],
+      );
       success('Catálogo del proveedor actualizado');
       setIsCatalogOpen(false);
     } catch (err) {
@@ -145,11 +193,16 @@ export function useSuppliersViewModel() {
     }
   };
 
-  // ---- Proveedor: evaluar (HU-03) ----
+  // ---- Proveedor: evaluar ----
   const [isEvaluateOpen, setIsEvaluateOpen] = useState(false);
   const [evaluatingSupplier, setEvaluatingSupplier] = useState<Supplier | undefined>(undefined);
   const [evaluateForm, setEvaluateForm] = useState<SupplierEvaluationInput>({
-    compliance: 5, quality: 5, punctuality: 5, price: 5, after_sales_service: 5, comment: '',
+    compliance: 5,
+    quality: 5,
+    punctuality: 5,
+    price: 5,
+    after_sales_service: 5,
+    comment: '',
   });
   const [isEvaluating, setIsEvaluating] = useState(false);
 
@@ -178,10 +231,41 @@ export function useSuppliersViewModel() {
   };
 
   return {
-    suppliers, certificateAlerts, isLoading, fetchSuppliers,
-    isFormOpen, editSupplier, openCreate, openEdit, closeForm, form, setForm, isSaving, handleSave, handleDelete,
-    isEvaluateOpen, evaluatingSupplier, openEvaluate, closeEvaluate, evaluateForm, setEvaluateForm, isEvaluating, handleEvaluate,
-    isCatalogOpen, catalogSupplier, availableSupplies, catalogItems, openCatalog, closeCatalog,
-    addCatalogItem, removeCatalogItem, updateCatalogItem, saveCatalog, isSavingCatalog,
+    suppliers,
+    certificateAlerts,
+    isLoading,
+    hasMoreSuppliers,
+    isLoadingMoreSuppliers,
+    loadMoreSuppliers: () => fetchSuppliers(suppliersPage + 1, true),
+    fetchSuppliers,
+    isFormOpen,
+    editSupplier,
+    openCreate,
+    openEdit,
+    closeForm,
+    form,
+    setForm,
+    isSaving,
+    handleSave,
+    handleDelete,
+    isEvaluateOpen,
+    evaluatingSupplier,
+    openEvaluate,
+    closeEvaluate,
+    evaluateForm,
+    setEvaluateForm,
+    isEvaluating,
+    handleEvaluate,
+    isCatalogOpen,
+    catalogSupplier,
+    availableSupplies,
+    catalogItems,
+    openCatalog,
+    closeCatalog,
+    addCatalogItem,
+    removeCatalogItem,
+    updateCatalogItem,
+    saveCatalog,
+    isSavingCatalog,
   };
 }

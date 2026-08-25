@@ -46,7 +46,7 @@ class SupplierService extends BaseService
         parent::__construct($supplierRepository);
     }
 
-    public function list(int $perPage = 15)
+    public function list(int $perPage = 20)
     {
         return $this->supplierRepository->paginateOrderedByScore($perPage);
     }

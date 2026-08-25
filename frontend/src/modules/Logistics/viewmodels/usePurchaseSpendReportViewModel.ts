@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { logisticsService } from '../services/logisticsService';
@@ -12,10 +12,6 @@ import type { PurchaseSpendReport } from '../types';
  * reutiliza la que ya existe en Planning (ver docs/03_MODULE_CONTRACTS/Logistics.md §7).
  * El rango de fechas de la meta se resuelve aquí en el frontend (created_at →
  * finished_at o "hoy" si sigue abierta) y se le pasa al backend, que no conoce a Planning.
- *
- * Tanto `production-goals` (Planning) como `purchase-orders/spend-report` (Logistics)
- * son `role:Admin` — un Operario recibiría 403 en ambos, así que este hook ni siquiera
- * pide los datos si no es Admin (el componente igual no los renderiza).
  */
 export function usePurchaseSpendReportViewModel() {
   const { isAdmin } = useAuth();
@@ -24,37 +20,48 @@ export function usePurchaseSpendReportViewModel() {
   const [isLoading, setIsLoading] = useState(true);
   const { error } = useToast();
 
-  useEffect(() => {
+  const fetchReport = useCallback(async () => {
     if (!isAdmin) {
       setIsLoading(false);
       return;
     }
 
-    (async () => {
-      setIsLoading(true);
-      try {
-        const response = await planningService.getGoals();
-        const openGoal = (response.data || []).find(goal => !goal.finished_at) ?? null;
-        setCurrentGoal(openGoal);
+    setIsLoading(true);
+    try {
+      const response = await planningService.getGoals();
+      const openGoal = (response.data || []).find(goal => !goal.finished_at) ?? null;
+      setCurrentGoal(openGoal);
 
-        if (openGoal) {
-          const reportResponse = await logisticsService.getPurchaseSpendReport({
-            start_date: (openGoal.created_at ?? new Date().toISOString()).slice(0, 10),
-            end_date: new Date().toISOString().slice(0, 10),
-            label: openGoal.title,
-          });
-          setReport(reportResponse.data ?? null);
-        } else {
-          setReport(null);
-        }
-      } catch (err) {
-        error('Error al cargar el reporte de compras');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
+      if (openGoal) {
+        const reportResponse = await logisticsService.getPurchaseSpendReport({
+          start_date: (openGoal.created_at ?? new Date().toISOString()).slice(0, 10),
+          end_date: new Date().toISOString().slice(0, 10),
+          label: openGoal.title,
+        });
+        setReport(reportResponse.data ?? null);
+      } else {
+        setReport(null);
       }
-    })();
-  }, [isAdmin]);
+    } catch (err) {
+      error('Error al cargar el reporte de compras');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAdmin, error]);
 
-  return { currentGoal, report, isLoading };
+  useEffect(() => {
+    fetchReport();
+
+    const handleSpendUpdated = () => {
+      fetchReport();
+    };
+
+    window.addEventListener('logistics:spend-updated', handleSpendUpdated);
+    return () => {
+      window.removeEventListener('logistics:spend-updated', handleSpendUpdated);
+    };
+  }, [fetchReport]);
+
+  return { currentGoal, report, isLoading, refetch: fetchReport };
 }

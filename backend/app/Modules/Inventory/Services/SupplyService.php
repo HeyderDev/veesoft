@@ -13,7 +13,7 @@ class SupplyService extends BaseService
 {
     public function __construct(
         private SupplyRepositoryInterface $supplyRepository,
-        private MovementRepositoryInterface $movementRepository
+        private MovementRepositoryInterface $movementRepository,
     ) {
         parent::__construct($supplyRepository);
     }

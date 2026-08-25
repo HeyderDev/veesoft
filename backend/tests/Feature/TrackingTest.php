@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Modules\Shared\Models\Role;
+use App\Modules\Shared\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -9,11 +11,24 @@ class TrackingTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $role = Role::firstOrCreate(['name' => 'Admin']);
+        $this->admin = User::factory()->create(['role_id' => $role->id]);
+        $this->actingAs($this->admin);
+    }
+
     private function createViveroWithGoal(int $target = 500): array
     {
         $viveroId = $this->postJson('/api/v1/viveros', [
             'name' => 'Vivero Tracking', 'location' => 'El Carmen', 'responsible' => 'Responsable',
         ])->json('data.id');
+
+        $this->withHeader('X-Vivero-Id', (string) $viveroId);
 
         $goalId = $this->postJson('/api/v1/production-goals', [
             'vivero_id' => $viveroId, 'title' => 'Meta Tracking', 'target_seedlings' => $target,
@@ -24,7 +39,7 @@ class TrackingTest extends TestCase
 
     private function createLotWithClosedCycle(int $viveroId, string $name = 'Lote Tracking'): int
     {
-        $lotId = $this->postJson('/api/v1/lots', [
+        $lotId = $this->withHeader('X-Vivero-Id', (string) $viveroId)->postJson('/api/v1/lots', [
             'vivero_id' => $viveroId, 'name' => $name,
             'width' => 5, 'length' => 5, 'funda_diameter' => 10,
             'corridor_count' => 0, 'corridor_width' => 0,
