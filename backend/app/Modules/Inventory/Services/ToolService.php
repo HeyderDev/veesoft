@@ -16,7 +16,7 @@ class ToolService extends BaseService
     public function __construct(
         private ToolRepositoryInterface $toolRepository,
         private ToolUnitRepositoryInterface $toolUnitRepository,
-        private MovementRepositoryInterface $movementRepository
+        private MovementRepositoryInterface $movementRepository,
     ) {
         parent::__construct($toolRepository);
     }

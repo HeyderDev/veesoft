@@ -21,10 +21,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);
 
     Route::middleware('role:Admin')->group(function () {
-        Route::get('/users', fn () => response()->json([
-            'status' => 'success',
-            'message' => 'Usuarios obtenidos',
-            'data' => \App\Modules\Shared\Models\User::with('role')->get(),
-        ]));
+        // ?role=Operario (opcional) — ej. para listar solo operarios en el
+        // selector de "Asignado a" al crear/editar una actividad en Tasks.
+        Route::get('/users', function (\Illuminate\Http\Request $request) {
+            $query = \App\Modules\Shared\Models\User::with('role');
+
+            if ($request->filled('role')) {
+                $query->whereHas('role', fn ($q) => $q->where('name', $request->string('role')));
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Usuarios obtenidos',
+                'data' => $query->get(),
+            ]);
+        });
     });
 });

@@ -85,15 +85,15 @@ export const LotMovimientosPage: React.FC<LotMovimientosPageProps> = ({ lotId, o
 
       {canRegister && (
         <form onSubmit={handleRegister} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-          <h2 className="font-semibold text-slate-800">Registrar salida</h2>
+          <h2 className="font-semibold text-slate-800">Registrar Despacho / Salida de Plántulas</h2>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Cliente *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Cliente destinatario *</label>
             <ClientSearchSelect value={client} onChange={setClient} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Cantidad *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Cantidad de plántulas *</label>
             <input
               type="number"
               value={quantity}
@@ -101,44 +101,48 @@ export const LotMovimientosPage: React.FC<LotMovimientosPageProps> = ({ lotId, o
               min={1}
               max={capacity?.remaining ?? lot?.total_capacity}
               required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm font-mono"
+              placeholder="Ej: 500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Observación</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Observación / Guía de remisión</label>
             <input
               value={notes}
               onChange={e => setNotes(e.target.value)}
+              placeholder="Ej: Despacho a finca San José, guía N° 102..."
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
             />
           </div>
 
-          <Button type="submit" isLoading={isSaving}>Registrar salida</Button>
+          <Button type="submit" isLoading={isSaving}>Confirmar Despacho a Cliente</Button>
         </form>
       )}
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">Historial de este lote</h2>
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Historial de Despachos de este Lote</h2>
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
           </div>
         ) : movements.length === 0 ? (
-          <p className="text-sm text-slate-400">Sin salidas registradas todavía.</p>
+          <p className="text-sm text-slate-400">Sin salidas o despachos registrados todavía.</p>
         ) : (
           <div className="space-y-2">
             {movements.map(m => (
               <div key={m.id} className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between">
                 <div>
                   <p className="font-medium text-slate-800">
-                    {m.tracking_client?.name ?? 'Cliente eliminado'} · {m.quantity}
+                    {m.tracking_client?.name ?? 'Cliente eliminado'} · <span className="font-mono font-bold text-emerald-700">{m.quantity} plántulas</span>
                   </p>
                   <p className="text-xs text-slate-400">
                     {formatDate(m.movement_date)}{m.notes ? ` · ${m.notes}` : ''}
                   </p>
                 </div>
-                <span className="text-sm font-semibold text-amber-600">↑ Salida</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                  ↑ Despacho
+                </span>
               </div>
             ))}
           </div>

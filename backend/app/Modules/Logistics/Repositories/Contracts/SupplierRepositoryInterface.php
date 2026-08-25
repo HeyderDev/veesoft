@@ -7,7 +7,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface SupplierRepositoryInterface extends BaseRepositoryInterface
 {
-    public function paginateOrderedByScore(int $perPage = 15): LengthAwarePaginator;
+    public function paginateOrderedByScore(int $perPage = 20): LengthAwarePaginator;
 
     public function findWithRelations(int $id);
 

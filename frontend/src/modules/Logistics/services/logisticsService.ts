@@ -1,8 +1,17 @@
 import axiosClient from '../../../shared/services/axiosClient';
 import type {
-  PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput,
-  QualityStatus, Supplier, SupplierEvaluationInput, SupplierCatalogItem,
-  CertificateAlert, UnregisteredItem, PurchaseSpendReport, SupplierSpendSummary,
+  AvailableInventoryItem,
+  CertificateAlert,
+  PendingDeliveryItem,
+  PurchaseOrder,
+  PurchaseOrderItemInput,
+  PurchaseSpendReport,
+  QualityStatus,
+  Supplier,
+  SupplierCatalogItem,
+  SupplierEvaluationInput,
+  SupplierSpendSummary,
+  UnregisteredItem,
 } from '../types';
 
 function supplierFormData(data: Partial<Supplier>, method?: 'PUT'): FormData {
@@ -31,7 +40,8 @@ function supplierFormData(data: Partial<Supplier>, method?: 'PUT'): FormData {
  */
 export const logisticsService = {
   // ---- Proveedores ----
-  getSuppliers: () => axiosClient.get<Supplier[]>('/suppliers'),
+  getSuppliers: (page?: number) =>
+    axiosClient.get<Supplier[]>('/suppliers', { params: page ? { page, per_page: 20 } : undefined }),
   createSupplier: (data: Partial<Supplier>) => axiosClient.post('/suppliers', supplierFormData(data)),
   updateSupplier: (id: number, data: Partial<Supplier>) => axiosClient.post(`/suppliers/${id}`, supplierFormData(data, 'PUT')),
   deleteSupplier: (id: number) => axiosClient.delete(`/suppliers/${id}`),
@@ -47,18 +57,25 @@ export const logisticsService = {
   getInventoryTools: () => axiosClient.get<SupplierCatalogItem[]>('/tools'),
 
   // ---- Órdenes de compra ----
-  getPurchaseOrders: () => axiosClient.get<PurchaseOrder[]>('/purchase-orders'),
+  getPurchaseOrders: (page?: number) =>
+    axiosClient.get<PurchaseOrder[]>('/purchase-orders', { params: page ? { page, per_page: 20 } : undefined }),
   createPurchaseOrder: (data: {
-    supplier_id: number; estimated_delivery_date?: string; items: PurchaseOrderItemInput[]; reconciles_existing_inventory?: boolean;
+    supplier_id?: number;
+    estimated_delivery_date?: string;
+    items: PurchaseOrderItemInput[];
+    reconciles_existing_inventory?: boolean;
   }) => axiosClient.post<PurchaseOrder>('/purchase-orders', data),
   getPurchaseOrder: (id: number) => axiosClient.get<PurchaseOrder>(`/purchase-orders/${id}`),
   receivePurchaseOrder: (id: number, data: {
     quality_status: QualityStatus; observations?: string; photo_evidence_url?: string;
   }) => axiosClient.post(`/purchase-orders/${id}/receive`, data),
-  getPendingDeliveries: () => axiosClient.get<PendingDeliveryItem[]>('/purchase-orders/pending-deliveries'),
+  getPendingDeliveries: (limit = 12) =>
+    axiosClient.get<PendingDeliveryItem[]>('/purchase-orders/pending-deliveries', { params: { limit } }),
   getUnregisteredItems: () => axiosClient.get<UnregisteredItem[]>('/purchase-orders/unregistered-items'),
+  getAvailableInventoryItems: () =>
+    axiosClient.get<AvailableInventoryItem[]>('/purchase-orders/available-inventory-items'),
 
-  // ---- Reporte de gasto en compras para el rango de fechas de una Meta de Producción ----
-  getPurchaseSpendReport: (params: { start_date: string; end_date: string; label: string }) =>
+  // ---- Reporte de gasto en compras ----
+  getPurchaseSpendReport: (params: { start_date?: string; end_date?: string; year?: number; label?: string }) =>
     axiosClient.get<PurchaseSpendReport>('/purchase-orders/spend-report', { params }),
 };

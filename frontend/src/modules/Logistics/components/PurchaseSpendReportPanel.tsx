@@ -55,11 +55,11 @@ export const PurchaseSpendReportPanel: React.FC = () => {
   if (!isAdmin) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Reporte de Compras</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Gasto total y proveedores de la meta en curso</p>
+          <h3 className="text-sm font-bold text-slate-800">Reporte de Gasto de la Meta Activa</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Gasto total y desglose de compras para la meta de producción en curso</p>
         </div>
         {report && report.orders_count > 0 && (
           <Button variant="secondary" onClick={() => downloadReportCsv(report)}><Download className="w-4 h-4 mr-1.5" /> Descargar CSV</Button>

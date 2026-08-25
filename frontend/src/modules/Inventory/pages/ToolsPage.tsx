@@ -29,10 +29,10 @@ export default function ToolsPage() {
   useEffect(() => {
     if (generatedLabel) {
       if (labelFormat === 'qr' && qrCanvasRef.current) {
-        QRCode.toCanvas(qrCanvasRef.current, generatedLabel.code, { width: 140, margin: 1 }, (err: any) => { if (err) console.error(err); });
+        QRCode.toCanvas(qrCanvasRef.current, generatedLabel.code, { width: 95, margin: 0 }, (err: any) => { if (err) console.error(err); });
       }
       if (labelFormat === 'barcode' && barcodeSvgRef.current) {
-        JsBarcode(barcodeSvgRef.current, generatedLabel.code, { format: "CODE128", width: 1.5, height: 60, displayValue: true, fontSize: 14, margin: 5 });
+        JsBarcode(barcodeSvgRef.current, generatedLabel.code, { format: "CODE128", width: 1.35, height: 36, displayValue: false, margin: 0 });
       }
     }
   }, [generatedLabel, labelFormat]);
@@ -370,28 +370,27 @@ export default function ToolsPage() {
 
               <div className="flex flex-col items-center justify-center bg-slate-50 p-4 rounded-3xl border border-slate-100">
                 <div 
-                  id="print-label-area" 
-                  className="bg-white border-2 border-dashed border-slate-200 flex flex-col items-center justify-center print:border-none print:shadow-none print:m-0 print:p-0 overflow-hidden relative"
-                  style={{ width: '48mm', height: '48mm', padding: '3mm' }}
+                  id="print-label-area"
+                  className="bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-start print:border-none print:shadow-none print:m-0 print:p-0 overflow-hidden relative shadow-sm"
+                  style={{ width: '35mm', height: '25mm', padding: '1mm 1.5mm', boxSizing: 'border-box' }}
                 >
-                  <div className="w-full text-center border-b border-slate-200 flex flex-col items-center justify-center mb-[2mm] pb-[1mm]">
-                    <span className="font-bold text-slate-800 leading-none text-[8pt]">VIVERO CACAO</span>
+                  <div className="w-full text-center overflow-hidden pb-0.5 border-b border-slate-100">
+                    <p className="font-semibold text-slate-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[5.5pt]">
+                      {generatedLabel.name} - <span className="font-mono font-bold text-slate-900">{generatedLabel.code}</span>
+                    </p>
                   </div>
                   {labelFormat === 'qr' && (
-                    <div className="flex flex-col items-center justify-center flex-1 w-full">
-                      <canvas ref={qrCanvasRef} style={{ maxWidth: '100%', maxHeight: '100%' }}></canvas>
+                    <div className="flex flex-col items-center justify-center flex-1 w-full my-auto py-0.5">
+                      <canvas ref={qrCanvasRef} style={{ maxWidth: '100%', maxHeight: '19mm' }}></canvas>
                     </div>
                   )}
                   {labelFormat === 'barcode' && (
-                    <div className="flex flex-col items-center justify-center flex-1 w-full">
-                      <svg ref={barcodeSvgRef} style={{ maxWidth: '100%', maxHeight: '100%' }}></svg>
+                    <div className="flex flex-col items-center justify-center flex-1 w-full my-auto py-0.5">
+                      <svg ref={barcodeSvgRef} style={{ maxWidth: '100%', maxHeight: '19mm' }}></svg>
                     </div>
                   )}
-                  <div className="w-full text-center mt-auto pt-[2mm]">
-                    <p className="font-bold text-slate-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[7pt]">{generatedLabel.name}</p>
-                    <p className="font-bold font-mono leading-none text-[6pt]">{generatedLabel.code}</p>
-                  </div>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-2 font-mono">Formato etiqueta: 25 mm × 35 mm</p>
               </div>
             </div>
 

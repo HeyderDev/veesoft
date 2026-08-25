@@ -27,6 +27,9 @@ return [
         'http://172.17.131.72:5173',
         'http://192.168.1.7:5173',
         'http://192.168.1.8:5173',
+        // App móvil empaquetada con Capacitor: el WebView nativo sirve el bundle
+        // desde este origen fijo (androidScheme por defecto = https).
+        'https://localhost',
     ],
 
     'allowed_origins_patterns' => [],

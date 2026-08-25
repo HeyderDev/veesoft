@@ -185,7 +185,9 @@ export function useTasksViewModel() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await axiosClient.get('/users');
+        // Solo Operarios: son quienes se pueden asignar como responsables de
+        // una actividad — un Admin no se auto-asigna tareas desde este selector.
+        const res = await axiosClient.get('/users', { params: { role: 'Operario' } });
         setUsers(res.data);
       } catch (e) {
         console.error('Error fetching users', e);

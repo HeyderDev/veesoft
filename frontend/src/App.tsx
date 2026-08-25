@@ -39,7 +39,11 @@ function AppShell() {
 
   const renderCurrentModule = () => {
     switch (currentModule) {
+      // El Dashboard es exclusivo de Admin (ver Sidebar.tsx ADMIN_ONLY_MODULES) —
+      // este guard cubre cualquier forma de llegar a currentModule='dashboard'
+      // que no pase por el botón de la barra lateral (ya oculto para Operario).
       case 'dashboard':
+        if (!isAdmin) return null;
         return (
           <ToastProvider>
             <DashboardPage

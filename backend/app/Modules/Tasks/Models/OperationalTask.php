@@ -47,7 +47,11 @@ class OperationalTask extends Model
         return $this->lotCyclePhase?->lotCycle?->lot_id;
     }
 
-    public function assignedTo(): BelongsTo
+    // Nombrada `assignee` (no `assignedTo`) a propósito: Eloquent serializa el
+    // nombre de la relación en snake_case (`assignedTo` -> `assigned_to`), lo
+    // que pisaría la columna cruda `assigned_to` (el ID) en el JSON de salida
+    // con el objeto User completo — el frontend espera un número ahí.
+    public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
     }

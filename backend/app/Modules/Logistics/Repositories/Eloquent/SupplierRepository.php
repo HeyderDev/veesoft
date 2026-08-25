@@ -14,7 +14,7 @@ class SupplierRepository extends BaseRepository implements SupplierRepositoryInt
         parent::__construct($model);
     }
 
-    public function paginateOrderedByScore(int $perPage = 15): LengthAwarePaginator
+    public function paginateOrderedByScore(int $perPage = 20): LengthAwarePaginator
     {
         return $this->model->with('certification')->orderByDesc('score')->orderBy('name')->paginate($perPage);
     }

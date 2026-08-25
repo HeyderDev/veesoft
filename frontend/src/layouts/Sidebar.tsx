@@ -5,7 +5,7 @@ import { useAuth } from '../shared/context/AuthContext';
 
 // Módulos a los que Operario no tiene acceso — el backend ya los bloquea (403),
 // esto es solo para no mostrar una pestaña que va a fallar.
-const ADMIN_ONLY_MODULES = ['planning'];
+const ADMIN_ONLY_MODULES = ['planning', 'dashboard', 'logistics'];
 
 interface SidebarProps {
   currentModule: string;

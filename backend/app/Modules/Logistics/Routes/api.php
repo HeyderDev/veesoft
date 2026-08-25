@@ -17,6 +17,7 @@ Route::middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
     // la creación se mantiene exclusivamente en Admin.
     Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
     Route::get('purchase-orders/pending-deliveries', [PurchaseOrderController::class, 'pendingDeliveries']);
+    Route::get('purchase-orders/available-inventory-items', [PurchaseOrderController::class, 'availableInventoryItems']);
     // El aviso es de solo lectura: ambos roles deben conocer los recursos de
     // Inventario que todavía no tienen una orden de compra registrada.
     Route::get('purchase-orders/unregistered-items', [PurchaseOrderController::class, 'unregisteredItems']);
