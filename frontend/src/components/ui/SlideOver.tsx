@@ -43,13 +43,13 @@ export const SlideOver: React.FC<SlideOverProps> = ({ isOpen, onClose, title, su
         {/* Panel container */}
         <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
           <div 
-            className={`w-screen max-w-md transform transition-transform duration-300 ease-in-out ${animate ? 'translate-x-0' : 'translate-x-full'}`}
+            className={`w-screen max-w-xl transform transition-transform duration-300 ease-in-out ${animate ? 'translate-x-0' : 'translate-x-full'}`}
           >
             <div className="flex h-full flex-col bg-white shadow-2xl">
               {/* Header */}
               <div className="px-6 py-5 bg-slate-50 border-b border-slate-100 flex items-start justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+                  <h2 className="break-words text-lg font-bold text-slate-800">{title}</h2>
                   {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
                 </div>
                 <button 

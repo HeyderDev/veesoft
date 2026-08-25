@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { PurchaseOrdersPage } from '../pages/PurchaseOrdersPage';
 import { PlanningOverviewPage } from '../pages/PlanningOverviewPage';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useLogisticsNav, logisticsSectionTabs as sectionTabs } from '../hooks/useLogisticsNav';
-import type { UnregisteredItem } from '../types';
 
 interface LogisticsTabsProps {
   onTabChange?: (tabLabel: string) => void;
@@ -19,13 +18,6 @@ interface LogisticsTabsProps {
 export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => {
   const { isAdmin } = useAuth();
   const { activeSection, setActiveSection } = useLogisticsNav();
-  const [catalogLinkRequest, setCatalogLinkRequest] = useState<UnregisteredItem | null>(null);
-
-  const handleRequestCatalogLink = (item: UnregisteredItem) => {
-    setCatalogLinkRequest(item);
-    setActiveSection('suppliers');
-  };
-
   useEffect(() => {
     if (!isAdmin && activeSection !== 'purchases') {
       setActiveSection('purchases');
@@ -41,15 +33,8 @@ export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => 
   const renderSection = () => {
     switch (activeSection) {
       case 'planning-overview': return <PlanningOverviewPage />;
-      case 'suppliers': return (
-        <SuppliersPage
-          pendingLinkItem={catalogLinkRequest}
-          onLinkHandled={() => setCatalogLinkRequest(null)}
-        />
-      );
-      case 'purchases': return (
-        <PurchaseOrdersPage onRequestSupplierCatalogLink={handleRequestCatalogLink} />
-      );
+      case 'suppliers': return <SuppliersPage />;
+      case 'purchases': return <PurchaseOrdersPage />;
       default: return <PlanningOverviewPage />;
     }
   };
