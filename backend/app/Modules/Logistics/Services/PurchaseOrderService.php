@@ -50,7 +50,7 @@ class PurchaseOrderService extends BaseService
         parent::__construct($purchaseOrderRepository);
     }
 
-    public function list(int $perPage = 15)
+    public function list(int $perPage = 20)
     {
         return $this->purchaseOrderRepository->paginateWithRelations($perPage);
     }
@@ -66,13 +66,13 @@ class PurchaseOrderService extends BaseService
     }
 
     /**
-     * @param  array<int, array{item_type: 'supply'|'tool', item_id: int, quantity: float}>  $items
+     * @param  array<int, array{item_type: 'supply'|'tool', item_id: int, quantity: float, unit_price?: float}>  $items
      */
     public function create(array $data): PurchaseOrder
     {
-        $supplier = $this->supplierRepository->find($data['supplier_id']);
+        $supplier = isset($data['supplier_id']) ? $this->supplierRepository->find($data['supplier_id']) : null;
 
-        if ($supplier->status !== Supplier::STATUS_ACTIVE) {
+        if ($supplier && $supplier->status !== Supplier::STATUS_ACTIVE) {
             throw new \DomainException("El proveedor '{$supplier->name}' está inactivo y no puede recibir órdenes.");
         }
 
@@ -81,11 +81,23 @@ class PurchaseOrderService extends BaseService
                 throw new \DomainException('Las herramientas deben solicitarse en unidades enteras.');
             }
 
-            $relation = $item['item_type'] === 'tool' ? $supplier->tools() : $supplier->supplies();
-            $catalogItem = $relation->whereKey($item['item_id'])->first();
+            if ($supplier) {
+                $relation = $item['item_type'] === 'tool' ? $supplier->tools() : $supplier->supplies();
+                $catalogItem = $relation->whereKey($item['item_id'])->first();
 
-            if (! $catalogItem) {
-                throw new \DomainException('Cada ítem de la orden debe estar registrado en el catálogo del proveedor seleccionado.');
+                if (! $catalogItem) {
+                    throw new \DomainException('Cada ítem de la orden debe estar registrado en el catálogo del proveedor seleccionado.');
+                }
+                $unitPrice = (float) $catalogItem->pivot->unit_price;
+            } else {
+                $catalogItem = $item['item_type'] === 'tool'
+                    ? Tool::query()->findOrFail($item['item_id'])
+                    : Supply::query()->findOrFail($item['item_id']);
+
+                if (! array_key_exists('unit_price', $item) || $item['unit_price'] === null) {
+                    throw new \DomainException('Indica el precio unitario de cada ítem cuando la compra no tiene proveedor.');
+                }
+                $unitPrice = (float) $item['unit_price'];
             }
 
             return [
@@ -95,7 +107,7 @@ class PurchaseOrderService extends BaseService
                 'item_name' => $catalogItem->name,
                 'unit' => $item['item_type'] === 'supply' ? $catalogItem->unit : 'unidad',
                 'quantity' => $item['quantity'],
-                'unit_price' => $catalogItem->pivot->unit_price,
+                'unit_price' => $unitPrice,
             ];
         })->all();
         $total = collect($items)->sum(fn ($item) => $item['quantity'] * $item['unit_price']);
@@ -105,12 +117,15 @@ class PurchaseOrderService extends BaseService
         $reconcilesExistingInventory = (bool) ($data['reconciles_existing_inventory'] ?? false);
 
         $order = DB::transaction(function () use ($supplier, $items, $total, $estimatedDeliveryDate, $data, $reconcilesExistingInventory) {
+            $issuedAt = $reconcilesExistingInventory
+                ? Carbon::parse($estimatedDeliveryDate)->startOfDay()
+                : now();
             $order = $this->purchaseOrderRepository->create([
                 'order_number' => $this->purchaseOrderRepository->nextOrderNumber(),
-                'supplier_id' => $supplier->id,
+                'supplier_id' => $supplier?->id,
                 'created_by' => $data['created_by'] ?? null,
                 'status' => PurchaseOrder::STATUS_ISSUED,
-                'issued_at' => now(),
+                'issued_at' => $issuedAt,
                 'estimated_delivery_date' => $estimatedDeliveryDate,
                 'total' => $total,
                 'reconciles_existing_inventory' => $reconcilesExistingInventory,
@@ -201,7 +216,7 @@ class PurchaseOrderService extends BaseService
      * Ítems pendientes por llegar (órdenes 'issued'/'sent'), clasificados por urgencia
      * según la fecha de entrega estimada de su orden.
      */
-    public function pendingDeliveries(): array
+    public function pendingDeliveries(int $limit = 12): array
     {
         $today = Carbon::today();
 
@@ -222,7 +237,7 @@ class PurchaseOrderService extends BaseService
                     'purchase_order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'estimated_delivery_date' => $order->estimated_delivery_date?->toDateString(),
-                    'supplier_name' => $order->supplier->name,
+                    'supplier_name' => $order->supplier?->name ?? 'Sin proveedor',
                     'item_sku' => $item->item_sku,
                     'item_name' => $item->item_name,
                     'unit' => $item->unit,
@@ -231,8 +246,24 @@ class PurchaseOrderService extends BaseService
                 ]);
             })
             ->sortBy('estimated_delivery_date')
+            ->take($limit)
             ->values()
             ->all();
+    }
+
+    /** Ítems existentes que pueden comprarse sin asociarlos a un proveedor registrado. */
+    public function availableInventoryItems(): array
+    {
+        $supplies = Supply::query()->orderBy('name')->get()->map(fn (Supply $supply) => [
+            'item_type' => 'supply', 'item_id' => $supply->id, 'code' => $supply->sku,
+            'name' => $supply->name, 'unit' => $supply->unit, 'unit_price' => '0.00',
+        ]);
+        $tools = Tool::query()->orderBy('name')->get()->map(fn (Tool $tool) => [
+            'item_type' => 'tool', 'item_id' => $tool->id, 'code' => 'HERR-'.$tool->id,
+            'name' => $tool->name, 'unit' => 'unidad', 'unit_price' => '0.00',
+        ]);
+
+        return $supplies->concat($tools)->sortBy('name')->values()->all();
     }
 
     /**
@@ -252,6 +283,11 @@ class PurchaseOrderService extends BaseService
                     ->whereNull('purchase_order_item_id')
                     ->where('requires_purchase_registration', true),
             ], 'quantity')
+            ->withMin([
+                'movements as inventory_registered_at' => fn ($query) => $query
+                    ->whereNull('purchase_order_item_id')
+                    ->where('requires_purchase_registration', true),
+            ], 'created_at')
             ->having('unregistered_quantity', '>', 0)
             ->orderBy('name')
             ->get(['id', 'sku', 'name', 'unit', 'current_stock'])
@@ -266,6 +302,7 @@ class PurchaseOrderService extends BaseService
                 // al stock actual del insumo.
                 'quantity' => (string) min((float) $supply->current_stock, (float) $supply->unregistered_quantity),
                 'supplier_id' => $this->bestSupplierIdFor('supply', $supply->id),
+                'registered_at' => $supply->inventory_registered_at ? Carbon::parse($supply->inventory_registered_at)->toDateString() : null,
             ])
             ->filter(fn (array $supply) => (float) $supply['quantity'] > 0)
             ->values();
@@ -274,6 +311,9 @@ class PurchaseOrderService extends BaseService
             ->withCount([
                 'units as unregistered_units_count' => fn ($query) => $query->whereNull('purchase_order_item_id'),
             ])
+            ->withMin([
+                'units as inventory_registered_at' => fn ($query) => $query->whereNull('purchase_order_item_id'),
+            ], 'created_at')
             ->having('unregistered_units_count', '>', 0)
             ->orderBy('name')
             ->get(['id', 'name'])
@@ -285,6 +325,7 @@ class PurchaseOrderService extends BaseService
                 'unit' => 'unidad',
                 'quantity' => (string) $tool->unregistered_units_count,
                 'supplier_id' => $this->bestSupplierIdFor('tool', $tool->id),
+                'registered_at' => $tool->inventory_registered_at ? Carbon::parse($tool->inventory_registered_at)->toDateString() : null,
             ]);
 
         return $supplies->concat($tools)->sortBy('name')->values()->all();
@@ -336,8 +377,8 @@ class PurchaseOrderService extends BaseService
         $ordersCount = (clone $ordersQuery)->count();
 
         $suppliers = (clone $ordersQuery)
-            ->join('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
-            ->selectRaw('suppliers.id as supplier_id, suppliers.name as supplier_name, COUNT(*) as orders_count, SUM(purchase_orders.total) as total_spent')
+            ->leftJoin('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
+            ->selectRaw("COALESCE(suppliers.id, 0) as supplier_id, COALESCE(suppliers.name, 'Sin proveedor') as supplier_name, COUNT(*) as orders_count, SUM(purchase_orders.total) as total_spent")
             ->groupBy('suppliers.id', 'suppliers.name')
             ->orderByDesc('total_spent')
             ->get()

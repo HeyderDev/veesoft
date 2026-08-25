@@ -30,7 +30,7 @@ interface SuppliersPageProps {
 
 export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, onLinkHandled }) => {
   const {
-    suppliers, certificateAlerts, isLoading,
+    suppliers, certificateAlerts, isLoading, hasMoreSuppliers, isLoadingMoreSuppliers, loadMoreSuppliers,
     isFormOpen, editSupplier, openCreate, openEdit, closeForm, form, setForm, isSaving, handleSave, handleDelete,
     isEvaluateOpen, evaluatingSupplier, openEvaluate, closeEvaluate, evaluateForm, setEvaluateForm, isEvaluating, handleEvaluate,
     isCatalogOpen, catalogSupplier, availableSupplies, catalogItems, openCatalog, closeCatalog,
@@ -135,6 +135,12 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
         </div>
       )}
 
+      {hasMoreSuppliers && (
+        <div className="flex justify-center">
+          <Button variant="secondary" onClick={loadMoreSuppliers} isLoading={isLoadingMoreSuppliers}>Cargar 20 más</Button>
+        </div>
+      )}
+
       <SupplierSpendReportPanel />
 
       <SlideOver
@@ -156,7 +162,8 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
             <label className="block text-xs font-medium text-slate-600 mb-1">RUC / Cédula *</label>
             <input
               value={form.tax_id ?? ''}
-              onChange={e => setForm({ ...form, tax_id: e.target.value })}
+              onChange={e => setForm({ ...form, tax_id: e.target.value.replace(/\D/g, '').slice(0, 13) })}
+              inputMode="numeric"
               required
               maxLength={13}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
@@ -173,10 +180,14 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Teléfono</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Teléfono (máx. 10 dígitos)</label>
               <input
+                type="tel"
+                inputMode="numeric"
                 value={form.phone ?? ''}
-                onChange={e => setForm({ ...form, phone: e.target.value })}
+                onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                maxLength={10}
+                pattern="[0-9]{1,10}"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
               />
             </div>

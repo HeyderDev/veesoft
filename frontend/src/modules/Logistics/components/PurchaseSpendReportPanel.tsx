@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
@@ -50,6 +50,9 @@ function downloadReportCsv(report: PurchaseSpendReport): void {
 export const PurchaseSpendReportPanel: React.FC = () => {
   const { isAdmin } = useAuth();
   const { currentGoal, report, isLoading } = usePurchaseSpendReportViewModel();
+  const [visibleSuppliers, setVisibleSuppliers] = useState(2);
+
+  useEffect(() => setVisibleSuppliers(2), [report?.label, report?.start_date, report?.end_date]);
 
   if (!isAdmin) return null;
 
@@ -57,7 +60,12 @@ export const PurchaseSpendReportPanel: React.FC = () => {
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Reporte de Compras</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-800">Reporte de Compras</h3>
+            {!!report && report.suppliers.length > visibleSuppliers && (
+              <button type="button" onClick={() => setVisibleSuppliers(current => current + 2)} className="rounded-md border border-emerald-200 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50">Cargar 2 más</button>
+            )}
+          </div>
           <p className="text-xs text-slate-500 mt-0.5">Gasto total y proveedores de la meta en curso</p>
         </div>
         {report && report.orders_count > 0 && (
@@ -89,7 +97,7 @@ export const PurchaseSpendReportPanel: React.FC = () => {
               </div>
 
               {report.suppliers.length > 0 && (
-                <div className="overflow-hidden rounded-lg border border-slate-100">
+                <div className={`overflow-x-auto rounded-lg border border-slate-100 ${visibleSuppliers > 2 ? 'max-h-[154px] overflow-y-auto' : ''}`}>
                   <table className="min-w-full divide-y divide-slate-100">
                     <thead className="bg-slate-50">
                       <tr>
@@ -99,7 +107,7 @@ export const PurchaseSpendReportPanel: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {report.suppliers.map(supplier => (
+                      {report.suppliers.slice(0, visibleSuppliers).map(supplier => (
                         <tr key={supplier.supplier_id}>
                           <td className="px-3 py-2 text-sm text-slate-700">{supplier.supplier_name}</td>
                           <td className="px-3 py-2 text-sm text-slate-500">{supplier.orders_count}</td>

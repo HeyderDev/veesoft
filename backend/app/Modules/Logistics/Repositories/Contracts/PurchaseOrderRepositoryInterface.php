@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 interface PurchaseOrderRepositoryInterface extends BaseRepositoryInterface
 {
-    public function paginateWithRelations(int $perPage = 15): LengthAwarePaginator;
+    public function paginateWithRelations(int $perPage = 20): LengthAwarePaginator;
 
     public function findWithRelations(int $id);
 

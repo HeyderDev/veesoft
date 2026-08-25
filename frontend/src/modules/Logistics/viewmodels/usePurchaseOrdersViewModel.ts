@@ -21,29 +21,42 @@ export function usePurchaseOrdersViewModel() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [pendingDeliveries, setPendingDeliveries] = useState<PendingDeliveryItem[]>([]);
+  const [visiblePendingDeliveries, setVisiblePendingDeliveries] = useState(6);
   const [unregisteredItems, setUnregisteredItems] = useState<UnregisteredItem[]>([]);
   const [catalog, setCatalog] = useState<SupplierCatalogItem[]>([]);
+  const [inventoryCatalog, setInventoryCatalog] = useState<SupplierCatalogItem[]>([]);
+  const [isWithoutSupplier, setIsWithoutSupplier] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMoreOrders, setHasMoreOrders] = useState(false);
+  const [isLoadingMoreOrders, setIsLoadingMoreOrders] = useState(false);
+  const [ordersPage, setOrdersPage] = useState(1);
   const { success, error } = useToast();
 
-  const fetchAll = async () => {
-    setIsLoading(true);
+  const fetchAll = async (page = 1, append = false) => {
+    append ? setIsLoadingMoreOrders(true) : setIsLoading(true);
     try {
-      const [ordersRes, suppliersRes, pendingRes, unregisteredRes] = await Promise.all([
-        logisticsService.getPurchaseOrders(),
+      const [ordersRes, suppliersRes, pendingRes, unregisteredRes, inventoryRes] = await Promise.all([
+        logisticsService.getPurchaseOrders(page),
         isAdmin ? logisticsService.getSuppliers() : Promise.resolve({ data: [] as Supplier[] }),
-        logisticsService.getPendingDeliveries(),
+        logisticsService.getPendingDeliveries(12),
         logisticsService.getUnregisteredItems(),
+        logisticsService.getAvailableInventoryItems(),
       ]);
-      setOrders(ordersRes.data || []);
+      const ordersPageData = ordersRes as unknown as { data: PurchaseOrder[]; meta?: { current_page: number; last_page: number } };
+      setOrders(previous => append ? [...previous, ...(ordersPageData.data || [])] : (ordersPageData.data || []));
+      setOrdersPage(page);
+      setHasMoreOrders((ordersPageData.meta?.current_page ?? page) < (ordersPageData.meta?.last_page ?? page));
       setSuppliers(suppliersRes.data || []);
       setPendingDeliveries(pendingRes.data || []);
+      setVisiblePendingDeliveries(6);
       setUnregisteredItems(unregisteredRes.data || []);
+      setInventoryCatalog(inventoryRes.data || []);
     } catch (err) {
       error('Error al cargar las órdenes de compra');
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsLoadingMoreOrders(false);
     }
   };
 
@@ -71,6 +84,7 @@ export function usePurchaseOrdersViewModel() {
     setQuantityLocked([false]);
     setReconcilesExistingInventory(false);
     setCatalog([]);
+    setIsWithoutSupplier(false);
     setIsFormOpen(true);
   };
 
@@ -81,12 +95,13 @@ export function usePurchaseOrdersViewModel() {
    * se fija a la ya registrada en Inventory y queda bloqueada (`quantityLocked`).
    */
   const openCreateForItem = (item: UnregisteredItem) => {
-    if (!item.supplier_id) return;
-    setForm({ supplier_id: item.supplier_id, estimated_delivery_date: '' });
-    setItems([{ item_type: item.item_type, item_id: item.item_id, quantity: Number(item.quantity) }]);
+    const withoutSupplier = !item.supplier_id;
+    setForm({ supplier_id: item.supplier_id ?? '', estimated_delivery_date: item.registered_at ?? '' });
+    setItems([{ item_type: item.item_type, item_id: item.item_id, quantity: Number(item.quantity), ...(withoutSupplier ? { unit_price: 0 } : {}) }]);
     setQuantityLocked([true]);
     setReconcilesExistingInventory(true);
     setCatalog([]);
+    setIsWithoutSupplier(withoutSupplier);
     setIsFormOpen(true);
   };
 
@@ -100,6 +115,7 @@ export function usePurchaseOrdersViewModel() {
     setQuantityLocked([false]);
     setReconcilesExistingInventory(false);
     setCatalog([]);
+    setIsWithoutSupplier(false);
   };
 
   const addItemRow = () => {
@@ -115,7 +131,7 @@ export function usePurchaseOrdersViewModel() {
   };
 
   useEffect(() => {
-    if (!form.supplier_id) {
+    if (!form.supplier_id || isWithoutSupplier) {
       setCatalog([]);
       return;
     }
@@ -125,15 +141,15 @@ export function usePurchaseOrdersViewModel() {
         setCatalog([]);
         console.error(err);
       });
-  }, [form.supplier_id]);
+  }, [form.supplier_id, isWithoutSupplier]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.supplier_id) return;
+    if (!isWithoutSupplier && !form.supplier_id) return;
     setIsSaving(true);
     try {
       await logisticsService.createPurchaseOrder({
-        supplier_id: form.supplier_id,
+        supplier_id: isWithoutSupplier ? undefined : (form.supplier_id || undefined),
         estimated_delivery_date: form.estimated_delivery_date || undefined,
         items,
         reconciles_existing_inventory: reconcilesExistingInventory,
@@ -186,8 +202,8 @@ export function usePurchaseOrdersViewModel() {
   };
 
   return {
-    orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading, fetchAll,
-    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, quantityLocked, reconcilesExistingInventory, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
+    orders, suppliers, pendingDeliveries, visiblePendingDeliveries, loadMorePendingDeliveries: () => setVisiblePendingDeliveries(current => Math.min(current + 6, 12)), unregisteredItems, catalog, inventoryCatalog, isWithoutSupplier, setIsWithoutSupplier, isLoading, hasMoreOrders, isLoadingMoreOrders, loadMoreOrders: () => fetchAll(ordersPage + 1, true), fetchAll,
+    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, setItems, quantityLocked, reconcilesExistingInventory, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   };
 }

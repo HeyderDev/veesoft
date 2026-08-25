@@ -86,6 +86,7 @@ export interface PurchaseOrderItemInput {
   item_type: 'supply' | 'tool';
   item_id: number | '';
   quantity: number;
+  unit_price?: number;
 }
 
 export interface UnregisteredItem {
@@ -98,6 +99,8 @@ export interface UnregisteredItem {
   quantity: string;
   /** ID de un proveedor que ya ofrece este ítem en su catálogo, si existe alguno. */
   supplier_id: number | null;
+  /** Fecha en que el ítem ingresó manualmente a Inventario, aún sin orden de compra. */
+  registered_at: string | null;
 }
 
 export type QualityStatus = 'approved' | 'rejected' | 'conditional';
@@ -115,7 +118,7 @@ export interface PurchaseReceipt {
 export interface PurchaseOrder {
   id: number;
   order_number: string;
-  supplier_id: number;
+  supplier_id: number | null;
   created_by: number | null;
   status: PurchaseOrderStatus;
   issued_at: string | null;

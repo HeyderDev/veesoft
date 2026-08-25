@@ -16,21 +16,28 @@ export function useSuppliersViewModel() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [certificateAlerts, setCertificateAlerts] = useState<CertificateAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMoreSuppliers, setHasMoreSuppliers] = useState(false);
+  const [isLoadingMoreSuppliers, setIsLoadingMoreSuppliers] = useState(false);
+  const [suppliersPage, setSuppliersPage] = useState(1);
   const { success, error } = useToast();
 
-  const fetchSuppliers = async () => {
-    setIsLoading(true);
+  const fetchSuppliers = async (page = 1, append = false) => {
+    append ? setIsLoadingMoreSuppliers(true) : setIsLoading(true);
     try {
       const [response, alertsResponse] = await Promise.all([
-        logisticsService.getSuppliers(), logisticsService.getCertificateAlerts(),
+        logisticsService.getSuppliers(page), logisticsService.getCertificateAlerts(),
       ]);
-      setSuppliers(response.data || []);
+      const suppliersPageData = response as unknown as { data: Supplier[]; meta?: { current_page: number; last_page: number } };
+      setSuppliers(previous => append ? [...previous, ...(suppliersPageData.data || [])] : (suppliersPageData.data || []));
+      setSuppliersPage(page);
+      setHasMoreSuppliers((suppliersPageData.meta?.current_page ?? page) < (suppliersPageData.meta?.last_page ?? page));
       setCertificateAlerts(alertsResponse.data || []);
     } catch (err) {
       error('Error al cargar los proveedores');
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsLoadingMoreSuppliers(false);
     }
   };
 
@@ -178,7 +185,7 @@ export function useSuppliersViewModel() {
   };
 
   return {
-    suppliers, certificateAlerts, isLoading, fetchSuppliers,
+    suppliers, certificateAlerts, isLoading, hasMoreSuppliers, isLoadingMoreSuppliers, loadMoreSuppliers: () => fetchSuppliers(suppliersPage + 1, true), fetchSuppliers,
     isFormOpen, editSupplier, openCreate, openEdit, closeForm, form, setForm, isSaving, handleSave, handleDelete,
     isEvaluateOpen, evaluatingSupplier, openEvaluate, closeEvaluate, evaluateForm, setEvaluateForm, isEvaluating, handleEvaluate,
     isCatalogOpen, catalogSupplier, availableSupplies, catalogItems, openCatalog, closeCatalog,

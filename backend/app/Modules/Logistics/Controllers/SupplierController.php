@@ -9,6 +9,7 @@ use App\Modules\Logistics\Requests\UpdateSupplierCatalogRequest;
 use App\Modules\Logistics\Services\PurchaseOrderService;
 use App\Modules\Logistics\Services\SupplierService;
 use App\Modules\Shared\Controllers\BaseApiController;
+use Illuminate\Http\Request;
 
 class SupplierController extends BaseApiController
 {
@@ -17,9 +18,9 @@ class SupplierController extends BaseApiController
         private PurchaseOrderService $purchaseOrderService,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $suppliers = $this->supplierService->list();
+        $suppliers = $this->supplierService->list(min(max((int) $request->query('per_page', 20), 1), 20));
 
         return $this->paginatedResponse($suppliers, 'Proveedores obtenidos');
     }

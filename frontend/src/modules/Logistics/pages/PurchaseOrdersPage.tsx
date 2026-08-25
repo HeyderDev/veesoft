@@ -42,30 +42,23 @@ const urgencyVariants: Record<DeliveryUrgency, 'danger' | 'warning' | 'success'>
   green: 'success',
 };
 
-interface PurchaseOrdersPageProps {
-  /** Ítem sin proveedor en catálogo: pide vincularlo desde Proveedores en lugar de abrir "Nueva Orden". */
-  onRequestSupplierCatalogLink?: (item: UnregisteredItem) => void;
-}
-
-export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onRequestSupplierCatalogLink }) => {
+export const PurchaseOrdersPage: React.FC = () => {
   const { isAdmin } = useAuth();
   const {
-    orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading,
+    orders, suppliers, pendingDeliveries, visiblePendingDeliveries, loadMorePendingDeliveries, unregisteredItems, catalog, inventoryCatalog, isWithoutSupplier, setIsWithoutSupplier, isLoading, hasMoreOrders, isLoadingMoreOrders, loadMoreOrders,
     isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, quantityLocked, reconcilesExistingInventory, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   } = usePurchaseOrdersViewModel();
 
   const handleUnregisteredItemClick = (item: UnregisteredItem) => {
-    if (item.supplier_id) {
-      openCreateForItem(item);
-    } else {
-      onRequestSupplierCatalogLink?.(item);
-    }
+    openCreateForItem(item);
   };
 
+  const activeCatalog = isWithoutSupplier ? inventoryCatalog : catalog;
   const total = items.reduce((sum, item) => {
-    const catalogItem = catalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
-    return sum + item.quantity * Number(catalogItem?.unit_price ?? 0);
+    const catalogItem = activeCatalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
+    const price = isWithoutSupplier ? Number(item.unit_price ?? 0) : Number(catalogItem?.unit_price ?? 0);
+    return sum + item.quantity * price;
   }, 0);
   const selectedSupplier = suppliers.find(s => s.id === form.supplier_id);
 
@@ -79,31 +72,28 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
         {isAdmin && <Button onClick={openCreate}>+ Nueva Orden</Button>}
       </div>
 
-      {isLoading ? (
-        <Skeleton className="h-24 w-full rounded-xl" />
-      ) : pendingDeliveries.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <h3 className="text-sm font-bold text-slate-800 mb-3">Insumos por Llegar</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {pendingDeliveries.map((delivery, index) => (
-              <div key={`${delivery.purchase_order_id}-${index}`} className="border border-slate-200 rounded-lg p-3 flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{delivery.item_name}</p>
-                  <p className="text-xs text-slate-500">{delivery.order_number} · {delivery.supplier_name}</p>
-                  <p className="text-xs text-slate-400">{delivery.quantity} {delivery.unit}</p>
-                </div>
-                <Badge variant={urgencyVariants[delivery.urgency]}>{delivery.estimated_delivery_date ?? 'Sin definir'}</Badge>
-              </div>
-            ))}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        {isLoading ? <Skeleton className="h-40 w-full rounded-xl" /> : (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-800">Insumos por Llegar</h3>
+              {pendingDeliveries.length > visiblePendingDeliveries && (
+                <button type="button" onClick={loadMorePendingDeliveries} className="rounded-md border border-emerald-200 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50">Cargar 6 más</button>
+              )}
+            </div>
+            {pendingDeliveries.length === 0 ? <p className="text-sm text-slate-500">No hay entregas pendientes.</p> : <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${visiblePendingDeliveries > 6 ? 'max-h-[292px] overflow-y-auto pr-1' : ''}`}>{pendingDeliveries.slice(0, visiblePendingDeliveries).map((delivery, index) => (
+              <div key={`${delivery.purchase_order_id}-${index}`} className="border border-slate-200 rounded-lg p-3 flex items-start justify-between gap-2"><div><p className="text-sm font-medium text-slate-700">{delivery.item_name}</p><p className="text-xs text-slate-500">{delivery.order_number} · {delivery.supplier_name}</p><p className="text-xs text-slate-400">{delivery.quantity} {delivery.unit}</p></div><Badge variant={urgencyVariants[delivery.urgency]}>{delivery.estimated_delivery_date ?? 'Sin definir'}</Badge></div>
+            ))}</div>}
           </div>
-        </div>
-      )}
+        )}
+        <PurchaseSpendReportPanel />
+      </div>
 
       {!isLoading && unregisteredItems.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <h3 className="text-sm font-bold text-amber-900">Ítems sin orden de compra</h3>
           <p className="mt-1 text-xs text-amber-700">
-            Insumos y herramientas del inventario que aún no tienen una compra registrada. {isAdmin ? 'Haz clic en uno para generar su orden o vincularlo con un proveedor.' : 'Solo un administrador puede generar la orden de compra.'}
+              Insumos y herramientas del inventario que aún no tienen una compra registrada. {isAdmin ? 'Haz clic en uno para generar su orden con proveedor o sin proveedor.' : 'Solo un administrador puede generar la orden de compra.'}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {unregisteredItems.map(item => {
@@ -124,7 +114,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                   key={`${item.item_type}-${item.item_id}`}
                   type="button"
                   onClick={() => handleUnregisteredItemClick(item)}
-                  title={item.supplier_id ? 'Crear orden de compra con este ítem' : 'Vincular este ítem al catálogo de un proveedor'}
+                  title="Crear orden de compra con este ítem"
                   className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 hover:border-amber-400 transition-colors"
                 >
                   {content}
@@ -200,39 +190,45 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
         </div>
       )}
 
-      <PurchaseSpendReportPanel />
+      {hasMoreOrders && (
+        <div className="flex justify-center"><Button variant="secondary" onClick={loadMoreOrders} isLoading={isLoadingMoreOrders}>Cargar 20 más</Button></div>
+      )}
 
       <SlideOver isOpen={isFormOpen} onClose={closeForm} title="Nueva Orden de Compra">
-        <form onSubmit={handleSave} className="p-6 space-y-4">
+        <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Proveedor *</label>
-            <select
-              value={form.supplier_id}
-              onChange={e => setForm({ ...form, supplier_id: e.target.value ? Number(e.target.value) : '' })}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-            >
-              <option value="">Selecciona un proveedor…</option>
-              {suppliers.map(s => (
-                <option key={s.id} value={s.id}>{s.name} — score {Number(s.score).toFixed(2)}</option>
-              ))}
-            </select>
-            {selectedSupplier && Number(selectedSupplier.score) < 3 && (
-              <p className="text-xs text-amber-600 mt-1">⚠ Este proveedor tiene un score bajo ({Number(selectedSupplier.score).toFixed(2)}/5.00). Puedes continuar con la orden si lo consideras necesario.</p>
-            )}
-            {selectedSupplier && catalog.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">Este proveedor aún no tiene insumos en su catálogo.</p>
-            )}
+            <label className="block text-xs font-medium text-slate-600 mb-2">Modalidad de compra *</label>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-700">
+              <label className="flex min-w-0 items-center gap-2 break-words"><input type="radio" checked={!isWithoutSupplier} onChange={() => setIsWithoutSupplier(false)} /> Con proveedor</label>
+              <label className="flex min-w-0 items-center gap-2 break-words"><input type="radio" checked={isWithoutSupplier} onChange={() => { setIsWithoutSupplier(true); setForm({ ...form, supplier_id: '' }); }} /> Sin proveedor</label>
+            </div>
           </div>
+          {!isWithoutSupplier ? (
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Proveedor *</label>
+              <select
+                value={form.supplier_id}
+                onChange={e => setForm({ ...form, supplier_id: e.target.value ? Number(e.target.value) : '' })}
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+              >
+                <option value="">Selecciona un proveedor…</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} — score {Number(s.score).toFixed(2)}</option>)}
+              </select>
+              {selectedSupplier && Number(selectedSupplier.score) < 3 && <p className="text-xs text-amber-600 mt-1">⚠ Este proveedor tiene un score bajo ({Number(selectedSupplier.score).toFixed(2)}/5.00). Puedes continuar con la orden si lo consideras necesario.</p>}
+              {selectedSupplier && catalog.length === 0 && <p className="text-xs text-amber-600 mt-1">Este proveedor aún no tiene insumos en su catálogo.</p>}
+            </div>
+          ) : <p className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-700">Selecciona cualquier insumo o herramienta de Inventario e indica el precio unitario pagado.</p>}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Fecha de entrega estimada</label>
             <input
               type="date"
               value={form.estimated_delivery_date}
               onChange={e => setForm({ ...form, estimated_delivery_date: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+              disabled={reconcilesExistingInventory}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm disabled:bg-slate-100 disabled:text-slate-500"
             />
-            <p className="text-xs text-slate-400 mt-1">Si se deja vacío, se asume hoy + 5 días.</p>
+            <p className="text-xs text-slate-400 mt-1">{reconcilesExistingInventory ? 'Fecha recuperada del historial de Inventario.' : 'Si se deja vacío, se asume hoy + 5 días.'}</p>
           </div>
 
           <div>
@@ -248,9 +244,9 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
               {items.map((item, index) => (
                 <div key={index} className="border border-slate-200 rounded-lg p-3 space-y-3">
                   {(() => {
-                    const selectedItem = catalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
+                    const selectedItem = activeCatalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
                     const unit = selectedItem?.unit ?? 'unidad';
-                    const price = Number(selectedItem?.unit_price ?? 0);
+                    const price = isWithoutSupplier ? Number(item.unit_price ?? 0) : Number(selectedItem?.unit_price ?? 0);
                     const isLocked = quantityLocked[index] ?? false;
 
                     return <>
@@ -259,7 +255,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                       🔒 Ítem del aviso "Sin orden de compra": ya está registrado en Inventario; esta orden no aumentará su stock al recibirse.
                     </p>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
+                  <div className="grid grid-cols-1 gap-2">
                     <select
                       value={item.item_id === '' ? '' : `${item.item_type}:${item.item_id}`}
                       onChange={e => {
@@ -267,19 +263,18 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                         updateItemRow(index, { item_type: (item_type || 'supply') as 'supply' | 'tool', item_id: item_id ? Number(item_id) : '' });
                       }}
                       required
-                      disabled={isLocked || !form.supplier_id || catalog.length === 0}
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm disabled:bg-slate-100"
+                      disabled={isLocked || (!isWithoutSupplier && (!form.supplier_id || activeCatalog.length === 0))}
+                      title={selectedItem ? `${selectedItem.name} · ${unit}` : 'Selecciona un ítem'}
+                      className="w-full min-w-0 px-3 py-2 border border-slate-300 rounded text-sm disabled:bg-slate-100"
                     >
                       <option value="">Selecciona un ítem…</option>
-                      {catalog.map(catalogItem => (
+                      {activeCatalog.map(catalogItem => (
                         <option key={`${catalogItem.item_type}-${catalogItem.item_id}`} value={`${catalogItem.item_type}:${catalogItem.item_id}`}>
-                          {catalogItem.item_type === 'tool' ? 'Herramienta' : 'Insumo'} · {catalogItem.name} ({catalogItem.code}) · {catalogItem.unit}
+                          {catalogItem.item_type === 'tool' ? 'Herramienta' : 'Insumo'} · {catalogItem.name} · {catalogItem.unit}
                         </option>
                       ))}
                     </select>
-                    <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 whitespace-nowrap">
-                      ${price.toFixed(2)} por {unit}
-                    </span>
+                    {isWithoutSupplier ? <div><label className="mb-1 block break-words text-xs font-medium text-slate-600">Precio unitario *</label><input type="number" min={0} step="0.01" value={item.unit_price ?? 0} onChange={e => updateItemRow(index, { unit_price: Number(e.target.value) })} required className="w-full px-3 py-2 border border-slate-300 rounded text-sm" /></div> : <span className="w-full break-words rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">${price.toFixed(2)} por {unit}</span>}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,12rem)_1fr] gap-2 items-end">
                     <div>
