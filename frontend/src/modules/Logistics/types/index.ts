@@ -60,6 +60,15 @@ export interface SupplierCatalogItem {
   unit_price: string;
 }
 
+export interface AvailableInventoryItem {
+  item_type: 'supply' | 'tool';
+  item_id: number;
+  code: string;
+  name: string;
+  unit: string;
+  unit_price: string;
+}
+
 export interface CertificateAlert {
   supplier_id: number;
   supplier_name: string;
@@ -86,6 +95,7 @@ export interface PurchaseOrderItemInput {
   item_type: 'supply' | 'tool';
   item_id: number | '';
   quantity: number;
+  unit_price?: number;
 }
 
 export interface UnregisteredItem {
@@ -98,6 +108,8 @@ export interface UnregisteredItem {
   quantity: string;
   /** ID de un proveedor que ya ofrece este ítem en su catálogo, si existe alguno. */
   supplier_id: number | null;
+  /** Fecha del primer registro no vinculado en inventario. */
+  registered_at?: string | null;
 }
 
 export type QualityStatus = 'approved' | 'rejected' | 'conditional';
@@ -115,13 +127,14 @@ export interface PurchaseReceipt {
 export interface PurchaseOrder {
   id: number;
   order_number: string;
-  supplier_id: number;
+  supplier_id: number | null;
   created_by: number | null;
   status: PurchaseOrderStatus;
   issued_at: string | null;
   estimated_delivery_date: string | null;
   total: string;
-  supplier?: Supplier;
+  reconciles_existing_inventory?: boolean;
+  supplier?: Supplier | null;
   creator?: { first_name: string; last_name: string };
   items?: PurchaseOrderItem[];
   receipt?: PurchaseReceipt | null;

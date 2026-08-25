@@ -20,10 +20,10 @@ export const SupplierSpendReportPanel: React.FC = () => {
   if (!isAdmin) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
       <div>
-        <h3 className="text-sm font-bold text-slate-800">Reporte de Proveedores</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Cuántos hay y cuánto se les ha comprado en total</p>
+        <h3 className="text-sm font-bold text-slate-800">Reporte Histórico de Proveedores</h3>
+        <p className="text-xs text-slate-500 mt-0.5">Volumen global de compras y órdenes emitidas por proveedor</p>
       </div>
 
       {isLoading ? (

@@ -36,54 +36,38 @@ class PrintController extends Controller
             // Inicializar impresora para limpiar buffers colgados
             $printer->initialize();
 
-            // PRUEBA COMPLETA (Optimizado para 58mm)
-            $printer->setJustification(Printer::JUSTIFY_CENTER);
+            // Alinear todo al extremo derecho de la etiqueta
+            $printer->setJustification(Printer::JUSTIFY_RIGHT);
 
-            // Reducir tamaño de letra usando la Fuente B (más pequeña)
+            // 1. Línea superior: "Nombre - Código" en fuente pequeña alineada a la derecha
             $printer->selectPrintMode(Printer::MODE_FONT_B);
-
-            // Cabecera compacta
-            $printer->setEmphasis(true);
-            $printer->text("VIVERO DE CACAO\n");
-            $printer->setEmphasis(false);
-
-            // Nombre de la entidad (recortado si es muy largo)
-            $shortName = substr($name, 0, 24);
-            $printer->text($shortName . "\n");
-            
-            // Restaurar a modo normal
+            $headerLine = substr($name, 0, 16) . " - " . $code;
+            $printer->text($headerLine . "\n");
             $printer->selectPrintMode();
 
-            // Imprimir el formato solicitado
+            // 2. Código QR o Barras abajo, alineado al extremo derecho
+            $printer->setJustification(Printer::JUSTIFY_RIGHT);
+
             if ($format === 'qr') {
                 try {
-                    // Tamaño 7 es aprox 30-35mm
-                    $printer->qrCode($code, Printer::QR_ECLEVEL_M, 7, Printer::QR_MODEL_2);
+                    // Tamaño 5 alineado a la derecha
+                    $printer->qrCode($code, Printer::QR_ECLEVEL_M, 5, Printer::QR_MODEL_2);
                 } catch (\Exception $e) {
                     $printer->text("QR no soportado\n");
                 }
-                $printer->text("\n");
             } else {
-                // CODE39 es el más estándar para POS-58 baratos (sólo letras MAYUS y números)
-                $printer->setBarcodeHeight(60); 
-                $printer->setBarcodeWidth(2);   
+                $printer->setBarcodeHeight(36); 
+                $printer->setBarcodeWidth(1);   
                 try {
                     $printer->barcode($code, Printer::BARCODE_CODE39);
                 } catch (\Exception $e) {
                     $printer->text("Cod. Barras no soportado\n");
                 }
-                $printer->text("\n");
             }
 
-            // Código abajo como pie, en fuente pequeña para que quepa bien
-            $printer->selectPrintMode(Printer::MODE_FONT_B);
-            $printer->text($code . "\n");
-            
-            // Restaurar modo normal
+            // Restaurar modo y corte exacto sin avance excesivo para no pisar la siguiente etiqueta
             $printer->selectPrintMode();
-            
-            // Alimentar y cortar (si lo soporta)
-            $printer->feed(3);
+            $printer->feed(1);
             
             // Obligar a la impresora a procesar el final del documento (muy importante para POS-58)
             $printer->cut();

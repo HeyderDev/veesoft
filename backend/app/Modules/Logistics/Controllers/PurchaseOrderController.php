@@ -13,9 +13,9 @@ class PurchaseOrderController extends BaseApiController
 {
     public function __construct(private PurchaseOrderService $purchaseOrderService) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $orders = $this->purchaseOrderService->list();
+        $orders = $this->purchaseOrderService->list(min(max((int) $request->query('per_page', 20), 1), 20));
 
         return $this->paginatedResponse($orders, 'Órdenes de compra obtenidas');
     }
@@ -45,10 +45,10 @@ class PurchaseOrderController extends BaseApiController
         return $this->successResponse($result, 'Recepción registrada');
     }
 
-    public function pendingDeliveries()
+    public function pendingDeliveries(Request $request)
     {
         return $this->successResponse(
-            $this->purchaseOrderService->pendingDeliveries(),
+            $this->purchaseOrderService->pendingDeliveries(min(max((int) $request->query('limit', 12), 1), 12)),
             'Calendario de entregas pendientes obtenido'
         );
     }
@@ -58,6 +58,14 @@ class PurchaseOrderController extends BaseApiController
         return $this->successResponse(
             $this->purchaseOrderService->unregisteredItems(),
             'Ítems sin orden de compra registrada obtenidos'
+        );
+    }
+
+    public function availableInventoryItems()
+    {
+        return $this->successResponse(
+            $this->purchaseOrderService->availableInventoryItems(),
+            'Ítems de inventario disponibles para compra obtenidos'
         );
     }
 

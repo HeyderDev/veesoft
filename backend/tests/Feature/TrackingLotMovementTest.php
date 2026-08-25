@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Modules\Shared\Models\Role;
+use App\Modules\Shared\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -9,11 +11,24 @@ class TrackingLotMovementTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $role = Role::firstOrCreate(['name' => 'Admin']);
+        $this->admin = User::factory()->create(['role_id' => $role->id]);
+        $this->actingAs($this->admin);
+    }
+
     private function createLot(array $overrides = []): array
     {
         $viveroId = $this->postJson('/api/v1/viveros', [
             'name' => 'Vivero Tracking', 'location' => 'El Carmen', 'responsible' => 'Responsable',
         ])->json('data.id');
+
+        $this->withHeader('X-Vivero-Id', (string) $viveroId);
 
         $lot = $this->postJson('/api/v1/lots', array_merge([
             'vivero_id' => $viveroId,

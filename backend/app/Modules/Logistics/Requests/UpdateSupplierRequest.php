@@ -17,7 +17,7 @@ class UpdateSupplierRequest extends FormRequest
             'name' => 'sometimes|string|max:150',
             'tax_id' => 'sometimes|string|regex:/^\d{10}(\d{3})?$/',
             'email' => 'nullable|email|max:150',
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'regex:/^\d{1,10}$/'],
             'address' => 'nullable|string',
             'organic_certified' => 'sometimes|boolean',
             'certificate_expires_at' => 'nullable|date',

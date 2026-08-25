@@ -97,15 +97,13 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, lots, onSelect }) => {
 interface TaskRowFullProps {
   task: OperationalTask;
   lots: LotInfo[];
-  users: { id: number; name: string }[];
   onEdit: (task: OperationalTask) => void;
   onComplete: (task: OperationalTask) => void;
   onDelete: (id: number) => void;
   canManage: boolean;
 }
 
-const TaskRowFull: React.FC<TaskRowFullProps> = ({ task, lots, users, onEdit, onComplete, onDelete, canManage }) => {
-  const assignedUser = users.find(u => u.id === task.assigned_to);
+const TaskRowFull: React.FC<TaskRowFullProps> = ({ task, lots, onEdit, onComplete, onDelete, canManage }) => {
   const lot = lots.find(l => l.id === task.lot_id);
   const needsResources = !!task.activity_type?.is_system && (!task.resources || task.resources.length === 0);
 
@@ -145,11 +143,6 @@ const TaskRowFull: React.FC<TaskRowFullProps> = ({ task, lots, users, onEdit, on
       </td>
       <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
         {formatDate(task.planned_date)}
-      </td>
-      <td className="px-4 py-3 text-sm text-slate-600">
-        {assignedUser
-          ? assignedUser.name
-          : <span className="text-slate-400 italic">Sin asignar</span>}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -202,7 +195,6 @@ const TaskRowFull: React.FC<TaskRowFullProps> = ({ task, lots, users, onEdit, on
 interface TaskDetailModalProps {
   task: OperationalTask | null;
   lots: LotInfo[];
-  users: { id: number; name: string }[];
   canManage: boolean;
   onClose: () => void;
   onEdit: (task: OperationalTask) => void;
@@ -210,8 +202,7 @@ interface TaskDetailModalProps {
   onDelete: (id: number) => void;
 }
 
-const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, lots, users, canManage, onClose, onEdit, onComplete, onDelete }) => {
-  const assignedUser = task ? users.find(u => u.id === task.assigned_to) : undefined;
+const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, lots, canManage, onClose, onEdit, onComplete, onDelete }) => {
   const lot = task ? lots.find(l => l.id === task.lot_id) : undefined;
   const needsResources = !!task?.activity_type?.is_system && (!task.resources || task.resources.length === 0);
 
@@ -230,12 +221,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, lots, users, ca
             <div>
               <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Fecha planificada</dt>
               <dd className="text-slate-700">{formatDate(task.planned_date)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Asignado a</dt>
-              <dd className="text-slate-700">
-                {assignedUser ? assignedUser.name : <span className="text-slate-400 italic">Sin asignar</span>}
-              </dd>
             </div>
             {task.lot_id && (
               <div>
@@ -539,7 +524,6 @@ export const ActivitiesSection: React.FC = () => {
                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Prioridad</th>
                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha planif.</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Asignado a</th>
                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
                           </tr>
                         </thead>
@@ -549,7 +533,6 @@ export const ActivitiesSection: React.FC = () => {
                               key={task.id}
                               task={task}
                               lots={lots}
-                              users={vm.users}
                               onEdit={vm.openEdit}
                               onComplete={vm.openComplete}
                               onDelete={vm.openDelete}
@@ -645,7 +628,6 @@ export const ActivitiesSection: React.FC = () => {
         title="Nueva Actividad — Desde Plantilla"
         subtitle="Elige la plantilla y la fecha; el resto se copia automáticamente."
         showLotSelector={true}
-        users={vm.users}
         form={vm.templateForm}
         setForm={f => vm.setTemplateForm(f)}
         isSaving={vm.isSaving}
@@ -660,7 +642,6 @@ export const ActivitiesSection: React.FC = () => {
         title="Nueva Actividad — Libre"
         subtitle="Registra una actividad y asígnala (opcionalmente) a un lote."
         showLotSelector={true}
-        users={vm.users}
         form={vm.freeForm}
         setForm={f => vm.setFreeForm(f)}
         isSaving={vm.isSaving}
@@ -675,7 +656,6 @@ export const ActivitiesSection: React.FC = () => {
         title="Editar Actividad"
         subtitle={vm.editingTask?.title}
         showLotSelector={false} // El lote no se edita aquí, por diseño
-        users={vm.users}
         form={vm.editForm}
         setForm={f => vm.setEditForm(f)}
         isSaving={vm.isSavingEdit}
@@ -686,7 +666,6 @@ export const ActivitiesSection: React.FC = () => {
       <TaskDetailModal
         task={detailTask}
         lots={lots}
-        users={vm.users}
         canManage={isAdmin}
         onClose={() => setDetailTask(null)}
         onEdit={handleEditFromDetail}

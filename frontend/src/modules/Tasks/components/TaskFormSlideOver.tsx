@@ -25,11 +25,10 @@ interface TaskFormSlideOverProps {
   title: string;
   subtitle?: string;
   showLotSelector?: boolean;
-  users?: { id: number; name: string }[];
 }
 
 export const TaskFormSlideOver: React.FC<TaskFormSlideOverProps> = ({
-  isOpen, onClose, mode, form, setForm, isSaving, onSubmit, title, subtitle, showLotSelector = false, users = [],
+  isOpen, onClose, mode, form, setForm, isSaving, onSubmit, title, subtitle, showLotSelector = false,
 }) => {
   const f = form as Record<string, unknown>;
   const [lots, setLots] = useState<LotInfo[]>([]);
@@ -102,21 +101,6 @@ export const TaskFormSlideOver: React.FC<TaskFormSlideOverProps> = ({
               </div>
             )}
 
-            {/* Asignado a */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Asignado a</label>
-              <select
-                value={(f.assigned_to as string) ?? ''}
-                onChange={e => setForm({ ...form, assigned_to: e.target.value ? Number(e.target.value) : null })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-              >
-                <option value="">Sin asignar</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
-
             {/* Fecha planificada */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -173,21 +157,6 @@ export const TaskFormSlideOver: React.FC<TaskFormSlideOverProps> = ({
                 <p className="text-xs text-slate-400 mt-1">Selecciona un lote para asignar esta actividad a un lote específico.</p>
               </div>
             )}
-
-            {/* Asignado a */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Asignado a</label>
-              <select
-                value={(f.assigned_to as string) ?? ''}
-                onChange={e => setForm({ ...form, assigned_to: e.target.value ? Number(e.target.value) : null })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-              >
-                <option value="">Sin asignar</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
 
             {/* Fecha planificada */}
             <div>

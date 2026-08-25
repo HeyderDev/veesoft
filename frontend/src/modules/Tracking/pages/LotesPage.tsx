@@ -77,7 +77,7 @@ const LotCard: React.FC<LotCardProps> = ({ lot, isDispatchTooltipOpen, onToggleD
 
       <div className="flex gap-2 mt-auto">
         <Button variant="primary" className="flex-1" onClick={onEnter}>
-          Movimientos
+          {lot.current_status === 'occupied' ? 'Despacho / Salidas' : 'Ver Salidas'}
         </Button>
         <Button variant="secondary" onClick={onShowQr}>QR</Button>
       </div>
