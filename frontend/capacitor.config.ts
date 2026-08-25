@@ -8,16 +8,22 @@ const config: CapacitorConfig = {
     // Permite tráfico http:// (sin TLS) hacia el backend durante desarrollo en LAN.
     // Para producción, el backend debe servir por HTTPS y esto puede quitarse.
     cleartext: true,
+    // androidScheme por defecto es 'https' — eso hace que la app misma se sirva
+    // desde https://localhost, y el navegador bloquea como "Mixed Content"
+    // cualquier XHR/fetch a un backend http:// (aunque cleartext esté permitido
+    // a nivel Android). Con el backend en HTTP durante desarrollo, la app debe
+    // servirse también por http:// para que coincidan los esquemas.
+    androidScheme: 'http',
   },
-  plugins: {
-    // El WebView nativo no comparte el manejo de cookies de un navegador real —
-    // la sesión de Sanctum (cookie CSRF + sesión) puede no persistir entre
-    // requests sin este bridge. CapacitorHttp enruta fetch/XHR (y por lo tanto
-    // axios) a través de HTTP nativo, que sí retiene cookies de forma confiable.
-    CapacitorHttp: {
-      enabled: true,
-    },
-  },
+  // CapacitorHttp (bridge nativo) quedó DESACTIVADO a propósito — enrutaba las
+  // peticiones por HTTP nativo (Android), que no manda Origin/Referer. Sanctum
+  // (EnsureFrontendRequestsAreStateful) exige uno de esos dos headers para
+  // adjuntar sesión a la petición; sin ellos el login truena con 500
+  // ("Session store not set on request"). El WebView normal sí manda Origin,
+  // así que las peticiones vuelven a pasar por fetch/XHR del WebView.
+  // plugins: {
+  //   CapacitorHttp: { enabled: true },
+  // },
 };
 
 export default config;
