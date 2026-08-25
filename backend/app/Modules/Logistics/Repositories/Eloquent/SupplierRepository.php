@@ -16,13 +16,13 @@ class SupplierRepository extends BaseRepository implements SupplierRepositoryInt
 
     public function paginateOrderedByScore(int $perPage = 15): LengthAwarePaginator
     {
-        return $this->model->orderByDesc('score')->orderBy('name')->paginate($perPage);
+        return $this->model->with('certification')->orderByDesc('score')->orderBy('name')->paginate($perPage);
     }
 
     public function findWithRelations(int $id)
     {
         return $this->model
-            ->with(['evaluations' => fn ($query) => $query->orderByDesc('created_at'), 'supplies'])
+            ->with(['evaluations' => fn ($query) => $query->orderByDesc('created_at'), 'supplies', 'certification'])
             ->findOrFail($id);
     }
 

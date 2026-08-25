@@ -40,7 +40,8 @@ export default function ReportsPage() {
     loadTools();
     loadSupplies();
     loadMovements();
-  }, [loadTools, loadSupplies, loadMovements]);
+    loadStudents();
+  }, [loadTools, loadSupplies, loadMovements, loadStudents]);
 
   const handleDownloadPdf = () => {
     window.print();
@@ -63,9 +64,9 @@ export default function ReportsPage() {
   const borrowedUnits: Record<number, { studentId: number; date: Date }> = {};
   movements.forEach(ev => {
     if (ev.type === 'BORROWED' || ev.type === 'BORROW') {
-      if (ev.tool_unit?.id) {
+      if (ev.tool_unit?.id && ev.student?.id) {
         borrowedUnits[ev.tool_unit.id] = {
-          studentId: ev.student?.id,
+          studentId: ev.student.id,
           date: new Date(ev.created_at),
         };
       }

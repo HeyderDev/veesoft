@@ -21,6 +21,12 @@ class CreateSupplierRequest extends FormRequest
             'address' => 'nullable|string',
             'organic_certified' => 'sometimes|boolean',
             'certificate_expires_at' => 'nullable|date',
+            'certification' => 'nullable|array',
+            'certification.certificate_number' => 'nullable|string|max:100',
+            'certification.certifying_entity' => 'nullable|string|max:150',
+            'certification.issued_at' => 'nullable|date',
+            'certification.expires_at' => 'nullable|date',
+            'certification.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];
     }
 }

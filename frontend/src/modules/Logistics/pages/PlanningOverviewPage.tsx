@@ -16,7 +16,7 @@ const priorityVariants: Record<'high' | 'medium' | 'low', 'danger' | 'warning' |
 };
 
 export const PlanningOverviewPage: React.FC = () => {
-  const { activeVivero, viveroOverview, pendingTasks, atRiskSupplies, isLoading } = usePlanningOverviewViewModel();
+  const { activeVivero, viveroOverview, pendingTasks, atRiskResources, isLoading } = usePlanningOverviewViewModel();
 
   const openGoal = viveroOverview?.openGoal ?? null;
   const lotStatusCounts = viveroOverview?.lotStatusCounts ?? null;
@@ -26,6 +26,7 @@ export const PlanningOverviewPage: React.FC = () => {
   const totalLots = lotStatusCounts
     ? lotStatusCounts.available + lotStatusCounts.occupied + lotStatusCounts.inactive
     : 0;
+  const todayTasks = pendingTasks.filter(task => task.isToday);
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -63,54 +64,55 @@ export const PlanningOverviewPage: React.FC = () => {
             )}
           </div>
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-            <p className="text-sm font-medium text-slate-500 mb-1">Actividades pendientes</p>
+            <p className="text-sm font-medium text-slate-500 mb-1">Actividades programadas</p>
             <p className="text-3xl font-bold text-slate-800">{pendingTasks.length}</p>
+            <p className={`mt-1 text-xs font-medium ${todayTasks.length > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+              {todayTasks.length} para hoy
+            </p>
           </div>
-          <div className={`rounded-xl border p-5 shadow-sm ${atRiskSupplies.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
-            <p className={`text-sm font-medium mb-1 ${atRiskSupplies.length > 0 ? 'text-red-600' : 'text-slate-500'}`}>Insumos en riesgo (usados en tareas pendientes)</p>
-            <p className={`text-3xl font-bold ${atRiskSupplies.length > 0 ? 'text-red-700' : 'text-slate-800'}`}>{atRiskSupplies.length}</p>
+          <div className={`rounded-xl border p-5 shadow-sm ${atRiskResources.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
+            <p className={`text-sm font-medium mb-1 ${atRiskResources.length > 0 ? 'text-red-600' : 'text-slate-500'}`}>Recursos con disponibilidad insuficiente</p>
+            <p className={`text-3xl font-bold ${atRiskResources.length > 0 ? 'text-red-700' : 'text-slate-800'}`}>{atRiskResources.length}</p>
           </div>
         </div>
       )}
 
-      {/* Insumos en riesgo */}
+      {/* Recursos en riesgo */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-bold text-slate-800">Insumos en Riesgo</h3>
+          <h3 className="text-sm font-bold text-slate-800">Recursos en Riesgo</h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Insumos asignados a actividades pendientes cuyo stock actual ya está en el mínimo o por debajo — candidatos para una nueva Solicitud u Orden de Compra.
+            El sistema reserva primero los recursos de las actividades prioritarias de hoy y después los de las siguientes fechas. Se alerta cuando el saldo ya no alcanza para una actividad posterior.
           </p>
         </div>
         {isLoading ? (
           <div className="p-5 space-y-3">
             {[1, 2].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
           </div>
-        ) : atRiskSupplies.length === 0 ? (
-          <p className="p-5 text-sm text-slate-500">Ningún insumo asignado a actividades pendientes está en estado crítico.</p>
+        ) : atRiskResources.length === 0 ? (
+          <p className="p-5 text-sm text-slate-500">Los recursos disponibles cubren todas las actividades pendientes mostradas.</p>
         ) : (
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">SKU</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Insumo</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Stock actual / mínimo</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Recurso</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Disponible / programado</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Requerido por</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {atRiskSupplies.map(({ supply, taskTitles }) => (
-                <tr key={supply.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm font-mono text-slate-600">{supply.sku}</td>
-                  <td className="px-4 py-3 text-sm text-slate-800">{supply.name}</td>
+              {atRiskResources.map(resource => (
+                <tr key={`${resource.resourceType}:${resource.resourceId}`} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 text-sm text-slate-600">{resource.resourceType === 'supply' ? 'Insumo' : 'Herramienta'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-800">{resource.name}{resource.sku ? ` (${resource.sku})` : ''}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">
-                    {Number(supply.current_stock).toFixed(2)} / {Number(supply.min_stock).toFixed(2)} {supply.unit}
+                    {resource.availableQuantity} / {resource.totalRequestedQuantity} {resource.unit}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{taskTitles.join(', ')}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{resource.taskTitles.join(', ')}</td>
                   <td className="px-4 py-3 text-right">
-                    <Badge variant="danger">
-                      {Number(supply.current_stock) <= 0 ? 'Insuficiente' : 'Crítico'}
-                    </Badge>
+                    <Badge variant="danger">Insuficiente</Badge>
                   </td>
                 </tr>
               ))}
@@ -123,49 +125,56 @@ export const PlanningOverviewPage: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100">
           <h3 className="text-sm font-bold text-slate-800">Actividades Pendientes de Planificación</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Tareas operativas de Planificación aún no completadas, con los insumos que tienen asignados.</p>
+          <p className="text-xs text-slate-500 mt-0.5">Solo se muestran las actividades de hoy y de fechas futuras. Las actividades de hoy aparecen primero como prioritarias.</p>
         </div>
         {isLoading ? (
           <div className="p-5 space-y-3">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
           </div>
         ) : pendingTasks.length === 0 ? (
-          <p className="p-5 text-sm text-slate-500">No hay actividades pendientes asociadas a la planificación.</p>
+          <p className="p-5 text-sm text-slate-500">No hay actividades pendientes para hoy ni para fechas futuras.</p>
         ) : (
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Actividad</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Vivero / Lote</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Alcance</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha planificada</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Prioridad</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Insumos asignados</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Recursos asignados</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {pendingTasks.map(task => (
-                <tr key={task.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-800">{task.title}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
-                    {task.viveroName ?? '—'}{task.lotCode ? ` · ${task.lotCode}` : ''}
+                <tr key={task.id} className={task.isToday ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50'}>
+                  <td className="px-4 py-3 text-sm font-medium text-slate-800">
+                    <div className="flex items-center gap-2">
+                      {task.title}
+                      {task.isToday && <Badge variant="danger">HOY · Prioritaria</Badge>}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{task.planned_date}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {task.viveroName ?? '—'}{task.isGeneral ? ' · Actividad general' : task.lotCode ? ` · ${task.lotCode}` : ''}
+                  </td>
+                  <td className={`px-4 py-3 text-sm ${task.isToday ? 'font-semibold text-rose-700' : 'text-slate-500'}`}>{task.planned_date}</td>
                   <td className="px-4 py-3">
                     {task.priority ? <Badge variant={priorityVariants[task.priority]}>{priorityLabels[task.priority]}</Badge> : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    {task.supplyResources.length === 0 && task.toolResourceCount === 0 ? (
+                    {task.supplyResources.length === 0 && task.toolResources.length === 0 ? (
                       <span className="text-xs text-slate-400">Ninguno</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {task.supplyResources.map(r => (
                           <Badge key={r.resourceId} variant={r.isCritical ? 'danger' : 'neutral'}>
-                            {r.supply?.name ?? `Insumo #${r.resourceId}`}{r.isCritical ? ' ⚠' : ''}
+                            {r.supply?.name ?? `Insumo #${r.resourceId}`} ({r.requestedQuantity}{r.supply?.unit ?? ''}){r.isCritical ? ' ⚠' : ''}
                           </Badge>
                         ))}
-                        {task.toolResourceCount > 0 && (
-                          <Badge variant="info">{task.toolResourceCount} herramienta(s)</Badge>
-                        )}
+                        {task.toolResources.map(r => (
+                          <Badge key={r.resourceId} variant={r.isCritical ? 'danger' : 'info'}>
+                            {r.tool?.name ?? `Herramienta #${r.resourceId}`} ({r.requestedQuantity} unidad{r.requestedQuantity === 1 ? '' : 'es'}){r.isCritical ? ' ⚠' : ''}
+                          </Badge>
+                        ))}
                       </div>
                     )}
                   </td>

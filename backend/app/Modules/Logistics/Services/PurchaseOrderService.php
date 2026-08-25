@@ -4,7 +4,8 @@ namespace App\Modules\Logistics\Services;
 
 use App\Modules\Inventory\Models\Supply;
 use App\Modules\Inventory\Models\Tool;
-use App\Modules\Logistics\Events\PurchaseOrderReceived;
+use App\Modules\Inventory\Models\ToolUnit;
+use App\Modules\Inventory\Services\PurchaseReceiptInventoryService;
 use App\Modules\Logistics\Models\PurchaseOrder;
 use App\Modules\Logistics\Models\PurchaseOrderItem;
 use App\Modules\Logistics\Models\PurchaseReceipt;
@@ -17,7 +18,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Reglas de negocio de Orden de Compra (HU-05/HU-06/HU-08):
- * - Solo se puede emitir una orden a un proveedor 'active' con score >= 3.00.
+ * - Solo se puede emitir una orden a un proveedor 'active'. El score bajo (< 3.00, ver
+ *   SupplierService::MINIMUM_SCORE_FOR_ORDERS) ya no bloquea la compra — 2026-08-24, a
+ *   pedido del negocio: basta con la advertencia visual que ya muestra el frontend al
+ *   elegir un proveedor con score insuficiente, no hace falta impedir la orden.
  * - Sin fecha de entrega estimada, se asume hoy + 5 días (igual que el sistema anterior).
  * - El total es la suma de cantidad × precio_unitario de cada ítem.
  * - Una orden solo puede recibirse una vez.
@@ -26,6 +30,12 @@ use Illuminate\Support\Facades\DB;
  *   'cancelled'; en cualquier otro caso pasa a 'received'.
  * - El listado de pendientes clasifica cada ítem por urgencia según la fecha de entrega
  *   estimada de su orden: 'red' si ya venció, 'yellow' si es mañana, 'green' en otro caso.
+ * - El reporte de gasto (`spendReport`/`annualSpendReport`) solo cuenta como "gasto real"
+ *   las órdenes que no terminaron `cancelled` (no existe un flujo real que deje una orden
+ *   en `draft`: `create()` siempre las emite `issued` con `issued_at = now()`, ver arriba).
+ *   El rango de fechas lo decide quien llama: puede ser un año completo o el período de
+ *   una Meta de Producción de `Planning` — este Service no conoce ese módulo (ver
+ *   docs/03_MODULE_CONTRACTS/Logistics.md §8), el frontend resuelve las fechas.
  */
 class PurchaseOrderService extends BaseService
 {
@@ -34,6 +44,7 @@ class PurchaseOrderService extends BaseService
     public function __construct(
         private PurchaseOrderRepositoryInterface $purchaseOrderRepository,
         private SupplierRepositoryInterface $supplierRepository,
+        private PurchaseReceiptInventoryService $purchaseReceiptInventoryService,
     ) {
         parent::__construct($purchaseOrderRepository);
     }
@@ -64,14 +75,11 @@ class PurchaseOrderService extends BaseService
             throw new \DomainException("El proveedor '{$supplier->name}' está inactivo y no puede recibir órdenes.");
         }
 
-        if ((float) $supplier->score < SupplierService::MINIMUM_SCORE_FOR_ORDERS) {
-            throw new \DomainException(
-                "No se puede generar la orden. El proveedor '{$supplier->name}' tiene una calificación insuficiente ({$supplier->score} / 5.00). Mínimo requerido: ".
-                number_format(SupplierService::MINIMUM_SCORE_FOR_ORDERS, 2).'.'
-            );
-        }
-
         $items = collect($data['items'])->map(function (array $item) use ($supplier) {
+            if ($item['item_type'] === 'tool' && floor((float) $item['quantity']) !== (float) $item['quantity']) {
+                throw new \DomainException('Las herramientas deben solicitarse en unidades enteras.');
+            }
+
             $relation = $item['item_type'] === 'tool' ? $supplier->tools() : $supplier->supplies();
             $catalogItem = $relation->whereKey($item['item_id'])->first();
 
@@ -93,7 +101,9 @@ class PurchaseOrderService extends BaseService
         $estimatedDeliveryDate = $data['estimated_delivery_date']
             ?? Carbon::today()->addDays(self::DEFAULT_LEAD_TIME_DAYS)->toDateString();
 
-        $order = DB::transaction(function () use ($supplier, $items, $total, $estimatedDeliveryDate, $data) {
+        $reconcilesExistingInventory = (bool) ($data['reconciles_existing_inventory'] ?? false);
+
+        $order = DB::transaction(function () use ($supplier, $items, $total, $estimatedDeliveryDate, $data, $reconcilesExistingInventory) {
             $order = $this->purchaseOrderRepository->create([
                 'order_number' => $this->purchaseOrderRepository->nextOrderNumber(),
                 'supplier_id' => $supplier->id,
@@ -102,10 +112,11 @@ class PurchaseOrderService extends BaseService
                 'issued_at' => now(),
                 'estimated_delivery_date' => $estimatedDeliveryDate,
                 'total' => $total,
+                'reconciles_existing_inventory' => $reconcilesExistingInventory,
             ]);
 
             foreach ($items as $item) {
-                PurchaseOrderItem::create([
+                $purchaseOrderItem = PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
                     'supply_id' => $item['supply_id'],
                     'tool_id' => $item['tool_id'] ?? null,
@@ -115,6 +126,18 @@ class PurchaseOrderService extends BaseService
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                 ]);
+
+                // Una unidad creada manualmente ya existe físicamente en Inventory, pero
+                // todavía no tiene respaldo de compra. Al registrar la orden que la
+                // reconcilia, se vincula aquí para que desaparezca del aviso de pendientes.
+                if ($reconcilesExistingInventory && $purchaseOrderItem->tool_id) {
+                    ToolUnit::query()
+                        ->where('tool_id', $purchaseOrderItem->tool_id)
+                        ->whereNull('purchase_order_item_id')
+                        ->orderBy('id')
+                        ->limit((int) $purchaseOrderItem->quantity)
+                        ->update(['purchase_order_item_id' => $purchaseOrderItem->id]);
+                }
             }
 
             return $order;
@@ -147,8 +170,10 @@ class PurchaseOrderService extends BaseService
 
             $this->purchaseOrderRepository->update($order->id, ['status' => $newStatus]);
 
-            if ($data['quality_status'] !== PurchaseReceipt::QUALITY_REJECTED) {
-                PurchaseOrderReceived::dispatch($order, $order->items);
+            // Las órdenes generadas desde el aviso documentan recursos que ya fueron
+            // ingresados manualmente a Inventario; recibirlas no debe duplicar stock.
+            if ($data['quality_status'] !== PurchaseReceipt::QUALITY_REJECTED && ! $order->reconciles_existing_inventory) {
+                $this->purchaseReceiptInventoryService->apply($order, $order->items, $data['received_by'] ?? null);
             }
 
             return $receipt;
@@ -202,25 +227,32 @@ class PurchaseOrderService extends BaseService
      * Insumos y herramientas del inventario que nunca han aparecido en un ítem de
      * orden de compra, para avisar en el panel de Órdenes. Cada ítem lleva el ID
      * del proveedor (si existe alguno en su catálogo) que el frontend usa para
-     * decidir si abre directamente "Nueva Orden" o pide vincular un catálogo.
+     * decidir si abre directamente "Nueva Orden" o pide vincular un catálogo, y la
+     * `quantity` ya registrada en Inventory: la orden que reconcilia este aviso debe
+     * emitirse por esa misma cantidad exacta (no editable en el frontend), para que
+     * lo comprado cuadre con lo que ya está físicamente en inventario.
      */
     public function unregisteredItems(): array
     {
         $supplies = Supply::query()
             ->whereDoesntHave('purchaseOrderItems')
             ->orderBy('name')
-            ->get(['id', 'sku', 'name', 'unit'])
+            ->get(['id', 'sku', 'name', 'unit', 'current_stock'])
             ->map(fn ($supply) => [
                 'item_type' => 'supply',
                 'item_id' => $supply->id,
                 'sku' => $supply->sku,
                 'name' => $supply->name,
                 'unit' => $supply->unit,
+                'quantity' => (string) $supply->current_stock,
                 'supplier_id' => $this->bestSupplierIdFor('supply', $supply->id),
             ]);
 
         $tools = Tool::query()
-            ->whereDoesntHave('purchaseOrderItems')
+            ->withCount([
+                'units as unregistered_units_count' => fn ($query) => $query->whereNull('purchase_order_item_id'),
+            ])
+            ->having('unregistered_units_count', '>', 0)
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(fn ($tool) => [
@@ -229,6 +261,7 @@ class PurchaseOrderService extends BaseService
                 'sku' => null,
                 'name' => $tool->name,
                 'unit' => 'unidad',
+                'quantity' => (string) $tool->unregistered_units_count,
                 'supplier_id' => $this->bestSupplierIdFor('tool', $tool->id),
             ]);
 
@@ -259,5 +292,58 @@ class PurchaseOrderService extends BaseService
         );
 
         return ($eligible ?? $suppliers->sortByDesc('score')->first())->id;
+    }
+
+    /**
+     * Reporte de gasto en compras para un rango de fechas arbitrario, con desglose por
+     * proveedor. Alimenta tanto el reporte anual como el de una Meta de Producción de
+     * Planning (el frontend resuelve el rango a partir de `created_at`/`finished_at` de
+     * la meta elegida y llama aquí con esas fechas — ver `spendReport()` del controlador).
+     */
+    public function spendReport(Carbon $start, Carbon $end, string $label): array
+    {
+        $ordersQuery = PurchaseOrder::query()
+            ->where('purchase_orders.status', PurchaseOrder::STATUS_RECEIVED)
+            ->whereHas('receipt', fn ($query) => $query->whereIn('quality_status', [
+                PurchaseReceipt::QUALITY_APPROVED,
+                PurchaseReceipt::QUALITY_CONDITIONAL,
+            ]))
+            ->whereBetween('purchase_orders.issued_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()]);
+
+        $totalSpent = (float) (clone $ordersQuery)->sum('purchase_orders.total');
+        $ordersCount = (clone $ordersQuery)->count();
+
+        $suppliers = (clone $ordersQuery)
+            ->join('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
+            ->selectRaw('suppliers.id as supplier_id, suppliers.name as supplier_name, COUNT(*) as orders_count, SUM(purchase_orders.total) as total_spent')
+            ->groupBy('suppliers.id', 'suppliers.name')
+            ->orderByDesc('total_spent')
+            ->get()
+            ->map(fn ($row) => [
+                'supplier_id' => (int) $row->supplier_id,
+                'supplier_name' => $row->supplier_name,
+                'orders_count' => (int) $row->orders_count,
+                'total_spent' => number_format((float) $row->total_spent, 2, '.', ''),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'label' => $label,
+            'start_date' => $start->toDateString(),
+            'end_date' => $end->toDateString(),
+            'total_spent' => number_format($totalSpent, 2, '.', ''),
+            'orders_count' => $ordersCount,
+            'suppliers' => $suppliers,
+        ];
+    }
+
+    public function annualSpendReport(int $year): array
+    {
+        return $this->spendReport(
+            Carbon::create($year, 1, 1),
+            Carbon::create($year, 12, 31),
+            "Año {$year}",
+        );
     }
 }

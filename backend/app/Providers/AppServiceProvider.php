@@ -3,10 +3,8 @@
 namespace App\Providers;
 
 use App\Modules\Logistics\Repositories\Contracts\PurchaseOrderRepositoryInterface;
-use App\Modules\Logistics\Repositories\Contracts\PurchaseRequestRepositoryInterface;
 use App\Modules\Logistics\Repositories\Contracts\SupplierRepositoryInterface;
 use App\Modules\Logistics\Repositories\Eloquent\PurchaseOrderRepository;
-use App\Modules\Logistics\Repositories\Eloquent\PurchaseRequestRepository;
 use App\Modules\Logistics\Repositories\Eloquent\SupplierRepository;
 use App\Modules\Planning\Repositories\Contracts\DispatchRepositoryInterface;
 use App\Modules\Planning\Repositories\Contracts\LotCycleRepositoryInterface;
@@ -75,7 +73,6 @@ class AppServiceProvider extends ServiceProvider
         // ---- Módulo Logistics ----
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
         $this->app->bind(PurchaseOrderRepositoryInterface::class, PurchaseOrderRepository::class);
-        $this->app->bind(PurchaseRequestRepositoryInterface::class, PurchaseRequestRepository::class);
 
         // ---- Contexto de vivero activo (una instancia por request) ----
         $this->app->singleton(CurrentVivero::class);

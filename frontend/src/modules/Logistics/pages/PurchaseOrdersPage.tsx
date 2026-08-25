@@ -3,6 +3,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
+import { PurchaseSpendReportPanel } from '../components/PurchaseSpendReportPanel';
 import { usePurchaseOrdersViewModel } from '../viewmodels/usePurchaseOrdersViewModel';
 import type { DeliveryUrgency, PurchaseOrderStatus, QualityStatus, UnregisteredItem } from '../types';
 import { useAuth } from '../../../shared/context/AuthContext';
@@ -44,17 +45,15 @@ const urgencyVariants: Record<DeliveryUrgency, 'danger' | 'warning' | 'success'>
 interface PurchaseOrdersPageProps {
   /** Ítem sin proveedor en catálogo: pide vincularlo desde Proveedores en lugar de abrir "Nueva Orden". */
   onRequestSupplierCatalogLink?: (item: UnregisteredItem) => void;
-  /** Cambia (p.ej. un contador) para forzar un refetch — ver `usePurchaseOrdersViewModel`. */
-  refreshSignal?: unknown;
 }
 
-export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onRequestSupplierCatalogLink, refreshSignal }) => {
+export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onRequestSupplierCatalogLink }) => {
   const { isAdmin } = useAuth();
   const {
     orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading,
-    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
+    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, quantityLocked, reconcilesExistingInventory, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
-  } = usePurchaseOrdersViewModel(refreshSignal);
+  } = usePurchaseOrdersViewModel();
 
   const handleUnregisteredItemClick = (item: UnregisteredItem) => {
     if (item.supplier_id) {
@@ -104,22 +103,38 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <h3 className="text-sm font-bold text-amber-900">Ítems sin orden de compra</h3>
           <p className="mt-1 text-xs text-amber-700">
-            Insumos y herramientas del inventario que aún no están en ninguna orden. Haz clic en uno para generar su orden o vincularlo con un proveedor.
+            Insumos y herramientas del inventario que aún no tienen una compra registrada. {isAdmin ? 'Haz clic en uno para generar su orden o vincularlo con un proveedor.' : 'Solo un administrador puede generar la orden de compra.'}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
-            {unregisteredItems.map(item => (
-              <button
-                key={`${item.item_type}-${item.item_id}`}
-                type="button"
-                onClick={() => handleUnregisteredItemClick(item)}
-                title={item.supplier_id ? 'Crear orden de compra con este ítem' : 'Vincular este ítem al catálogo de un proveedor'}
-                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 hover:border-amber-400 transition-colors"
-              >
+            {unregisteredItems.map(item => {
+              const quantity = Number(item.quantity);
+              const toolLabel = quantity === 1 || item.name.toLocaleLowerCase('es').endsWith('s')
+                ? item.name
+                : `${item.name}s`;
+              const content = <>
                 <span>{item.item_type === 'tool' ? '🔧' : '📦'}</span>
-                {item.name}{item.sku ? ` (${item.sku})` : ''}
+                {item.item_type === 'tool'
+                  ? `${item.quantity} ${toolLabel}`
+                  : `${item.name}${item.sku ? ` (${item.sku})` : ''} · ${item.quantity} ${item.unit}`}
                 {!item.supplier_id && <span className="text-amber-500">· sin proveedor</span>}
-              </button>
-            ))}
+              </>;
+
+              return isAdmin ? (
+                <button
+                  key={`${item.item_type}-${item.item_id}`}
+                  type="button"
+                  onClick={() => handleUnregisteredItemClick(item)}
+                  title={item.supplier_id ? 'Crear orden de compra con este ítem' : 'Vincular este ítem al catálogo de un proveedor'}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+                >
+                  {content}
+                </button>
+              ) : (
+                <span key={`${item.item_type}-${item.item_id}`} className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-amber-800">
+                  {content}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -139,6 +154,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">N° Orden</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Proveedor</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ítems solicitados</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Entrega Estimada</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
@@ -150,6 +166,15 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                 <tr key={order.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm font-medium text-slate-800">{order.order_number}</td>
                   <td className="px-4 py-3 text-sm text-slate-500">{order.supplier?.name}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    <ul className="space-y-1">
+                      {(order.items ?? []).map(item => (
+                        <li key={item.id}>
+                          {item.item_name} <span className="text-slate-400">· {item.quantity} {item.unit}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-500">{order.estimated_delivery_date ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">${Number(order.total).toFixed(2)}</td>
                   <td className="px-4 py-3">
@@ -175,6 +200,8 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
         </div>
       )}
 
+      <PurchaseSpendReportPanel />
+
       <SlideOver isOpen={isFormOpen} onClose={closeForm} title="Nueva Orden de Compra">
         <form onSubmit={handleSave} className="p-6 space-y-4">
           <div>
@@ -191,7 +218,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
               ))}
             </select>
             {selectedSupplier && Number(selectedSupplier.score) < 3 && (
-              <p className="text-xs text-red-500 mt-1">⚠ Este proveedor no cumple el score mínimo (3.00) para recibir órdenes.</p>
+              <p className="text-xs text-amber-600 mt-1">⚠ Este proveedor tiene un score bajo ({Number(selectedSupplier.score).toFixed(2)}/5.00). Puedes continuar con la orden si lo consideras necesario.</p>
             )}
             {selectedSupplier && catalog.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">Este proveedor aún no tiene insumos en su catálogo.</p>
@@ -211,9 +238,11 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-xs font-medium text-slate-600">Ítems *</label>
-              <button type="button" onClick={addItemRow} className="text-xs font-medium text-emerald-600 hover:text-emerald-700">
-                + Agregar ítem
-              </button>
+              {!reconcilesExistingInventory && (
+                <button type="button" onClick={addItemRow} className="text-xs font-medium text-emerald-600 hover:text-emerald-700">
+                  + Agregar ítem
+                </button>
+              )}
             </div>
             <div className="space-y-3">
               {items.map((item, index) => (
@@ -222,8 +251,14 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                     const selectedItem = catalog.find(entry => entry.item_type === item.item_type && entry.item_id === item.item_id);
                     const unit = selectedItem?.unit ?? 'unidad';
                     const price = Number(selectedItem?.unit_price ?? 0);
+                    const isLocked = quantityLocked[index] ?? false;
 
                     return <>
+                  {isLocked && (
+                    <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      🔒 Ítem del aviso "Sin orden de compra": ya está registrado en Inventario; esta orden no aumentará su stock al recibirse.
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
                     <select
                       value={item.item_id === '' ? '' : `${item.item_type}:${item.item_id}`}
@@ -232,7 +267,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                         updateItemRow(index, { item_type: (item_type || 'supply') as 'supply' | 'tool', item_id: item_id ? Number(item_id) : '' });
                       }}
                       required
-                      disabled={!form.supplier_id || catalog.length === 0}
+                      disabled={isLocked || !form.supplier_id || catalog.length === 0}
                       className="w-full px-3 py-2 border border-slate-300 rounded text-sm disabled:bg-slate-100"
                     >
                       <option value="">Selecciona un ítem…</option>
@@ -257,12 +292,15 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                       value={item.quantity}
                       onChange={e => updateItemRow(index, { quantity: Number(e.target.value) })}
                       required
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                      disabled={isLocked}
+                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm disabled:bg-slate-100 disabled:text-slate-500"
                     />
                     </div>
-                    <p className="pb-2 text-xs text-slate-500">Puedes ingresar cantidades fraccionadas, por ejemplo 2,5 kg.</p>
+                    <p className="pb-2 text-xs text-slate-500">
+                      {isLocked ? 'Cantidad fija: coincide con el registro de inventario.' : 'Puedes ingresar cantidades fraccionadas, por ejemplo 2,5 kg.'}
+                    </p>
                   </div>
-                  {items.length > 1 && (
+                  {items.length > 1 && !isLocked && (
                     <button
                       type="button"
                       onClick={() => removeItemRow(index)}

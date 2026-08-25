@@ -1,9 +1,29 @@
 import axiosClient from '../../../shared/services/axiosClient';
 import type {
-  PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput, PurchaseRequest,
-  PurchaseRequestItemInput, QualityStatus, Supplier, SupplierEvaluationInput, SupplierCatalogItem,
-  CertificateAlert, UnregisteredItem,
+  PendingDeliveryItem, PurchaseOrder, PurchaseOrderItemInput,
+  QualityStatus, Supplier, SupplierEvaluationInput, SupplierCatalogItem,
+  CertificateAlert, UnregisteredItem, PurchaseSpendReport, SupplierSpendSummary,
 } from '../types';
+
+function supplierFormData(data: Partial<Supplier>, method?: 'PUT'): FormData {
+  const form = new FormData();
+  if (method) form.append('_method', method);
+  (['name', 'tax_id', 'email', 'phone', 'address', 'status'] as const).forEach(key => {
+    const value = data[key];
+    if (value !== undefined && value !== null) form.append(key, String(value));
+  });
+  form.append('organic_certified', data.organic_certified ? '1' : '0');
+
+  const certification = data.certification;
+  if (certification) {
+    (['certificate_number', 'certifying_entity', 'issued_at', 'expires_at'] as const).forEach(key => {
+      const value = certification[key];
+      if (value) form.append(`certification[${key}]`, value);
+    });
+    if (certification.file) form.append('certification[file]', certification.file);
+  }
+  return form;
+}
 
 /**
  * Único punto de acceso a la API para el módulo Logistics.
@@ -12,8 +32,8 @@ import type {
 export const logisticsService = {
   // ---- Proveedores ----
   getSuppliers: () => axiosClient.get<Supplier[]>('/suppliers'),
-  createSupplier: (data: Partial<Supplier>) => axiosClient.post('/suppliers', data),
-  updateSupplier: (id: number, data: Partial<Supplier>) => axiosClient.put(`/suppliers/${id}`, data),
+  createSupplier: (data: Partial<Supplier>) => axiosClient.post('/suppliers', supplierFormData(data)),
+  updateSupplier: (id: number, data: Partial<Supplier>) => axiosClient.post(`/suppliers/${id}`, supplierFormData(data, 'PUT')),
   deleteSupplier: (id: number) => axiosClient.delete(`/suppliers/${id}`),
   evaluateSupplier: (id: number, data: SupplierEvaluationInput) =>
     axiosClient.post(`/suppliers/${id}/evaluate`, data),
@@ -22,13 +42,14 @@ export const logisticsService = {
   updateSupplierCatalog: (id: number, items: { item_type: 'supply' | 'tool'; item_id: number; unit_price: number }[]) =>
     axiosClient.put<SupplierCatalogItem[]>(`/suppliers/${id}/catalog`, { items }),
   getCertificateAlerts: () => axiosClient.get<CertificateAlert[]>('/suppliers-certificates/alerts'),
+  getSupplierSpendSummary: () => axiosClient.get<SupplierSpendSummary>('/suppliers-spend-summary'),
   getInventorySupplies: () => axiosClient.get<SupplierCatalogItem[]>('/supplies'),
   getInventoryTools: () => axiosClient.get<SupplierCatalogItem[]>('/tools'),
 
   // ---- Órdenes de compra ----
   getPurchaseOrders: () => axiosClient.get<PurchaseOrder[]>('/purchase-orders'),
   createPurchaseOrder: (data: {
-    supplier_id: number; estimated_delivery_date?: string; items: PurchaseOrderItemInput[];
+    supplier_id: number; estimated_delivery_date?: string; items: PurchaseOrderItemInput[]; reconciles_existing_inventory?: boolean;
   }) => axiosClient.post<PurchaseOrder>('/purchase-orders', data),
   getPurchaseOrder: (id: number) => axiosClient.get<PurchaseOrder>(`/purchase-orders/${id}`),
   receivePurchaseOrder: (id: number, data: {
@@ -37,12 +58,7 @@ export const logisticsService = {
   getPendingDeliveries: () => axiosClient.get<PendingDeliveryItem[]>('/purchase-orders/pending-deliveries'),
   getUnregisteredItems: () => axiosClient.get<UnregisteredItem[]>('/purchase-orders/unregistered-items'),
 
-  // ---- Solicitudes de aprovisionamiento ----
-  getPurchaseRequests: () => axiosClient.get<PurchaseRequest[]>('/purchase-requests'),
-  createPurchaseRequest: (data: { reason: string; items: PurchaseRequestItemInput[] }) =>
-    axiosClient.post<PurchaseRequest>('/purchase-requests', data),
-  getPurchaseRequest: (id: number) => axiosClient.get<PurchaseRequest>(`/purchase-requests/${id}`),
-  reviewPurchaseRequest: (id: number, data: {
-    decision: 'approved' | 'rejected'; supplier_id?: number; estimated_delivery_date?: string;
-  }) => axiosClient.post(`/purchase-requests/${id}/review`, data),
+  // ---- Reporte de gasto en compras para el rango de fechas de una Meta de Producción ----
+  getPurchaseSpendReport: (params: { start_date: string; end_date: string; label: string }) =>
+    axiosClient.get<PurchaseSpendReport>('/purchase-orders/spend-report', { params }),
 };
