@@ -370,22 +370,22 @@ export default function ToolsPage() {
 
               <div className="flex flex-col items-center justify-center bg-slate-50 p-4 rounded-3xl border border-slate-100">
                 <div 
-                  id="print-label-area" 
-                  className="bg-white border-2 border-dashed border-slate-300 flex flex-col items-end justify-start print:border-none print:shadow-none print:m-0 print:p-0 overflow-hidden relative shadow-sm"
+                  id="print-label-area"
+                  className="bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-start print:border-none print:shadow-none print:m-0 print:p-0 overflow-hidden relative shadow-sm"
                   style={{ width: '35mm', height: '25mm', padding: '1mm 1.5mm', boxSizing: 'border-box' }}
                 >
-                  <div className="w-full text-right overflow-hidden pb-0.5 border-b border-slate-100 pr-1">
+                  <div className="w-full text-center overflow-hidden pb-0.5 border-b border-slate-100">
                     <p className="font-semibold text-slate-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[5.5pt]">
                       {generatedLabel.name} - <span className="font-mono font-bold text-slate-900">{generatedLabel.code}</span>
                     </p>
                   </div>
                   {labelFormat === 'qr' && (
-                    <div className="flex flex-col items-end justify-center flex-1 w-full my-auto py-0.5 pr-1">
+                    <div className="flex flex-col items-center justify-center flex-1 w-full my-auto py-0.5">
                       <canvas ref={qrCanvasRef} style={{ maxWidth: '100%', maxHeight: '19mm' }}></canvas>
                     </div>
                   )}
                   {labelFormat === 'barcode' && (
-                    <div className="flex flex-col items-end justify-center flex-1 w-full my-auto py-0.5 pr-1">
+                    <div className="flex flex-col items-center justify-center flex-1 w-full my-auto py-0.5">
                       <svg ref={barcodeSvgRef} style={{ maxWidth: '100%', maxHeight: '19mm' }}></svg>
                     </div>
                   )}

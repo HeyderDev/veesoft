@@ -24,7 +24,7 @@ class OperationalTaskRepository extends BaseRepository implements OperationalTas
      */
     public function paginateWithRelations(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = $this->model->with(['assignedTo', 'resources', 'activityType', 'lotCyclePhase.lotCycle.lot']);
+        $query = $this->model->with(['assignee', 'resources', 'activityType', 'lotCyclePhase.lotCycle.lot']);
 
         if (! empty($filters['search'])) {
             $search = $filters['search'];
@@ -59,12 +59,12 @@ class OperationalTaskRepository extends BaseRepository implements OperationalTas
 
     public function findWithRelations(int $id)
     {
-        return $this->model->with(['assignedTo', 'resources', 'activityType', 'lotCyclePhase.lotCycle.lot'])->findOrFail($id);
+        return $this->model->with(['assignee', 'resources', 'activityType', 'lotCyclePhase.lotCycle.lot'])->findOrFail($id);
     }
 
     public function getTasksByAssignee(int $userId): Collection
     {
-        return $this->model->with(['assignedTo', 'resources'])
+        return $this->model->with(['assignee', 'resources'])
             ->where('assigned_to', $userId)
             ->latest()
             ->get();
@@ -166,7 +166,7 @@ class OperationalTaskRepository extends BaseRepository implements OperationalTas
             : ($month ? (clone $start)->endOfMonth()->endOfDay() : (clone $start)->endOfYear()->endOfDay());
 
         $tasks = $this->model
-            ->with(['assignedTo', 'resources', 'activityType', 'lotCyclePhase.lotCycle.lot'])
+            ->with(['assignee', 'resources', 'activityType', 'lotCyclePhase.lotCycle.lot'])
             ->where('vivero_id', $viveroId)
             ->whereBetween('planned_date', [$start->toDateString(), $end->toDateString()])
             ->orderByDesc('planned_date')
