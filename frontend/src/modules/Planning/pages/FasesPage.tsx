@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle, Lock, Pencil } from 'lucide-react';
 import { FaseModal } from '../components/FaseModal';
 import { isGatedPhaseCode } from '../types';
 import { useFasesViewModel } from '../viewmodels/useFasesViewModel';
@@ -33,7 +34,7 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
 
       {/* Alerta informativa */}
       <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm">
-        <span className="text-xl flex-shrink-0 mt-0.5">⚠️</span>
+        <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600" />
         <div>
           <p className="font-semibold text-amber-800">Configuración única para todos los lotes de este vivero</p>
           <p className="text-amber-700 mt-0.5 text-xs leading-relaxed">
@@ -127,7 +128,7 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
                             className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold"
                             title="Actividad obligatoria del sistema: arranca en 1 día y se extiende sola si la actividad se confirma tarde en Tareas. Nombre, orden y duración no son editables."
                           >
-                            🔒 obligatoria
+                            <Lock className="w-3 h-3 inline -mt-0.5 mr-0.5" /> obligatoria
                           </span>
                         )}
                       </div>
@@ -141,7 +142,7 @@ export const FasesPage: React.FC<FasesPageProps> = ({ viveroId }) => {
                           onClick={() => setEditFase(fase)}
                           className="btn-ghost text-xs py-1 px-2"
                         >
-                          ✏️
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>

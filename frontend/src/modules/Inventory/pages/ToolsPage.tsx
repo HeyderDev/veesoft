@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import { Printer, Search, X } from 'lucide-react';
 import { useToolsViewModel } from '../viewmodels/useToolsViewModel';
 import type { ToolUnit } from '../types';
 
@@ -153,7 +154,7 @@ export default function ToolsPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 print:hidden">
           <div className="xl:col-span-2 space-y-4">
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-              <span className="text-slate-400">🔍</span>
+              <Search className="w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
@@ -333,7 +334,7 @@ export default function ToolsPage() {
                 <h3 className="font-bold text-slate-800 text-lg">Identificación de Unidad</h3>
                 <p className="text-xs text-slate-500">Impresión de etiqueta física vinculada.</p>
               </div>
-              <button type="button" onClick={() => setGeneratedLabel(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 font-bold transition">✕</button>
+              <button type="button" onClick={() => setGeneratedLabel(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 transition"><X className="w-4 h-4" /></button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -404,7 +405,7 @@ export default function ToolsPage() {
                 {isPrinting ? (
                   <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
                 ) : (
-                  <span>🖨️</span>
+                  <Printer className="w-4 h-4" />
                 )}
                 {isPrinting ? 'Imprimiendo...' : 'Imprimir'}
               </button>

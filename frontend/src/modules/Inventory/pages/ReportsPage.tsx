@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import { useToolsViewModel } from '../viewmodels/useToolsViewModel';
 import { useSuppliesViewModel } from '../viewmodels/useSuppliesViewModel';
 import { useMovementsViewModel } from '../viewmodels/useMovementsViewModel';
@@ -169,7 +169,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-slate-100 pb-4 mb-6 print:hidden overflow-x-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-slate-100 pb-4 mb-6 print:hidden">
           <button onClick={() => setActiveTab('estudiantes')} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${activeTab === 'estudiantes' ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Estudiantes</button>
           <button onClick={() => setActiveTab('herramientas')} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${activeTab === 'herramientas' ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Herramientas</button>
           <button onClick={() => setActiveTab('insumos')} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${activeTab === 'insumos' ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Insumos</button>
@@ -224,7 +224,7 @@ export default function ReportsPage() {
             {!hasSearchedEstudiantes ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">🔍</span>
+                  <Search className="w-6 h-6 text-slate-400" />
                 </div>
                 <h4 className="text-slate-800 font-bold text-lg mb-2">Busca estudiantes</h4>
                 <p className="text-slate-500 text-sm max-w-md">
@@ -320,7 +320,7 @@ export default function ReportsPage() {
             {!hasSearchedHerramientas ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">🔍</span>
+                  <Search className="w-6 h-6 text-slate-400" />
                 </div>
                 <h4 className="text-slate-800 font-bold text-lg mb-2">Busca herramientas</h4>
                 <p className="text-slate-500 text-sm max-w-md">
@@ -394,7 +394,7 @@ export default function ReportsPage() {
             {!hasSearchedInsumos ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">🔍</span>
+                  <Search className="w-6 h-6 text-slate-400" />
                 </div>
                 <h4 className="text-slate-800 font-bold text-lg mb-2">Busca insumos</h4>
                 <p className="text-slate-500 text-sm max-w-md">
@@ -459,7 +459,7 @@ export default function ReportsPage() {
             {!hasSearchedMovimientos ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">🔍</span>
+                  <Search className="w-6 h-6 text-slate-400" />
                 </div>
                 <h4 className="text-slate-800 font-bold text-lg mb-2">Busca en el historial</h4>
                 <p className="text-slate-500 text-sm max-w-md">

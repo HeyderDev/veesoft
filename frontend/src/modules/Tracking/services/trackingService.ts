@@ -1,7 +1,7 @@
 import axiosClient from '../../../shared/services/axiosClient';
 import type {
   DispatchSummary, PendingDispatch, TrackingClient, TrackingClientInput,
-  TrackingGeneralSummary, TrackingLot, TrackingLotDetail, TrackingMovement,
+  TrackingGeneralSummary, TrackingGoal, TrackingLot, TrackingLotDetail, TrackingMovement,
   TrackingProductionSummary,
 } from '../types';
 
@@ -28,9 +28,12 @@ export const trackingService = {
     }),
 
   // ---- Lotes (de Planning, solo lectura) ----
-  getLots: () => axiosClient.get<TrackingLot[]>('/tracking/lots'),
+  getLots: (goalId?: number) =>
+    axiosClient.get<TrackingLot[]>('/tracking/lots', { params: goalId ? { goal_id: goalId } : undefined }),
   getLotDetail: (lotId: number) => axiosClient.get<TrackingLotDetail>(`/tracking/lots/${lotId}`),
-  getProductionSummary: () => axiosClient.get<TrackingProductionSummary>('/tracking/production-summary'),
+  getProductionSummary: (goalId?: number) =>
+    axiosClient.get<TrackingProductionSummary>('/tracking/production-summary', { params: goalId ? { goal_id: goalId } : undefined }),
+  getGoals: () => axiosClient.get<TrackingGoal[]>('/tracking/goals'),
 
   // ---- Movimientos de salida ----
   getMovements: (lotId?: number) =>

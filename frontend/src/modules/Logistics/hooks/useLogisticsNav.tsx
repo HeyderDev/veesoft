@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState } from 'react';
+import { Handshake, Package, type LucideIcon } from 'lucide-react';
 
-export type LogisticsSection = 'planning-overview' | 'suppliers' | 'purchases';
+export type LogisticsSection = 'suppliers' | 'purchases';
 
-export const logisticsSectionTabs: { id: LogisticsSection; label: string; icon: string }[] = [
-  { id: 'planning-overview', label: 'Panorama', icon: '📊' },
-  { id: 'suppliers', label: 'Proveedores', icon: '🤝' },
-  { id: 'purchases', label: 'Compras', icon: '📦' },
+export const logisticsSectionTabs: { id: LogisticsSection; label: string; icon: LucideIcon }[] = [
+  { id: 'suppliers', label: 'Proveedores', icon: Handshake },
+  { id: 'purchases', label: 'Compras', icon: Package },
 ];
 
 interface LogisticsNavValue {
@@ -21,7 +21,7 @@ const LogisticsNavContext = createContext<LogisticsNavValue | undefined>(undefin
  * ver `layouts/modulesRegistry.tsx`.
  */
 export const LogisticsNavProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeSection, setActiveSection] = useState<LogisticsSection>('planning-overview');
+  const [activeSection, setActiveSection] = useState<LogisticsSection>('suppliers');
 
   return (
     <LogisticsNavContext.Provider value={{ activeSection, setActiveSection }}>

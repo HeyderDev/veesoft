@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import { FileText, LayoutGrid, Printer, Search, X } from 'lucide-react';
 import { useSuppliesViewModel } from '../viewmodels/useSuppliesViewModel';
 
 const UNIT_OPTIONS: { value: string; label: string }[] = [
@@ -149,7 +150,7 @@ export default function SuppliesPage() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex gap-3">
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 flex-1">
-              <span className="text-slate-400">🔍</span>
+              <Search className="w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
@@ -162,7 +163,7 @@ export default function SuppliesPage() {
               onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
               className="bg-white px-5 rounded-2xl shadow-sm border border-slate-100 text-slate-600 hover:bg-slate-50 transition flex items-center justify-center font-semibold text-sm"
             >
-              {viewMode === 'grid' ? '📄 Lista' : '📱 Tarjetas'}
+              {viewMode === 'grid' ? <><FileText className="w-4 h-4 inline mr-1" /> Lista</> : <><LayoutGrid className="w-4 h-4 inline mr-1" /> Tarjetas</>}
             </button>
           </div>
 
@@ -351,7 +352,7 @@ export default function SuppliesPage() {
                 <h3 className="font-bold text-slate-800 text-lg">Identificación de Insumo</h3>
                 <p className="text-xs text-slate-500">Impresión de etiqueta física vinculada.</p>
               </div>
-              <button type="button" onClick={() => setGeneratedLabel(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 font-bold transition">✕</button>
+              <button type="button" onClick={() => setGeneratedLabel(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 transition"><X className="w-4 h-4" /></button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -422,7 +423,7 @@ export default function SuppliesPage() {
                 {isPrinting ? (
                   <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
                 ) : (
-                  <span>🖨️</span>
+                  <Printer className="w-4 h-4" />
                 )}
                 {isPrinting ? 'Imprimiendo...' : 'Imprimir'}
               </button>

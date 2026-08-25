@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -49,8 +50,8 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 t.type === 'error' ? 'bg-red-50 text-red-800 border-red-200' : 
                 'bg-white text-slate-800 border-slate-200'}`}
           >
-            {t.type === 'success' && <span className="mr-2">✅</span>}
-            {t.type === 'error' && <span className="mr-2">❌</span>}
+            {t.type === 'success' && <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600 shrink-0" />}
+            {t.type === 'error' && <XCircle className="w-4 h-4 mr-2 text-red-600 shrink-0" />}
             {t.message}
           </div>
         ))}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 import Swal from 'sweetalert2';
+import { CheckCircle2, Search, Wrench } from 'lucide-react';
 import { useToolsViewModel } from '../viewmodels/useToolsViewModel';
 import type { ToolUnit } from '../types';
 
@@ -115,7 +116,7 @@ export default function MaintenancePage() {
       <div className="grid grid-cols-1 gap-6 print:hidden">
           <div className="space-y-4">
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-              <span className="text-slate-400">🔍</span>
+              <Search className="w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
@@ -167,12 +168,12 @@ export default function MaintenancePage() {
                                  <div className="flex justify-center items-center mt-2 pt-3 border-t border-slate-50">
                                    {unit.status === 'available' && (
                                      <button onClick={() => handleSendToMaintenance(unit, tool.name)} className="w-full text-xs font-bold bg-orange-50 text-orange-700 px-3 py-2 rounded-lg hover:bg-orange-100 transition shadow-sm border border-orange-100">
-                                       🛠️ Enviar a Mantenimiento
+                                       <Wrench className="w-3.5 h-3.5 inline mr-1" /> Enviar a Mantenimiento
                                      </button>
                                    )}
                                    {(unit.status === 'maintenance' || unit.status === 'damaged') && (
                                      <button onClick={() => handleLiftMaintenance(unit, tool.name)} className="w-full text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg hover:bg-emerald-100 transition shadow-sm border border-emerald-100 print:hidden">
-                                       ✅ Levantar Mantenimiento
+                                       <CheckCircle2 className="w-3.5 h-3.5 inline mr-1" /> Levantar Mantenimiento
                                      </button>
                                    )}
                                    {unit.status === 'out_of_service' && (

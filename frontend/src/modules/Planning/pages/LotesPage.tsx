@@ -1,4 +1,5 @@
 import React from 'react';
+import { Building2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { LotDetailModal } from '../components/LotDetailModal';
@@ -53,7 +54,7 @@ export const LotesPage: React.FC<LotesPageProps> = ({ viveroId }) => {
       ) : lotes.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-            <span className="text-3xl">🏗️</span>
+            <Building2 className="w-8 h-8 text-slate-400" />
           </div>
           <h3 className="text-lg font-semibold text-slate-800">No hay lotes configurados</h3>
           <p className="text-slate-500 mt-2 max-w-sm mb-6">

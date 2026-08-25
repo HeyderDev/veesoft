@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react';
-import jsPDF from 'jspdf';
 import { useToast } from '../../../components/ui/Toast';
+import { useActiveVivero } from '../../../shared/context/ActiveViveroContext';
 import { trackingService } from '../services/trackingService';
+import { generateGeneralTrackingReportPdf, generateLotTrackingReportPdf } from '../utils/trackingPdf';
 import type { TrackingGeneralSummary, TrackingLot, TrackingLotDetail } from '../types';
 
 type ReportMode = 'general' | 'lot';
-
-function formatDate(value: string): string {
-  try {
-    return new Date(value).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });
-  } catch {
-    return value;
-  }
-}
 
 export function useResumenSeguimientoViewModel() {
   const [mode, setMode] = useState<ReportMode>('general');
@@ -23,6 +16,7 @@ export function useResumenSeguimientoViewModel() {
   const [lotReport, setLotReport] = useState<TrackingLotDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { error } = useToast();
+  const { activeVivero } = useActiveVivero();
 
   useEffect(() => {
     trackingService.getLots().then(res => {
@@ -68,54 +62,11 @@ export function useResumenSeguimientoViewModel() {
   }, [mode, selectedLotId]);
 
   const exportPdf = () => {
-    const doc = new jsPDF();
-    let y = 18;
-
-    doc.setFontSize(16);
-    doc.text('Reporte de Seguimiento — Vivero Lastenia', 14, y);
-    y += 10;
-    doc.setFontSize(11);
-
     if (mode === 'general' && general) {
-      doc.text(`Total de lotes: ${general.total_lots}`, 14, y);
-      y += 7;
-      doc.text(`Total de plántulas despachadas: ${general.total_dispatched}`, 14, y);
-      y += 10;
-      doc.setFontSize(13);
-      doc.text('Clientes con más plántulas recibidas', 14, y);
-      y += 8;
-      doc.setFontSize(11);
-      if (general.top_clients.length === 0) {
-        doc.text('Sin salidas registradas todavía.', 14, y);
-      } else {
-        general.top_clients.forEach(c => {
-          doc.text(`${c.name}: ${c.total_quantity} plántulas`, 14, y);
-          y += 7;
-        });
-      }
+      generateGeneralTrackingReportPdf(general, activeVivero?.name);
     } else if (mode === 'lot' && lotReport) {
-      doc.text(`Lote: ${lotReport.lot.name} (${lotReport.lot.code})`, 14, y);
-      y += 7;
-      doc.text(`Capacidad: ${lotReport.lot.total_capacity}`, 14, y);
-      y += 10;
-      doc.setFontSize(13);
-      doc.text('Historial de salidas', 14, y);
-      y += 8;
-      doc.setFontSize(11);
-      if (lotReport.movements.data.length === 0) {
-        doc.text('Sin salidas registradas todavía.', 14, y);
-      } else {
-        lotReport.movements.data.forEach(m => {
-          doc.text(
-            `${formatDate(m.movement_date)} — ${m.tracking_client?.name ?? 'Cliente eliminado'}: ${m.quantity}`,
-            14, y,
-          );
-          y += 7;
-        });
-      }
+      generateLotTrackingReportPdf(lotReport, activeVivero?.name);
     }
-
-    doc.save('reporte_seguimiento_vivero_lastenia.pdf');
   };
 
   return {

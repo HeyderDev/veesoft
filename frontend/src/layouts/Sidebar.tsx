@@ -1,4 +1,5 @@
 import React from 'react';
+import { Settings } from 'lucide-react';
 import { modulesRegistry } from './modulesRegistry';
 import { useAuth } from '../shared/context/AuthContext';
 
@@ -9,6 +10,9 @@ const ADMIN_ONLY_MODULES = ['planning'];
 interface SidebarProps {
   currentModule: string;
   setCurrentModule: (module: string) => void;
+  /** Cuando se monta dentro de MobileDrawer.tsx: ocupa el panel deslizable en vez
+   * del riel fijo de escritorio (que solo existe desde `lg` en adelante). */
+  forceVisible?: boolean;
 }
 
 const NavIcon = ({ children }: { children: React.ReactNode }) => (
@@ -17,28 +21,22 @@ const NavIcon = ({ children }: { children: React.ReactNode }) => (
   </span>
 );
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModule }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModule, forceVisible = false }) => {
   const { isAdmin } = useAuth();
   const visibleModules = isAdmin
     ? modulesRegistry
     : modulesRegistry.filter(mod => !ADMIN_ONLY_MODULES.includes(mod.id));
 
   return (
-    <aside className="print:hidden w-64 h-screen flex flex-col fixed left-0 top-0 z-30"
+    <aside
+      className={`print:hidden w-72 flex-col z-30 ${
+        forceVisible ? 'flex h-full' : 'hidden lg:flex lg:fixed lg:left-0 lg:top-0 lg:h-screen'
+      }`}
       style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}>
 
-      {/* Logo / Brand */}
-      <div className="px-5 py-5 border-b border-slate-700/50">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #059669, #34d399)' }}>
-            🌱
-          </div>
-          <div>
-            <h1 className="text-white font-bold text-sm leading-tight">Vivero ULEAM</h1>
-            <p className="text-slate-400 text-xs">El Carmen · Gestión</p>
-          </div>
-        </div>
+      {/* Logo / Brand — misma altura que el Header (h-16) para que ambos queden alineados */}
+      <div className="h-16 px-5 flex items-center border-b border-slate-700/50">
+        <img src="/logoHorizontal.svg" alt="Veesoft" className="h-8 w-auto" />
       </div>
 
       {/* Navigation */}
@@ -64,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModul
                   title={isDisabled ? 'Módulo en desarrollo — Próximamente' : mod.name}
                   className={`sidebar-item ${isActive ? 'sidebar-item-active' : isDisabled ? 'text-slate-600 cursor-not-allowed' : 'sidebar-item-inactive'}`}
                 >
-                  <NavIcon>{mod.icon}</NavIcon>
+                  <NavIcon><mod.icon className="w-[18px] h-[18px]" /></NavIcon>
                   <span className="flex-1 text-left">{mod.name}</span>
                   {isDisabled && (
                     <span className="text-[9px] bg-slate-700/60 text-slate-500 px-1.5 py-0.5 rounded-full font-semibold tracking-wide">
@@ -81,53 +79,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentModule, setCurrentModul
           })}
         </ul>
 
-        <div className="px-3 mt-6 mb-2">
-          <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-2 mb-1">
-            Sistema
-          </p>
-        </div>
-        <ul className="space-y-0.5 px-3">
-          {isAdmin && (
-            <li>
-              <button
-                id="sidebar-nav-configuracion"
-                onClick={() => setCurrentModule('configuracion')}
-                className={`sidebar-item ${currentModule === 'configuracion' ? 'sidebar-item-active' : 'sidebar-item-inactive'}`}
-              >
-                <NavIcon>⚙️</NavIcon>
-                <span>Configuración</span>
-              </button>
-            </li>
-          )}
-          <li>
-            <button className="sidebar-item sidebar-item-inactive opacity-50 cursor-not-allowed" disabled>
-              <NavIcon>🔔</NavIcon>
-              <span>Alertas</span>
-              <span className="ml-auto w-5 h-5 bg-rose-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
-                3
-              </span>
-            </button>
-          </li>
-          <li>
-            <button className="sidebar-item sidebar-item-inactive opacity-50 cursor-not-allowed" disabled>
-              <NavIcon>👤</NavIcon>
-              <span>Mi Perfil</span>
-            </button>
-          </li>
-        </ul>
+        {isAdmin && (
+          <>
+            <div className="px-3 mt-6 mb-2">
+              <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-2 mb-1">
+                Sistema
+              </p>
+            </div>
+            <ul className="space-y-0.5 px-3">
+              <li>
+                <button
+                  id="sidebar-nav-configuracion"
+                  onClick={() => setCurrentModule('configuracion')}
+                  className={`sidebar-item ${currentModule === 'configuracion' ? 'sidebar-item-active' : 'sidebar-item-inactive'}`}
+                >
+                  <NavIcon><Settings className="w-[18px] h-[18px]" /></NavIcon>
+                  <span>Configuración</span>
+                </button>
+              </li>
+            </ul>
+          </>
+        )}
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-slate-700/50">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs font-bold flex-shrink-0">
-            MG
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-slate-300 text-xs font-medium truncate">Módulo Planificación</p>
-            <p className="text-slate-500 text-[10px]">v1.0 · Prototipo</p>
-          </div>
-        </div>
+      <div className="px-4 py-3 border-t border-slate-700/50 text-center">
+        <p className="text-slate-400 text-xs font-semibold tracking-wide">Veesoft 2.0</p>
       </div>
     </aside>
   );

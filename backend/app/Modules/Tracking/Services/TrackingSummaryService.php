@@ -24,6 +24,7 @@ class TrackingSummaryService
             'total_lots' => $this->lotRepository->allWithVivero()->count(),
             'total_dispatched' => $this->movementRepository->totalQuantity(),
             'top_clients' => $this->movementRepository->topClients(),
+            'movements' => $this->movementRepository->paginateWithFilters(null, perPage: 100)->items(),
         ];
     }
 
@@ -39,11 +40,12 @@ class TrackingSummaryService
      * Panel informativo de la vista de tarjetas de Seguimiento: plántulas en
      * producción (capacidad de lotes con ciclo activo), plántulas ya
      * despachadas (histórico de movimientos) y próximas fechas de despacho
-     * (lotes cuya fase actual es DESP, ordenados por fecha).
+     * (fecha proyectada de la fase DESP de cada lote en producción, ya sea que
+     * esté corriendo ahora o todavía por llegar, ordenadas por fecha).
      */
-    public function getProductionSummary(): array
+    public function getProductionSummary(?int $goalId = null): array
     {
-        $lots = $this->lotService->list();
+        $lots = $this->lotService->list($goalId);
 
         $totalInProduction = 0;
         $upcomingDispatches = [];
@@ -55,12 +57,12 @@ class TrackingSummaryService
 
             $totalInProduction += $lot['total_capacity'];
 
-            if (($lot['current_phase']['code'] ?? null) === 'DESP') {
+            if (! empty($lot['despacho_planned_date'])) {
                 $upcomingDispatches[] = [
                     'lot_id' => $lot['id'],
                     'lot_name' => $lot['name'],
                     'lot_code' => $lot['code'],
-                    'planned_date' => $lot['current_phase']['planned_start_date'],
+                    'planned_date' => $lot['despacho_planned_date'],
                 ];
             }
         }
@@ -69,7 +71,7 @@ class TrackingSummaryService
 
         return [
             'total_in_production' => $totalInProduction,
-            'total_dispatched' => $this->movementRepository->totalQuantity(),
+            'total_dispatched' => $this->movementRepository->totalQuantity($goalId),
             'upcoming_dispatches' => array_slice($upcomingDispatches, 0, 5),
         ];
     }

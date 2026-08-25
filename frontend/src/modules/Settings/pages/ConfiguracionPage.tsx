@@ -1,4 +1,5 @@
 import React from 'react';
+import { Home, MapPin, Target, User } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
@@ -56,8 +57,8 @@ export const ConfiguracionPage: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-6 space-y-5">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-xl text-white shadow-md shadow-emerald-200 shrink-0">
-              🏡
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-200 shrink-0">
+              <Home className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-bold text-slate-800 text-base">Información del Vivero</h2>
@@ -67,8 +68,8 @@ export const ConfiguracionPage: React.FC = () => {
 
           <div className="space-y-2 pl-1">
             <p className="text-lg font-semibold text-slate-800">{vivero.name}</p>
-            <p className="text-sm text-slate-500">📍 {vivero.location}</p>
-            <p className="text-sm text-slate-500">👤 {vivero.responsible}</p>
+            <p className="text-sm text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {vivero.location}</p>
+            <p className="text-sm text-slate-500 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {vivero.responsible}</p>
           </div>
 
           <Button variant="secondary" onClick={() => openEdit(vivero)} className="w-full">
@@ -81,8 +82,8 @@ export const ConfiguracionPage: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-6 space-y-5">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-xl text-white shadow-md shadow-blue-200 shrink-0">
-              🎯
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0">
+              <Target className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-bold text-slate-800 text-base">Meta de Producción</h2>

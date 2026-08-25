@@ -1,79 +1,49 @@
 import React, { useEffect } from 'react';
 import { useActiveVivero } from '../../../shared/context/ActiveViveroContext';
-import { usePlanningNav, type PlanningSection } from '../hooks/usePlanningNav';
+import { usePlanningNav, planningSectionTabs } from '../hooks/usePlanningNav';
 import { ResumenPage } from '../pages/ResumenPage';
 import { HistorialPage } from '../pages/HistorialPage';
 import { LotesPage } from '../pages/LotesPage';
 import { FasesPage } from '../pages/FasesPage';
 
-const sectionTabs: { id: PlanningSection; label: string; icon: string }[] = [
-  { id: 'resumen', label: 'Resumen Operativo', icon: '📊' },
-  { id: 'lotes', label: 'Lotes', icon: '🏗️' },
-  { id: 'fases', label: 'Fases', icon: '🔄' },
-  { id: 'historial', label: 'Historial', icon: '🗂️' },
-];
-
 interface PlanningTabsProps {
   onTabChange?: (tabLabel: string) => void;
-  /** Navega al módulo global de Configuración (ver App.tsx) — usado por el
-   * botón "Culminar Meta" que aparece en ResumenPage al 80% de progreso. */
-  onNavigateToSettings?: () => void;
 }
 
 /**
  * El vivero activo es global (ver ActiveViveroContext) — este módulo ya no
  * pide elegir un vivero, va directo a sus secciones. La navegación (qué
  * sección) vive en PlanningNavContext, compartida con el panel del sidebar
- * (PlanningSidebarSections) para que ambos queden sincronizados.
+ * (PlanningSidebarSections), única forma de cambiar de sección — no hay
+ * fila de botones aquí arriba.
  */
-export const PlanningTabs: React.FC<PlanningTabsProps> = ({ onTabChange, onNavigateToSettings }) => {
+export const PlanningTabs: React.FC<PlanningTabsProps> = ({ onTabChange }) => {
   const { activeVivero } = useActiveVivero();
-  const { activeSection, setActiveSection } = usePlanningNav();
+  const { activeSection } = usePlanningNav();
 
   useEffect(() => {
     if (!onTabChange || !activeVivero) return;
-    const label = sectionTabs.find(t => t.id === activeSection)?.label ?? '';
-    onTabChange(`${activeVivero.name} · ${label}`);
+    const label = planningSectionTabs.find(t => t.id === activeSection)?.label ?? '';
+    // El nombre del vivero ya lo muestra el breadcrumb global (ViveroSwitcher);
+    // repetirlo acá era redundante.
+    onTabChange(label);
   }, [activeVivero, activeSection, onTabChange]);
 
   if (!activeVivero) return null;
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'resumen': return <ResumenPage viveroId={activeVivero.id} onNavigateToSettings={onNavigateToSettings} />;
+      case 'resumen': return <ResumenPage viveroId={activeVivero.id} />;
       case 'lotes': return <LotesPage viveroId={activeVivero.id} />;
       case 'fases': return <FasesPage viveroId={activeVivero.id} />;
       case 'historial': return <HistorialPage />;
-      default: return <ResumenPage viveroId={activeVivero.id} onNavigateToSettings={onNavigateToSettings} />;
+      default: return <ResumenPage viveroId={activeVivero.id} />;
     }
   };
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          {sectionTabs.map(tab => {
-            const isActive = activeSection === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSection(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                  isActive
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 transform -translate-y-0.5'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300'
-                }`}
-              >
-                <span>{tab.icon}</span>
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div className="flex-1">
-        {renderSection()}
-      </div>
+      {renderSection()}
     </div>
   );
 };

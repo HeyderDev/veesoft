@@ -50,6 +50,7 @@ export interface TrackingMovement {
   movement_date: string;
   notes: string | null;
   tracking_client?: TrackingClient;
+  lot?: { id: number; code: string; name: string };
 }
 
 /** Fase actual del ciclo activo del lote (nombre/color para la etiqueta, fechas
@@ -97,6 +98,18 @@ export interface TrackingGeneralSummary {
   total_lots: number;
   total_dispatched: number;
   top_clients: TrackingTopClient[];
+  movements: TrackingMovement[];
+}
+
+/** Meta de producción del vivero, para el selector de meta de Seguimiento
+ * (mismo listado que Tareas expone en /tasks/goals). */
+export interface TrackingGoal {
+  id: number;
+  title: string;
+  status: 'not_started' | 'active' | 'completed';
+  finished_at: string | null;
+  target_seedlings: number;
+  produced_seedlings: number;
 }
 
 /** Próximo despacho: lote cuya fase actual es DESP, con su fecha planeada. */

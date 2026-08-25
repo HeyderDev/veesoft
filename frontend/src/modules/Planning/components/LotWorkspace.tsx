@@ -32,6 +32,15 @@ export const LotWorkspace: React.FC<LotWorkspaceProps> = ({ lots, onOpenDetail, 
   const [offset, setOffset] = useState({ x: 40, y: 40 });
   const containerRef = useRef<HTMLDivElement>(null);
   const panState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const touchState = useRef<{
+    mode: 'pan' | 'pinch';
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    startDistance: number;
+    startZoom: number;
+  } | null>(null);
 
   const fallbackPosition = (index: number) => ({
     x: 4 + (index % 4) * 12,
@@ -93,6 +102,74 @@ export const LotWorkspace: React.FC<LotWorkspaceProps> = ({ lots, onOpenDetail, 
     window.addEventListener('mouseup', handleMouseUp);
   };
 
+  const touchDistance = (t1: React.Touch | Touch, t2: React.Touch | Touch) =>
+    Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+  const touchMidpoint = (t1: React.Touch | Touch, t2: React.Touch | Touch, rect: DOMRect) => ({
+    x: (t1.clientX + t2.clientX) / 2 - rect.left,
+    y: (t1.clientY + t2.clientY) / 2 - rect.top,
+  });
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.target !== e.currentTarget && e.touches.length === 1) return; // 1 dedo sobre un lote: lo maneja LotToken
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    if (e.touches.length === 2) {
+      const mid = touchMidpoint(e.touches[0], e.touches[1], rect);
+      touchState.current = {
+        mode: 'pinch',
+        startX: mid.x,
+        startY: mid.y,
+        originX: offset.x,
+        originY: offset.y,
+        startDistance: touchDistance(e.touches[0], e.touches[1]),
+        startZoom: zoom,
+      };
+    } else if (e.touches.length === 1) {
+      touchState.current = {
+        mode: 'pan',
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        originX: offset.x,
+        originY: offset.y,
+        startDistance: 0,
+        startZoom: zoom,
+      };
+    }
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      if (!touchState.current) return;
+      const state = touchState.current;
+
+      if (state.mode === 'pinch' && moveEvent.touches.length === 2) {
+        moveEvent.preventDefault();
+        const currentDistance = touchDistance(moveEvent.touches[0], moveEvent.touches[1]);
+        const newZoom = clampZoom(state.startZoom * (currentDistance / state.startDistance));
+        setZoom(newZoom);
+        setOffset({
+          x: state.startX - (state.startX - state.originX) * (newZoom / state.startZoom),
+          y: state.startY - (state.startY - state.originY) * (newZoom / state.startZoom),
+        });
+      } else if (state.mode === 'pan' && moveEvent.touches.length === 1) {
+        moveEvent.preventDefault();
+        setOffset({
+          x: state.originX + (moveEvent.touches[0].clientX - state.startX),
+          y: state.originY + (moveEvent.touches[0].clientY - state.startY),
+        });
+      }
+    };
+    const handleTouchEnd = (endEvent: TouchEvent) => {
+      if (endEvent.touches.length === 0) {
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleTouchEnd);
+        touchState.current = null;
+      }
+    };
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+  };
+
   const zoomButton = (factor: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
     const cx = rect ? rect.width / 2 : 0;
@@ -109,7 +186,8 @@ export const LotWorkspace: React.FC<LotWorkspaceProps> = ({ lots, onOpenDetail, 
       ref={containerRef}
       onWheel={handleWheel}
       onMouseDown={handleBackgroundMouseDown}
-      className="relative w-full h-[640px] rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden cursor-grab active:cursor-grabbing select-none"
+      onTouchStart={handleTouchStart}
+      className="relative w-full h-[640px] rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none"
     >
       <div
         className="absolute top-0 left-0"

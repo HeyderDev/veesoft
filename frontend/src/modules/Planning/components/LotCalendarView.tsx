@@ -178,13 +178,13 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-[90%] mx-auto">
+      <div className="mb-5">
         <div>
           <h3 className="font-bold text-slate-800 text-lg">Calendario de Fases</h3>
           <p className="text-xs text-slate-500 mt-1">Cronograma de todos los lotes con ciclo activo en este vivero</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 mt-3">
           {mode === 'year' && (
             <div className="flex items-center gap-1">
               <button
@@ -221,17 +221,13 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap gap-3 mb-4">
         {legend.map(item => (
           <div key={item.name} className="flex items-center gap-1.5 text-xs text-slate-600">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
             {item.name}
           </div>
         ))}
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 ml-2 pl-2 border-l border-slate-200">
-          <span className="w-2.5 h-3 rounded-full shrink-0 bg-slate-400" />
-          redondo y grueso = Siembra/Injerto/Despacho: 1 día calculado, se extiende solo si se confirma tarde en Tareas
-        </div>
       </div>
 
       {activeLots.length === 0 ? (
@@ -239,9 +235,9 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
           <p className="text-sm text-slate-400">Ningún lote de este vivero tiene un ciclo en curso todavía.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: 720 }}>
-            {/* Encabezado */}
+        <div className="overflow-x-auto lg:overflow-visible -mx-1 px-1">
+          <div className="min-w-[640px] lg:min-w-0">
+          {/* Encabezado */}
             <div className="flex">
               <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
               <div

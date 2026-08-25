@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Leaf, Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../shared/context/AuthContext';
 
 export const LoginPage = () => {
@@ -36,9 +36,7 @@ export const LoginPage = () => {
       <div className="w-full max-w-md">
         {/* Marca */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl gradient-emerald flex items-center justify-center shadow-lg shadow-emerald-600/20 mb-4">
-            <Leaf className="w-7 h-7 text-white" />
-          </div>
+          <img src="/iconoLogo.svg" alt="Veesoft" className="w-14 h-14 rounded-2xl shadow-lg shadow-emerald-600/20 mb-4" />
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Vivero ULEAM</h1>
           <p className="text-sm text-slate-500 mt-1">Sistema de Gestión de Producción</p>
         </div>

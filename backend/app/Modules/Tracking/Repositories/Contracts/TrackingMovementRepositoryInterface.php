@@ -14,9 +14,10 @@ interface TrackingMovementRepositoryInterface extends BaseRepositoryInterface
     public function paginateWithFilters(?int $lotId, int $perPage = 15): LengthAwarePaginator;
 
     /**
-     * Total de plántulas despachadas en todos los lotes (suma de `quantity`).
+     * Total de plántulas despachadas en todos los lotes (suma de `quantity`),
+     * opcionalmente acotado a los movimientos cuyo ciclo pertenece a una meta.
      */
-    public function totalQuantity(): int;
+    public function totalQuantity(?int $goalId = null): int;
 
     /**
      * Clientes con más plántulas recibidas, para el reporte general.

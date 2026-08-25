@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
 import { SupplierSpendReportPanel } from '../components/SupplierSpendReportPanel';
@@ -37,7 +39,10 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
     addCatalogItem, removeCatalogItem, updateCatalogItem, saveCatalog, isSavingCatalog,
   } = useSuppliersViewModel();
 
+  const [detailSupplier, setDetailSupplier] = useState<Supplier | null>(null);
+
   const handleOpenCatalog = (supplier: Supplier) => {
+    setDetailSupplier(null);
     if (pendingLinkItem) {
       openCatalog(supplier, { item_type: pendingLinkItem.item_type, item_id: pendingLinkItem.item_id });
       onLinkHandled?.();
@@ -45,6 +50,10 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
       openCatalog(supplier);
     }
   };
+
+  const handleOpenEvaluate = (supplier: Supplier) => { setDetailSupplier(null); openEvaluate(supplier); };
+  const handleOpenEdit = (supplier: Supplier) => { setDetailSupplier(null); openEdit(supplier); };
+  const handleDeleteFromDetail = (supplier: Supplier) => { setDetailSupplier(null); handleDelete(supplier); };
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -93,47 +102,108 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
           <p className="text-slate-500">Aún no hay proveedores registrados.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[560px]">
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="sticky top-0 z-10 bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">RUC/CI</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Score</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Certificado Orgánico</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {suppliers.map(supplier => (
-                <tr key={supplier.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-800">{supplier.name}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{supplier.tax_id}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={scoreBadgeVariant(supplier.score)}>{Number(supplier.score).toFixed(2)} / 5.00</Badge>
-                    {Number(supplier.score) < 3 && (
-                      <span className="ml-2 text-xs text-red-500">⚠ Score insuficiente</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{supplier.organic_certified ? 'Sí' : 'No'}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={supplier.status === 'active' ? 'success' : 'neutral'}>
-                      {supplier.status === 'active' ? 'Activo' : 'Inactivo'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
-                    <Button variant="ghost" onClick={() => openEvaluate(supplier)}>Evaluar</Button>
-                    <Button variant="ghost" onClick={() => handleOpenCatalog(supplier)}>Catálogo</Button>
-                    <Button variant="ghost" onClick={() => openEdit(supplier)}>Editar</Button>
-                    <Button variant="danger" onClick={() => handleDelete(supplier)}>Eliminar</Button>
-                  </td>
+        <>
+          {/* Desktop: tabla completa (lg+) */}
+          <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[560px] max-w-[90%] mx-auto">
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">RUC/CI</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Score</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Certificado Orgánico</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {suppliers.map(supplier => (
+                  <tr key={supplier.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{supplier.name}</td>
+                    <td className="px-4 py-3 text-sm text-slate-500">{supplier.tax_id}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={scoreBadgeVariant(supplier.score)}>{Number(supplier.score).toFixed(2)} / 5.00</Badge>
+                      {Number(supplier.score) < 3 && (
+                        <span className="ml-2 text-xs text-red-500 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> Score insuficiente</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-500">{supplier.organic_certified ? 'Sí' : 'No'}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={supplier.status === 'active' ? 'success' : 'neutral'}>
+                        {supplier.status === 'active' ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
+                      <Button variant="ghost" onClick={() => openEvaluate(supplier)}>Evaluar</Button>
+                      <Button variant="ghost" onClick={() => handleOpenCatalog(supplier)}>Catálogo</Button>
+                      <Button variant="ghost" onClick={() => openEdit(supplier)}>Editar</Button>
+                      <Button variant="danger" onClick={() => handleDelete(supplier)}>Eliminar</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: solo Nombre/Score, el resto vive en el detalle (lg:hidden) */}
+          <div className="lg:hidden bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[560px]">
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Score</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {suppliers.map(supplier => (
+                  <tr key={supplier.id} onClick={() => setDetailSupplier(supplier)} className="hover:bg-slate-50 cursor-pointer">
+                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{supplier.name}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={scoreBadgeVariant(supplier.score)}>{Number(supplier.score).toFixed(2)} / 5.00</Badge>
+                      {Number(supplier.score) < 3 && (
+                        <span className="ml-2 text-xs text-red-500 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> Score insuficiente</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
+
+      {/* Detalle del proveedor (mobile) — info completa y acciones al seleccionar una fila */}
+      <Modal isOpen={!!detailSupplier} onClose={() => setDetailSupplier(null)} title={detailSupplier?.name ?? ''}>
+        {detailSupplier && (
+          <div className="p-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={scoreBadgeVariant(detailSupplier.score)}>{Number(detailSupplier.score).toFixed(2)} / 5.00</Badge>
+              <Badge variant={detailSupplier.status === 'active' ? 'success' : 'neutral'}>
+                {detailSupplier.status === 'active' ? 'Activo' : 'Inactivo'}
+              </Badge>
+              {Number(detailSupplier.score) < 3 && (
+                <span className="text-xs text-red-500 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> Score insuficiente</span>
+              )}
+            </div>
+            <dl className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">RUC / CI</dt>
+                <dd className="text-slate-700">{detailSupplier.tax_id}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Certificado orgánico</dt>
+                <dd className="text-slate-700">{detailSupplier.organic_certified ? 'Sí' : 'No'}</dd>
+              </div>
+            </dl>
+            <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+              <Button variant="ghost" onClick={() => handleOpenEvaluate(detailSupplier)}>Evaluar</Button>
+              <Button variant="ghost" onClick={() => handleOpenCatalog(detailSupplier)}>Catálogo</Button>
+              <Button variant="ghost" onClick={() => handleOpenEdit(detailSupplier)}>Editar</Button>
+              <Button variant="danger" onClick={() => handleDeleteFromDetail(detailSupplier)}>Eliminar</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <SupplierSpendReportPanel />
 

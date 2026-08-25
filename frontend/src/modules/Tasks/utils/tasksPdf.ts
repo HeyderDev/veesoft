@@ -72,6 +72,24 @@ function drawDonut(
   doc.circle(cx, cy, radius * innerRatio, 'F');
 }
 
+/**
+ * Leyenda de colores junto a la dona: un cuadrito relleno (doc.rect) en vez
+ * del glyph "■" — la fuente estándar helvetica de jsPDF no trae ese carácter
+ * y lo renderiza corrompido/espaciado en los lectores de PDF.
+ */
+function drawLegend(doc: jsPDF, x: number, y: number, items: { label: string; color: [number, number, number] }[]): void {
+  let itemY = y;
+  items.forEach(item => {
+    doc.setFillColor(...item.color);
+    doc.rect(x, itemY - 2.5, 3, 3, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...SLATE_500);
+    doc.text(item.label, x + 5, itemY);
+    itemY += 5;
+  });
+}
+
 export function generateActivitiesReportPdf(filters: ReportQueryFilters, result: ReportQueryResult, viveroName?: string): void {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const marginX = 16;
@@ -124,10 +142,10 @@ export function generateActivitiesReportPdf(filters: ReportQueryFilters, result:
     { value: result.completed, color: EMERALD_500 },
     { value: result.pending, color: SLATE_200 },
   ]);
-  doc.setFontSize(8);
-  doc.setTextColor(...SLATE_500);
-  doc.text('■ Realizadas', donutCx - 30, donutCy + 22);
-  doc.text('■ Pendientes', donutCx - 30, donutCy + 27);
+  drawLegend(doc, donutCx - 30, donutCy + 22, [
+    { label: 'Realizadas', color: EMERALD_500 },
+    { label: 'Pendientes', color: SLATE_200 },
+  ]);
 
   y += 20;
 

@@ -4,6 +4,8 @@ namespace App\Modules\Tracking\Services;
 
 use App\Modules\Planning\Models\Lot;
 use App\Modules\Planning\Services\LotCycleService;
+use App\Modules\Planning\Services\ProductionGoalService;
+use App\Modules\Shared\Support\CurrentVivero;
 use App\Modules\Tracking\Models\TrackingMovement;
 use App\Modules\Tracking\Repositories\Contracts\TrackingLotRepositoryInterface;
 use App\Modules\Tracking\Repositories\Contracts\TrackingMovementRepositoryInterface;
@@ -14,22 +16,38 @@ class TrackingLotService
         private TrackingLotRepositoryInterface $lotRepository,
         private TrackingMovementRepositoryInterface $movementRepository,
         private LotCycleService $lotCycleService,
+        private ProductionGoalService $productionGoalService,
+        private CurrentVivero $currentVivero,
     ) {}
 
     /**
      * Lotes con la fase actual de su ciclo activo anidada (nombre, color, fechas)
      * — alimenta tanto la etiqueta de fase junto a "Ocupado" como el indicador de
-     * "listo para despachar" en la vista de tarjetas de Seguimiento.
+     * "listo para despachar" en la vista de tarjetas de Seguimiento. Con $goalId,
+     * solo lotes que tienen (o tuvieron) un ciclo bajo esa meta — el resto de los
+     * datos de cada lote (fase actual, etc.) sigue reflejando su estado real,
+     * no un recorte histórico por meta.
      *
      * @return array<int, array<string, mixed>>
      */
-    public function list(): array
+    public function list(?int $goalId = null): array
     {
-        return $this->lotRepository->allWithVivero()
+        return $this->lotRepository->allWithVivero($goalId)
             ->map(fn (Lot $lot) => array_merge($lot->toArray(), [
                 'current_phase' => $this->currentPhaseData($lot),
+                'despacho_planned_date' => $this->despachoPlannedDate($lot),
             ]))
             ->all();
+    }
+
+    /**
+     * Metas del vivero para el selector de meta de Seguimiento — mismo listado
+     * que ProductionGoalService::listForVivero() usa Tasks (ver
+     * OperationalTaskService::getGoalsForSelector()).
+     */
+    public function goals(): array
+    {
+        return $this->productionGoalService->listForVivero($this->currentVivero->id());
     }
 
     private function currentPhaseData(Lot $lot): ?array
@@ -52,6 +70,24 @@ class TrackingLotService
             'planned_end_date' => $phase->planned_end_date,
             'gate_completed_at' => $phase->gate_completed_at,
         ];
+    }
+
+    /**
+     * Fecha proyectada de la fase DESP del ciclo activo, esté o no todavía "en
+     * curso" esa fase — a diferencia de currentPhaseData() (que solo devuelve
+     * la fase que está corriendo ahora), esto alimenta el panel de "próximas
+     * fechas de despacho" de Seguimiento con una proyección hacia adelante para
+     * cualquier lote en producción, no solo los que ya llegaron al despacho.
+     */
+    private function despachoPlannedDate(Lot $lot): ?string
+    {
+        if (! $lot->activeCycle) {
+            return null;
+        }
+
+        $despPhase = $lot->activeCycle->phases->first(fn ($p) => $p->phase->code === 'DESP');
+
+        return $despPhase?->planned_start_date;
     }
 
     /**

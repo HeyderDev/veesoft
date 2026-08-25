@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
-import { trackingService } from '../../Tracking/services/trackingService';
 import { planningService } from '../services/planningService';
-import type { Lote, LotCycleHistoryEntry, ViveroSummary } from '../types';
+import type { Lote, ViveroSummary } from '../types';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -21,16 +20,6 @@ export function useResumenViewModel(viveroId: number) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const { success, error } = useToast();
 
-  // "Plántulas despachadas" de la meta activa: dato propio del módulo Tracking, no
-  // se deriva del cierre de ciclo de un lote. Mientras Tracking no responda, la card
-  // de Resumen debe esperar (undefined) en vez de mostrar un número provisional.
-  const [dispatchedSeedlings, setDispatchedSeedlings] = useState<number | undefined>(undefined);
-  const [isLoadingDispatched, setIsLoadingDispatched] = useState(false);
-
-  // Histórico "lotes por meta, y dentro de cada meta por ciclo" (Fase 5).
-  const [goalLotCycles, setGoalLotCycles] = useState<LotCycleHistoryEntry[]>([]);
-  const [isLoadingGoalLotCycles, setIsLoadingGoalLotCycles] = useState(false);
-
   const fetchSummary = async (year: number) => {
     setIsLoadingSummary(true);
     try {
@@ -40,31 +29,6 @@ export function useResumenViewModel(viveroId: number) {
       ]);
       setSummary(resSummary.data);
       setLots((resLots.data || []).filter(l => l.vivero_id === viveroId));
-
-      const openGoalId = resSummary.data.open_goal?.id;
-      setDispatchedSeedlings(undefined);
-      setGoalLotCycles([]);
-      if (openGoalId) {
-        setIsLoadingDispatched(true);
-        try {
-          const resDispatched = await trackingService.getDispatchSummary(openGoalId);
-          setDispatchedSeedlings(resDispatched.data.dispatched_seedlings);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setIsLoadingDispatched(false);
-        }
-
-        setIsLoadingGoalLotCycles(true);
-        try {
-          const resGoalLotCycles = await planningService.getGoalLotCycles(openGoalId);
-          setGoalLotCycles(resGoalLotCycles.data || []);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setIsLoadingGoalLotCycles(false);
-        }
-      }
     } catch (e) {
       error('Error al cargar el resumen del vivero');
       console.error(e);
@@ -121,8 +85,6 @@ export function useResumenViewModel(viveroId: number) {
 
   return {
     summary, lots, isLoadingSummary,
-    dispatchedSeedlings, isLoadingDispatched,
-    goalLotCycles, isLoadingGoalLotCycles,
     selectedYear, setSelectedYear,
     goalForm, setGoalForm, isSavingGoal, handleCreateGoal,
     rescheduleTarget, openReschedule, closeReschedule, isReschedulingSaving, handleConfirmReschedule,

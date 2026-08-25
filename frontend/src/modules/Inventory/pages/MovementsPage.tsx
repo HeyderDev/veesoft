@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RefreshCw, Search } from 'lucide-react';
 import { useMovementsViewModel } from '../viewmodels/useMovementsViewModel';
 
 export default function MovementsPage() {
@@ -100,14 +101,14 @@ export default function MovementsPage() {
             onClick={handleClear}
             className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 font-bold text-xs text-slate-700 transition"
           >
-            🔄 Limpiar
+            <RefreshCw className="w-3.5 h-3.5 inline mr-1" /> Limpiar
           </button>
         </div>
 
         {!hasSearched ? (
           <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">🔍</span>
+              <Search className="w-6 h-6 text-slate-400" />
             </div>
             <h4 className="text-slate-800 font-bold text-lg mb-2">Busca en el historial</h4>
             <p className="text-slate-500 text-sm max-w-md">

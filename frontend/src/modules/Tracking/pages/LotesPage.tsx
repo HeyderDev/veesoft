@@ -3,6 +3,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { LotQrModal } from '../components/LotQrModal';
+import { ProductionPanoramaPanel } from '../components/ProductionPanoramaPanel';
 import { useLotesViewModel } from '../viewmodels/useLotesViewModel';
 import { LotMovimientosPage } from './LotMovimientosPage';
 import type { TrackingLot } from '../types';
@@ -12,15 +13,6 @@ const statusLabels: Record<string, string> = {
   occupied: 'Ocupado',
   inactive: 'Inactivo',
 };
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—';
-  try {
-    return new Date(value).toLocaleDateString('es-EC', { year: 'numeric', month: 'short', day: 'numeric' });
-  } catch {
-    return value;
-  }
-}
 
 interface LotesPageProps {
   /** Lote a abrir directamente (por ejemplo, tras escanear su QR) y un contador
@@ -94,7 +86,10 @@ const LotCard: React.FC<LotCardProps> = ({ lot, isDispatchTooltipOpen, onToggleD
 };
 
 export const LotesPage: React.FC<LotesPageProps> = ({ openLotId, openLotNonce }) => {
-  const { lots, summary, isLoading, enteredLotId, setEnteredLotId, qrLot, setQrLot } = useLotesViewModel();
+  const {
+    lots, summary, isLoading, enteredLotId, setEnteredLotId, qrLot, setQrLot,
+    goals, selectedGoalId, selectGoal,
+  } = useLotesViewModel();
   const [dispatchTooltipLotId, setDispatchTooltipLotId] = useState<number | null>(null);
 
   React.useEffect(() => {
@@ -108,13 +103,31 @@ export const LotesPage: React.FC<LotesPageProps> = ({ openLotId, openLotNonce })
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Lotes</h1>
-        <p className="text-sm text-slate-500 mt-1">Lotes administrados en Planificación — registra salidas y genera su QR aquí.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Lotes</h1>
+          <p className="text-sm text-slate-500 mt-1">Lotes administrados en Planificación — registra salidas y genera su QR aquí.</p>
+        </div>
+        {goals.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Meta de producción</label>
+            <select
+              value={selectedGoalId ?? ''}
+              onChange={e => selectGoal(Number(e.target.value))}
+              className="w-96 max-w-full text-sm font-medium text-slate-700 border border-slate-300 rounded-lg pl-3 pr-8 py-2.5 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            >
+              {goals.map(g => (
+                <option key={g.id} value={g.id}>
+                  {!g.finished_at ? `Meta actual: ${g.title}` : g.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
-        <div className="flex-1 w-full">
+        <div className="w-full lg:w-[70%]">
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-40 w-full rounded-xl" />)}
@@ -139,45 +152,8 @@ export const LotesPage: React.FC<LotesPageProps> = ({ openLotId, openLotNonce })
           )}
         </div>
 
-        <div className="w-full lg:w-80 shrink-0 space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-700 mb-4">Panorama de producción</h2>
-            {isLoading || !summary ? (
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-slate-400">Plántulas en producción (en ciclo)</p>
-                  <p className="text-2xl font-bold text-emerald-600">{summary.total_in_production.toLocaleString('es')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Plántulas ya despachadas</p>
-                  <p className="text-2xl font-bold text-slate-700">{summary.total_dispatched.toLocaleString('es')}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">Próximas fechas de despacho</h2>
-            {isLoading || !summary ? (
-              <Skeleton className="h-16 w-full" />
-            ) : summary.upcoming_dispatches.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">No hay lotes próximos a despachar.</p>
-            ) : (
-              <ul className="space-y-2.5">
-                {summary.upcoming_dispatches.map(d => (
-                  <li key={d.lot_id} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 truncate">{d.lot_name}</span>
-                    <span className="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">{formatDate(d.planned_date)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        <div className="w-full lg:w-[30%] space-y-4">
+          <ProductionPanoramaPanel summary={summary} isLoading={isLoading} />
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Download } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
@@ -61,7 +62,7 @@ export const PurchaseSpendReportPanel: React.FC = () => {
           <p className="text-xs text-slate-500 mt-0.5">Gasto total y proveedores de la meta en curso</p>
         </div>
         {report && report.orders_count > 0 && (
-          <Button variant="secondary" onClick={() => downloadReportCsv(report)}>⬇ Descargar CSV</Button>
+          <Button variant="secondary" onClick={() => downloadReportCsv(report)}><Download className="w-4 h-4 mr-1.5" /> Descargar CSV</Button>
         )}
       </div>
 

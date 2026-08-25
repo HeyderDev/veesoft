@@ -14,11 +14,12 @@ interface TrackingLotRepositoryInterface
 {
     /**
      * Todos los lotes existentes, para la vista de tarjetas — no se pagina porque
-     * no se espera un volumen que lo justifique todavía.
+     * no se espera un volumen que lo justifique todavía. Con $goalId, solo los
+     * lotes que tienen (o tuvieron) un ciclo bajo esa meta.
      *
      * @return Collection<int, Lot>
      */
-    public function allWithVivero(): Collection;
+    public function allWithVivero(?int $goalId = null): Collection;
 
     public function find(int $id): Lot;
 }

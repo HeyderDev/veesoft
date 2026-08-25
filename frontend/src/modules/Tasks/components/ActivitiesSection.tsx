@@ -6,6 +6,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { TaskFormSlideOver, StatusBadge, PriorityBadge } from './TaskFormSlideOver';
 import { ActivitiesCalendar } from './ActivitiesCalendar';
+import { TotalActivitiesStat } from './TotalActivitiesStat';
 import { useTasksViewModel } from '../viewmodels/useTasksViewModel';
 import { tasksService } from '../services/tasksService';
 import type { ActivitiesSummaryEntry, LotInfo, OperationalTask } from '../types';
@@ -65,8 +66,35 @@ const SummaryCard: React.FC<{ label: string; data: ActivitiesSummaryEntry; onCli
   );
 };
 
-// ---- Fila de actividad ----
+// ---- Fila de actividad (mobile) — solo Actividad/Estado; el resto vive en el detalle (TaskDetailModal) ----
 interface TaskRowProps {
+  task: OperationalTask;
+  lots: LotInfo[];
+  onSelect: (task: OperationalTask) => void;
+}
+
+const TaskRow: React.FC<TaskRowProps> = ({ task, lots, onSelect }) => {
+  const lot = lots.find(l => l.id === task.lot_id);
+
+  return (
+    <tr onClick={() => onSelect(task)} className="hover:bg-slate-50 transition-colors cursor-pointer">
+      <td className="px-4 py-3">
+        <div className="font-medium text-slate-800 text-sm">{task.title}</div>
+        {task.lot_id && (
+          <div className="text-xs text-emerald-600 font-medium mt-1">
+            Lote: {lot?.name ?? task.lot_id}
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <StatusBadge status={task.status} />
+      </td>
+    </tr>
+  );
+};
+
+// ---- Fila de actividad (desktop, lg+) — todas las columnas y acciones inline ----
+interface TaskRowFullProps {
   task: OperationalTask;
   lots: LotInfo[];
   users: { id: number; name: string }[];
@@ -76,7 +104,7 @@ interface TaskRowProps {
   canManage: boolean;
 }
 
-const TaskRow: React.FC<TaskRowProps> = ({ task, lots, users, onEdit, onComplete, onDelete, canManage }) => {
+const TaskRowFull: React.FC<TaskRowFullProps> = ({ task, lots, users, onEdit, onComplete, onDelete, canManage }) => {
   const assignedUser = users.find(u => u.id === task.assigned_to);
   const lot = lots.find(l => l.id === task.lot_id);
   const needsResources = !!task.activity_type?.is_system && (!task.resources || task.resources.length === 0);
@@ -167,6 +195,93 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, lots, users, onEdit, onComplete
         </div>
       </td>
     </tr>
+  );
+};
+
+// ---- Detalle de actividad — se abre al seleccionar una fila del listado ----
+interface TaskDetailModalProps {
+  task: OperationalTask | null;
+  lots: LotInfo[];
+  users: { id: number; name: string }[];
+  canManage: boolean;
+  onClose: () => void;
+  onEdit: (task: OperationalTask) => void;
+  onComplete: (task: OperationalTask) => void;
+  onDelete: (id: number) => void;
+}
+
+const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, lots, users, canManage, onClose, onEdit, onComplete, onDelete }) => {
+  const assignedUser = task ? users.find(u => u.id === task.assigned_to) : undefined;
+  const lot = task ? lots.find(l => l.id === task.lot_id) : undefined;
+  const needsResources = !!task?.activity_type?.is_system && (!task.resources || task.resources.length === 0);
+
+  return (
+    <Modal isOpen={!!task} onClose={onClose} title={task?.title ?? ''} maxWidthClassName="max-w-lg">
+      {task && (
+        <div className="p-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={task.status} />
+            <PriorityBadge priority={task.priority} />
+          </div>
+
+          {task.description && <p className="text-sm text-slate-600">{task.description}</p>}
+
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Fecha planificada</dt>
+              <dd className="text-slate-700">{formatDate(task.planned_date)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Asignado a</dt>
+              <dd className="text-slate-700">
+                {assignedUser ? assignedUser.name : <span className="text-slate-400 italic">Sin asignar</span>}
+              </dd>
+            </div>
+            {task.lot_id && (
+              <div>
+                <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Lote</dt>
+                <dd className="text-emerald-600 font-medium">{lot?.name ?? task.lot_id}</dd>
+              </div>
+            )}
+            {task.resources && task.resources.length > 0 && (
+              <div>
+                <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Recursos</dt>
+                <dd className="text-slate-700">
+                  {task.resources.filter(r => r.resource_type === 'tool').length} herr. · {task.resources.filter(r => r.resource_type === 'supply').length} ins.
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          {needsResources && (
+            <button
+              type="button"
+              onClick={() => onEdit(task)}
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+            >
+              Faltan herramientas/insumos — completar
+            </button>
+          )}
+
+          <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+            {task.status !== 'completed' && (
+              <Button id={`complete-task-${task.id}`} onClick={() => onComplete(task)}>
+                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Marcar como realizada
+              </Button>
+            )}
+            {canManage && (
+              <>
+                <Button id={`edit-task-${task.id}`} variant="secondary" onClick={() => onEdit(task)}>Editar</Button>
+                <Button id={`delete-task-${task.id}`} variant="danger" onClick={() => onDelete(task.id)}>Eliminar</Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 };
 
@@ -264,6 +379,11 @@ export const ActivitiesSection: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [activeLabel, setActiveLabel] = useState('');
+  const [detailTask, setDetailTask] = useState<OperationalTask | null>(null);
+
+  const handleEditFromDetail = (task: OperationalTask) => { setDetailTask(null); vm.openEdit(task); };
+  const handleCompleteFromDetail = (task: OperationalTask) => { setDetailTask(null); vm.openComplete(task); };
+  const handleDeleteFromDetail = (id: number) => { setDetailTask(null); vm.openDelete(id); };
 
   const openScope = (scope: typeof vm.scopeFilter, label: string) => {
     vm.setScopeFilter(scope);
@@ -289,20 +409,19 @@ export const ActivitiesSection: React.FC = () => {
   };
 
   const overall = vm.summary?.overall ?? { completed: 0, total: 0 };
-  const overallPct = overall.total > 0 ? Math.round((overall.completed / overall.total) * 100) : 0;
 
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Dato de TOTAL — sin recuadro, más llamativo que las cards individuales */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Total de actividades</p>
             {vm.goals.length > 0 && (
               <select
                 value={vm.selectedGoalId ?? ''}
                 onChange={e => vm.selectGoal(Number(e.target.value))}
-                className="text-xs font-medium text-slate-600 border border-slate-200 rounded-md pl-2 pr-6 py-0.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="text-sm font-medium text-slate-700 border border-slate-300 rounded-lg pl-3 pr-8 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 {vm.goals.map(g => (
                   <option key={g.id} value={g.id}>
@@ -313,16 +432,11 @@ export const ActivitiesSection: React.FC = () => {
             )}
           </div>
           {vm.isLoadingSummary ? (
-            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-16 w-64" />
           ) : (
             <>
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-extrabold text-emerald-600 tracking-tight leading-none">{overall.completed}</span>
-                <span className="text-2xl font-medium text-slate-300 leading-none">/ {overall.total}</span>
-                {overall.total > 0 && <span className="text-base font-bold text-emerald-500 ml-1">{overallPct}%</span>}
-              </div>
-              <div className="mt-2.5 h-1.5 w-72 max-w-full rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${overallPct}%` }} />
+              <div className="max-w-xs">
+                <TotalActivitiesStat completed={overall.completed} total={overall.total} />
               </div>
               {overall.total === 0 && !vm.summary?.open_goal && (
                 <p className="text-xs text-slate-400 mt-2 max-w-sm">
@@ -407,44 +521,71 @@ export const ActivitiesSection: React.FC = () => {
 
               <h3 className="font-bold text-slate-800">{activeLabel}</h3>
 
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                {vm.isLoadingTasks ? (
-                  <div className="p-6 space-y-3">
-                    {[1, 2, 3].map(i => <div key={i} className="flex gap-4 items-center"><Skeleton className="h-4 flex-1" /></div>)}
+              {vm.isLoadingTasks ? (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden max-w-[90%] mx-auto p-6 space-y-3">
+                  {[1, 2, 3].map(i => <div key={i} className="flex gap-4 items-center"><Skeleton className="h-4 flex-1" /></div>)}
+                </div>
+              ) : vm.tasks.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden max-w-[90%] mx-auto p-8 text-center text-slate-500">No se encontraron actividades con los filtros actuales.</div>
+              ) : (
+                <>
+                  {/* Desktop: tabla completa (lg+) */}
+                  <div className="hidden lg:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden max-w-[90%] mx-auto">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50/60">
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actividad</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Prioridad</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha planif.</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Asignado a</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {vm.tasks.map(task => (
+                            <TaskRowFull
+                              key={task.id}
+                              task={task}
+                              lots={lots}
+                              users={vm.users}
+                              onEdit={vm.openEdit}
+                              onComplete={vm.openComplete}
+                              onDelete={vm.openDelete}
+                              canManage={isAdmin}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                ) : vm.tasks.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500">No se encontraron actividades con los filtros actuales.</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="border-b border-slate-100 bg-slate-50/60">
-                          <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actividad</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Prioridad</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha planif.</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Asignado a</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {vm.tasks.map(task => (
-                          <TaskRow
-                            key={task.id}
-                            task={task}
-                            lots={lots}
-                            users={vm.users}
-                            onEdit={vm.openEdit}
-                            onComplete={vm.openComplete}
-                            onDelete={vm.openDelete}
-                            canManage={isAdmin}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
+
+                  {/* Mobile: solo Actividad/Estado, el resto vive en el detalle (lg:hidden) */}
+                  <div className="lg:hidden bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50/60">
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actividad</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {vm.tasks.map(task => (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              lots={lots}
+                              onSelect={setDetailTask}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
               {vm.lastPage > 1 && (
                 <div className="flex justify-center gap-2">
                   <Button variant="secondary" disabled={vm.currentPage === 1} onClick={() => vm.fetchTasks(vm.currentPage - 1)}>← Anterior</Button>
@@ -539,6 +680,18 @@ export const ActivitiesSection: React.FC = () => {
         setForm={f => vm.setEditForm(f)}
         isSaving={vm.isSavingEdit}
         onSubmit={vm.handleSaveEdit}
+      />
+
+      {/* Modal: Detalle de la actividad seleccionada en el listado */}
+      <TaskDetailModal
+        task={detailTask}
+        lots={lots}
+        users={vm.users}
+        canManage={isAdmin}
+        onClose={() => setDetailTask(null)}
+        onEdit={handleEditFromDetail}
+        onComplete={handleCompleteFromDetail}
+        onDelete={handleDeleteFromDetail}
       />
 
       {/* Modal: Confirmar completar (simple, o doble confirmación de Despacho) */}
