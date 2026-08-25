@@ -41,6 +41,30 @@ class DatabaseSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+
+        // Usuario admin adicional
+        User::firstOrCreate(
+            ['email' => 'administrador@vivero.com'],
+            [
+                'first_name' => 'Administrador',
+                'last_name' => 'General',
+                'password' => Hash::make('password123'),
+                'role_id' => $adminRole->id,
+                'status' => 'active',
+            ]
+        );
+
+        // Usuario operario adicional
+        User::firstOrCreate(
+            ['email' => 'trabajador@vivero.com'],
+            [
+                'first_name' => 'Trabajador',
+                'last_name' => 'General',
+                'password' => Hash::make('password123'),
+                'role_id' => $operatorRole->id,
+                'status' => 'active',
+            ]
+        );
         // Plantillas de actividad obligatorias (Siembra/Injerto/Despacho) para
         // cada vivero ya existente — ver SystemActivityTypesSeeder.
         $this->call(SystemActivityTypesSeeder::class);
