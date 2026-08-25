@@ -84,4 +84,9 @@ class SupplierController extends BaseApiController
     {
         return $this->successResponse($this->supplierService->certificateAlerts(), 'Alertas de certificados obtenidas');
     }
+
+    public function spendSummary()
+    {
+        return $this->successResponse($this->supplierService->spendSummary(), 'Reporte de proveedores obtenido');
+    }
 }

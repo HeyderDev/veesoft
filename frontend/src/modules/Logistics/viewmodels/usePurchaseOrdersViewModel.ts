@@ -16,13 +16,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 
 const emptyItem: PurchaseOrderItemInput = { item_type: 'supply', item_id: '', quantity: 1 };
 
-/**
- * `refreshSignal` fuerza un refetch cuando cambia (además del refetch normal por
- * `isAdmin`): lo usa la pestaña "Compras" para refrescar Órdenes justo después de
- * aprobar una Solicitud en la sección hermana, ya que ambas viven en la misma
- * pantalla con estado independiente (ver `LogisticsTabs`).
- */
-export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
+export function usePurchaseOrdersViewModel() {
   const { isAdmin } = useAuth();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -39,7 +33,7 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
         logisticsService.getPurchaseOrders(),
         isAdmin ? logisticsService.getSuppliers() : Promise.resolve({ data: [] as Supplier[] }),
         logisticsService.getPendingDeliveries(),
-        isAdmin ? logisticsService.getUnregisteredItems() : Promise.resolve({ data: [] as UnregisteredItem[] }),
+        logisticsService.getUnregisteredItems(),
       ]);
       setOrders(ordersRes.data || []);
       setSuppliers(suppliersRes.data || []);
@@ -53,7 +47,7 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
     }
   };
 
-  useEffect(() => { fetchAll(); }, [isAdmin, refreshSignal]);
+  useEffect(() => { fetchAll(); }, [isAdmin]);
 
   // ---- Orden: crear ----
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -61,11 +55,21 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
     supplier_id: '', estimated_delivery_date: '',
   });
   const [items, setItems] = useState<PurchaseOrderItemInput[]>([{ ...emptyItem }]);
+  /**
+   * Filas cuya cantidad no es editable, en paralelo a `items`: se activa para el ítem
+   * que viene del aviso "Ítems sin orden de compra" (`openCreateForItem`) — la orden
+   * que lo reconcilia debe emitirse exactamente por la cantidad ya registrada en
+   * Inventory, para que lo comprado cuadre con lo que ya está físicamente ahí.
+   */
+  const [quantityLocked, setQuantityLocked] = useState<boolean[]>([false]);
+  const [reconcilesExistingInventory, setReconcilesExistingInventory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const openCreate = () => {
     setForm({ supplier_id: '', estimated_delivery_date: '' });
     setItems([{ ...emptyItem }]);
+    setQuantityLocked([false]);
+    setReconcilesExistingInventory(false);
     setCatalog([]);
     setIsFormOpen(true);
   };
@@ -73,20 +77,39 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
   /**
    * Abre "Nueva Orden" con el proveedor y el ítem de la notificación de "Ítems
    * sin orden de compra" ya preseleccionados (solo aplica cuando ese ítem ya
-   * está en el catálogo de al menos un proveedor, ver `supplier_id`).
+   * está en el catálogo de al menos un proveedor, ver `supplier_id`). La cantidad
+   * se fija a la ya registrada en Inventory y queda bloqueada (`quantityLocked`).
    */
   const openCreateForItem = (item: UnregisteredItem) => {
     if (!item.supplier_id) return;
     setForm({ supplier_id: item.supplier_id, estimated_delivery_date: '' });
-    setItems([{ item_type: item.item_type, item_id: item.item_id, quantity: 1 }]);
+    setItems([{ item_type: item.item_type, item_id: item.item_id, quantity: Number(item.quantity) }]);
+    setQuantityLocked([true]);
+    setReconcilesExistingInventory(true);
     setCatalog([]);
     setIsFormOpen(true);
   };
 
-  const closeForm = () => setIsFormOpen(false);
+  const closeForm = () => {
+    // Restablecer el proveedor también es importante: si se abre luego una orden con
+    // el mismo proveedor, el efecto de catálogo debe ejecutarse de nuevo y no dejar
+    // el selector vacío con el texto "Selecciona un ítem".
+    setIsFormOpen(false);
+    setForm({ supplier_id: '', estimated_delivery_date: '' });
+    setItems([{ ...emptyItem }]);
+    setQuantityLocked([false]);
+    setReconcilesExistingInventory(false);
+    setCatalog([]);
+  };
 
-  const addItemRow = () => setItems(prev => [...prev, { ...emptyItem }]);
-  const removeItemRow = (index: number) => setItems(prev => prev.filter((_, i) => i !== index));
+  const addItemRow = () => {
+    setItems(prev => [...prev, { ...emptyItem }]);
+    setQuantityLocked(prev => [...prev, false]);
+  };
+  const removeItemRow = (index: number) => {
+    setItems(prev => prev.filter((_, i) => i !== index));
+    setQuantityLocked(prev => prev.filter((_, i) => i !== index));
+  };
   const updateItemRow = (index: number, patch: Partial<PurchaseOrderItemInput>) => {
     setItems(prev => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   };
@@ -113,6 +136,7 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
         supplier_id: form.supplier_id,
         estimated_delivery_date: form.estimated_delivery_date || undefined,
         items,
+        reconciles_existing_inventory: reconcilesExistingInventory,
       });
       success('Orden de compra generada exitosamente');
       await fetchAll();
@@ -163,7 +187,7 @@ export function usePurchaseOrdersViewModel(refreshSignal?: unknown) {
 
   return {
     orders, suppliers, pendingDeliveries, unregisteredItems, catalog, isLoading, fetchAll,
-    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
+    isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, quantityLocked, reconcilesExistingInventory, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   };
 }

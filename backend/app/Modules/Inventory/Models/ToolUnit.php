@@ -17,6 +17,7 @@ class ToolUnit extends Model
     protected $fillable = [
         'vivero_id',
         'tool_id',
+        'purchase_order_item_id',
         'code',
         'status',
     ];
@@ -24,6 +25,11 @@ class ToolUnit extends Model
     public function tool(): BelongsTo
     {
         return $this->belongsTo(Tool::class);
+    }
+
+    public function purchaseOrderItem(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Logistics\Models\PurchaseOrderItem::class);
     }
 
     public function movements(): HasMany

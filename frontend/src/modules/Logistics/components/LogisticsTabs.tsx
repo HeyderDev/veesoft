@@ -1,18 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { PurchaseOrdersPage } from '../pages/PurchaseOrdersPage';
-import { PurchaseRequestsPage } from '../pages/PurchaseRequestsPage';
 import { PlanningOverviewPage } from '../pages/PlanningOverviewPage';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { useLogisticsNav, logisticsSectionTabs as sectionTabs } from '../hooks/useLogisticsNav';
 import type { UnregisteredItem } from '../types';
-
-type LogisticsSection = 'planning-overview' | 'suppliers' | 'purchases';
-
-const sectionTabs: { id: LogisticsSection; label: string; icon: string }[] = [
-  { id: 'planning-overview', label: 'Panorama', icon: '📊' },
-  { id: 'suppliers', label: 'Proveedores', icon: '🤝' },
-  { id: 'purchases', label: 'Compras', icon: '📦' },
-];
 
 interface LogisticsTabsProps {
   onTabChange?: (tabLabel: string) => void;
@@ -20,15 +12,14 @@ interface LogisticsTabsProps {
 
 /**
  * Logistics no tiene navegación tipo drill-down (no hay un "elige X y luego navega sus
- * secciones" como Planning con sus viveros) — es un módulo plano de 3 pantallas.
+ * secciones" como Planning con sus viveros) — es un módulo plano de 3 pantallas. La
+ * sección activa vive en `useLogisticsNav` (compartida con `LogisticsSidebarSections`
+ * en el Sidebar), no en estado local — mismo patrón que Planning/Tasks/Inventory.
  */
 export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => {
   const { isAdmin } = useAuth();
-  const [activeSection, setActiveSection] = useState<LogisticsSection>(
-    isAdmin ? 'planning-overview' : 'purchases'
-  );
+  const { activeSection, setActiveSection } = useLogisticsNav();
   const [catalogLinkRequest, setCatalogLinkRequest] = useState<UnregisteredItem | null>(null);
-  const [ordersRefreshSignal, setOrdersRefreshSignal] = useState(0);
 
   const handleRequestCatalogLink = (item: UnregisteredItem) => {
     setCatalogLinkRequest(item);
@@ -57,15 +48,7 @@ export const LogisticsTabs: React.FC<LogisticsTabsProps> = ({ onTabChange }) => 
         />
       );
       case 'purchases': return (
-        <div className="space-y-10">
-          <PurchaseRequestsPage onRequestApproved={() => setOrdersRefreshSignal(signal => signal + 1)} />
-          <div className="border-t border-slate-200 pt-8">
-            <PurchaseOrdersPage
-              onRequestSupplierCatalogLink={handleRequestCatalogLink}
-              refreshSignal={ordersRefreshSignal}
-            />
-          </div>
-        </div>
+        <PurchaseOrdersPage onRequestSupplierCatalogLink={handleRequestCatalogLink} />
       );
       default: return <PlanningOverviewPage />;
     }
