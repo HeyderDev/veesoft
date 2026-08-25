@@ -1,7 +1,6 @@
 <?php
 
 use App\Modules\Logistics\Controllers\PurchaseOrderController;
-use App\Modules\Logistics\Controllers\PurchaseRequestController;
 use App\Modules\Logistics\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,17 +13,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
-    // Solicitudes: cualquier usuario autenticado puede consultar las propias;
-    // solo Operario las crea y solo Admin las revisa.
-    Route::get('purchase-requests', [PurchaseRequestController::class, 'index']);
-    Route::get('purchase-requests/{purchase_request}', [PurchaseRequestController::class, 'show']);
-    Route::middleware('role:Operario')->post('purchase-requests', [PurchaseRequestController::class, 'store']);
-    Route::middleware('role:Admin')->post('purchase-requests/{purchase_request}/review', [PurchaseRequestController::class, 'review']);
-
     // Órdenes: Admin y Operario pueden consultar y registrar la recepción;
     // la creación se mantiene exclusivamente en Admin.
     Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
     Route::get('purchase-orders/pending-deliveries', [PurchaseOrderController::class, 'pendingDeliveries']);
+    // El aviso es de solo lectura: ambos roles deben conocer los recursos de
+    // Inventario que todavía no tienen una orden de compra registrada.
+    Route::get('purchase-orders/unregistered-items', [PurchaseOrderController::class, 'unregisteredItems']);
 
     Route::middleware('role:Admin')->group(function () {
         // Proveedores
@@ -33,11 +28,15 @@ Route::middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
         Route::get('suppliers/{supplier}/catalog', [SupplierController::class, 'catalog']);
         Route::put('suppliers/{supplier}/catalog', [SupplierController::class, 'updateCatalog']);
         Route::get('suppliers-certificates/alerts', [SupplierController::class, 'certificateAlerts']);
+        Route::get('suppliers-spend-summary', [SupplierController::class, 'spendSummary']);
         Route::apiResource('suppliers', SupplierController::class);
 
         // Órdenes de compra
-        Route::get('purchase-orders/unregistered-items', [PurchaseOrderController::class, 'unregisteredItems']);
         Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
+
+        // Reporte de gasto: anual o para un rango de fechas arbitrario (p.ej. el de una
+        // Meta de Producción de Planning, resuelto por el frontend — ver Logistics.md §7).
+        Route::get('purchase-orders/spend-report', [PurchaseOrderController::class, 'spendReport']);
     });
 
     Route::get('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'show']);

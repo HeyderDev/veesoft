@@ -9,7 +9,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() === 'mysql') {
+        // Reconciliación exclusiva de MySQL, ver 2026_08_23_100200_ensure_supplier_supply_foreign_keys.php.
+        if (DB::connection()->getDriverName() === 'mysql') {
             DB::statement('ALTER TABLE tools ENGINE=InnoDB');
         }
 

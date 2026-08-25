@@ -26,13 +26,14 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'vivero_id', 'order_number', 'supplier_id', 'created_by', 'status',
-        'issued_at', 'estimated_delivery_date', 'total',
+        'issued_at', 'estimated_delivery_date', 'total', 'reconciles_existing_inventory',
     ];
 
     protected $casts = [
         'issued_at' => 'datetime',
         'estimated_delivery_date' => 'date:Y-m-d',
         'total' => 'decimal:2',
+        'reconciles_existing_inventory' => 'boolean',
     ];
 
     public function supplier(): BelongsTo
