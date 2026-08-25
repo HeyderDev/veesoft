@@ -30,6 +30,10 @@
 }
 
 @layer utilities {
+  .swal2-container {
+    z-index: 10000 !important;
+  }
+
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
