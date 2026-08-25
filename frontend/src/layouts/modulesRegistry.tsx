@@ -54,5 +54,6 @@ export const modulesRegistry: ModuleDescriptor[] = [
   },
   { id: 'tracking', name: 'Seguimiento', icon: '🌱', active: true },
   { id: 'reportes', name: 'Reportes', icon: '📈', active: false },
-  { id: 'configuracion', name: 'Configuración', icon: '⚙️', active: false },
+  // 'configuracion' ya no es un placeholder acá — vive como entrada real en la
+  // sección "Sistema" del sidebar (ver Sidebar.tsx), separada de los módulos.
 ];
