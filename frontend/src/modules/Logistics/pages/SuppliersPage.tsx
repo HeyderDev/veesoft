@@ -93,9 +93,9 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
           <p className="text-slate-500">Aún no hay proveedores registrados.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[560px]">
           <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">RUC/CI</th>

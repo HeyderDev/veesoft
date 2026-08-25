@@ -148,9 +148,9 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
           <p className="text-slate-500">Aún no hay órdenes de compra registradas.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[560px]">
           <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">N° Orden</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Proveedor</th>
@@ -332,6 +332,18 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
         subtitle={receivingOrder?.order_number}
       >
         <form onSubmit={handleReceive} className="p-6 space-y-4">
+          {receivingOrder?.items && receivingOrder.items.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-600 mb-1.5">Ítems a recibir</p>
+              <ul className="space-y-1">
+                {receivingOrder.items.map(item => (
+                  <li key={item.id} className="text-sm text-slate-700">
+                    {item.item_name} <span className="text-slate-400">· {item.quantity} {item.unit}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Estado de Calidad *</label>
             <select

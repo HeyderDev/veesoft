@@ -30,6 +30,8 @@ class Movement extends Model
         'tool_id',
         'tool_unit_id',
         'supply_id',
+        'purchase_order_item_id',
+        'requires_purchase_registration',
         'user_id',
         'operational_task_id',
         'type',
@@ -62,6 +64,11 @@ class Movement extends Model
     public function supply(): BelongsTo
     {
         return $this->belongsTo(Supply::class)->withTrashed();
+    }
+
+    public function purchaseOrderItem(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Logistics\Models\PurchaseOrderItem::class);
     }
 
     public function user(): BelongsTo
