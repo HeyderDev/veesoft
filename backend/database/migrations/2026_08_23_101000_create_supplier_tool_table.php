@@ -9,7 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE tools ENGINE=InnoDB');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE tools ENGINE=InnoDB');
+        }
 
         Schema::create('supplier_tool', function (Blueprint $table) {
             $table->engine = 'InnoDB';

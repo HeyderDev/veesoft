@@ -50,8 +50,8 @@ export const inventoryService = {
     axiosClient.post(`/supplies/${supplyId}/movements`, { type, quantity, reason, observation, scanned_code: scannedCode, student_id: studentId }).then(res => (res as any).data),
 
   // Movements
-  getMovements: (type?: string, q?: string, startDate?: string, endDate?: string) => 
-    axiosClient.get<{ data: Movement[] }>('/movements', { params: { type, q, startDate, endDate } }).then(res => (res as any).data),
+  getMovements: (page: number = 1, type?: string, q?: string, startDate?: string, endDate?: string) => 
+    axiosClient.get<{ data: Movement[], meta: any }>('/movements', { params: { page, per_page: 20, type, q, startDate, endDate } }).then(res => res as any),
 
   // Students
   getStudents: (q?: string) => 

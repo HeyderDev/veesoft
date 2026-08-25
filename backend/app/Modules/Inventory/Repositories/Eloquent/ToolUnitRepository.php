@@ -15,7 +15,7 @@ class ToolUnitRepository extends BaseRepository implements ToolUnitRepositoryInt
 
     public function generateUniqueCode(): string
     {
-        $maxId = $this->model->max('id') ?? 0;
+        $maxId = $this->model->withTrashed()->max('id') ?? 0;
         $nextId = $maxId + 1;
 
         return 'HER-'.str_pad($nextId, 6, '0', STR_PAD_LEFT);
