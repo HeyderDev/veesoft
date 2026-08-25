@@ -20,9 +20,15 @@ return new class extends Migration
         });
 
         // Hereda el vivero de la herramienta (tipo) a la que pertenece cada unidad.
-               DB::statement(
-            'UPDATE tool_units SET vivero_id = (SELECT vivero_id FROM tools WHERE tools.id = tool_units.tool_id)'
-        );
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement(
+                'UPDATE tool_units SET vivero_id = (SELECT vivero_id FROM tools WHERE tools.id = tool_units.tool_id)'
+            );
+        } else {
+            DB::statement(
+                'UPDATE tool_units tu INNER JOIN tools t ON t.id = tu.tool_id SET tu.vivero_id = t.vivero_id'
+            );
+        }
 
         Schema::table('tool_units', function (Blueprint $table) {
             $table->dropUnique(['code']);

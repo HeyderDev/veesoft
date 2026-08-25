@@ -34,7 +34,7 @@ class SupplyService extends BaseService
             $this->movementRepository->create([
                 'supply_id' => $supply->id,
                 'user_id' => auth()->id(),
-                'type' => Movement::TYPE_ADJUSTMENT,
+                'type' => Movement::TYPE_CREATED,
                 'quantity' => $supply->current_stock,
                 'previous_stock' => 0,
                 'new_stock' => $supply->current_stock,
@@ -77,7 +77,7 @@ class SupplyService extends BaseService
             $this->movementRepository->create([
                 'supply_id' => $supply->id,
                 'user_id' => auth()->id(),
-                'type' => Movement::TYPE_ADJUSTMENT,
+                'type' => Movement::TYPE_DELETED,
                 'quantity' => $supply->current_stock,
                 'previous_stock' => $supply->current_stock,
                 'new_stock' => 0,
