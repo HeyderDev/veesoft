@@ -46,6 +46,16 @@ export function useSuppliesViewModel() {
     }
   };
 
+  const handleAddStock = async (id: number, quantity: number, reason?: string) => {
+    try {
+      await inventoryService.registerSupplyMovement(id, 'ENTRADA', quantity, reason || 'Ingreso manual de stock');
+      success('Stock agregado correctamente');
+      loadSupplies();
+    } catch (e: any) {
+      error('Error al agregar stock');
+    }
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await inventoryService.deleteSupply(id);
@@ -74,6 +84,7 @@ export function useSuppliesViewModel() {
     handleCreate,
     handleUpdate,
     handleDelete,
+    handleAddStock,
     handlePrintLabel,
   };
 }

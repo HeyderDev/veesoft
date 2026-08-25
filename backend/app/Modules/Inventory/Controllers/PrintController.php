@@ -85,6 +85,10 @@ class PrintController extends Controller
             // Alimentar y cortar (si lo soporta)
             $printer->feed(3);
             
+            // Obligar a la impresora a procesar el final del documento (muy importante para POS-58)
+            $printer->cut();
+            $printer->pulse(); // Opcional, pero suele forzar el volcado del buffer
+            
             // Cerrar conexión para guardar los bytes
             $printer->close();
             \Log::info("Archivo binario cerrado...");
@@ -96,7 +100,7 @@ class PrintController extends Controller
             // Ejecutar envío directo al Spooler vía script nativo PowerShell/C#
             \Log::info("Enviando trabajo crudo (RAW) vía API de Windows Spooler...");
             $scriptPath = storage_path('app/print_raw.ps1');
-            $command = 'powershell.exe -ExecutionPolicy Bypass -File ' . escapeshellarg($scriptPath) . ' -PrinterName ' . escapeshellarg($printerName) . ' -FileName ' . escapeshellarg($tempFile);
+            $command = 'powershell.exe -NoProfile -NoLogo -NonInteractive -ExecutionPolicy Bypass -File ' . escapeshellarg($scriptPath) . ' -PrinterName ' . escapeshellarg($printerName) . ' -FileName ' . escapeshellarg($tempFile);
             
             exec($command, $output, $returnVar);
 

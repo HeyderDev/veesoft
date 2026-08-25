@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
-import { planningService } from '../services/planningService';
-import type { MetaProduccion, Vivero } from '../types';
+import { planningService } from '../../Planning/services/planningService';
+import type { MetaProduccion, Vivero } from '../../Planning/types';
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -12,9 +12,9 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 }
 
 /**
- * Configuración de meta de producción del vivero activo. Sustituye a la mitad
- * "meta" de la antigua useViverosViewModel (la mitad "crear/editar vivero" la
- * cubre ahora shared/hooks/useViveroFormViewModel, reutilizado en ConfiguracionPage).
+ * Configuración de meta de producción del vivero activo — migrado desde
+ * Planning (ahora Configuración vive en el sidebar global, ver App.tsx).
+ * Culminar y Eliminar ganan confirmación (antes eran un solo click directo).
  */
 export function useViveroConfigViewModel(vivero: Vivero, onChanged: () => Promise<void>) {
   const { success, error } = useToast();
@@ -61,34 +61,60 @@ export function useViveroConfigViewModel(vivero: Vivero, onChanged: () => Promis
     }
   };
 
-  const handleCulminarMeta = async () => {
+  // ---- Culminar meta: doble confirmación con % de efectividad/déficit ----
+  const [culminarStep, setCulminarStep] = useState<'preview' | 'confirm' | null>(null);
+  const [isCulminando, setIsCulminando] = useState(false);
+
+  const openCulminar = () => setCulminarStep('preview');
+  const closeCulminar = () => setCulminarStep(null);
+  const continueCulminar = () => setCulminarStep('confirm');
+  const backToCulminarPreview = () => setCulminarStep('preview');
+
+  const confirmCulminar = async () => {
     if (!currentMeta) return;
+    setIsCulminando(true);
     try {
       await planningService.culminarGoal(currentMeta.id);
       success('Meta culminada. Ya puedes iniciar una nueva para este vivero.');
       await onChanged();
+      setCulminarStep(null);
       setIsMetaFormOpen(false);
     } catch (err) {
       error(extractErrorMessage(err, 'No se pudo culminar la meta'));
       console.error(err);
+    } finally {
+      setIsCulminando(false);
     }
   };
 
-  const handleDeleteMeta = async () => {
+  // ---- Eliminar meta (solo not_started) — antes sin confirmación ----
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const openDeleteConfirm = () => setIsDeleteConfirmOpen(true);
+  const closeDeleteConfirm = () => setIsDeleteConfirmOpen(false);
+
+  const confirmDelete = async () => {
     if (!currentMeta) return;
+    setIsDeleting(true);
     try {
       await planningService.deleteGoal(currentMeta.id);
       success('Meta eliminada');
       await onChanged();
+      setIsDeleteConfirmOpen(false);
       setIsMetaFormOpen(false);
     } catch (err) {
       error(extractErrorMessage(err, 'No se pudo eliminar la meta'));
       console.error(err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return {
     currentMeta, isMetaFormOpen, openMetaConfig, closeMetaForm,
-    metaForm, setMetaForm, isSavingMeta, handleSaveMeta, handleCulminarMeta, handleDeleteMeta,
+    metaForm, setMetaForm, isSavingMeta, handleSaveMeta,
+    culminarStep, openCulminar, closeCulminar, continueCulminar, backToCulminarPreview, isCulminando, confirmCulminar,
+    isDeleteConfirmOpen, openDeleteConfirm, closeDeleteConfirm, isDeleting, confirmDelete,
   };
 }

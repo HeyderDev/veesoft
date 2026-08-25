@@ -3,6 +3,7 @@
 namespace App\Modules\Tracking\Models;
 
 use App\Modules\Planning\Models\Lot;
+use App\Modules\Planning\Models\LotCycle;
 use App\Modules\Shared\Traits\BelongsToVivero;
 use Database\Factories\TrackingMovementFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,7 +16,7 @@ class TrackingMovement extends Model
     use HasFactory, BelongsToVivero;
 
     protected $fillable = [
-        'vivero_id', 'lot_id', 'tracking_client_id', 'quantity', 'movement_date', 'notes',
+        'vivero_id', 'lot_id', 'lot_cycle_id', 'tracking_client_id', 'quantity', 'movement_date', 'notes',
     ];
 
     protected $casts = [
@@ -25,6 +26,11 @@ class TrackingMovement extends Model
     public function lot(): BelongsTo
     {
         return $this->belongsTo(Lot::class);
+    }
+
+    public function lotCycle(): BelongsTo
+    {
+        return $this->belongsTo(LotCycle::class);
     }
 
     /**

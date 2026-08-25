@@ -3,6 +3,7 @@
 namespace App\Modules\Tasks\Models;
 
 use App\Modules\Planning\Models\LotCyclePhase;
+use App\Modules\Planning\Models\ProductionGoal;
 use App\Modules\Shared\Models\User;
 use App\Modules\Shared\Traits\BelongsToVivero;
 use Database\Factories\OperationalTaskFactory;
@@ -22,6 +23,7 @@ class OperationalTask extends Model
 
     protected $fillable = [
         'vivero_id',
+        'production_goal_id',
         'lot_cycle_phase_id',
         'activity_type_id',
         'title',
@@ -58,6 +60,11 @@ class OperationalTask extends Model
     public function lotCyclePhase(): BelongsTo
     {
         return $this->belongsTo(LotCyclePhase::class, 'lot_cycle_phase_id');
+    }
+
+    public function productionGoal(): BelongsTo
+    {
+        return $this->belongsTo(ProductionGoal::class);
     }
 
     public function activityType(): BelongsTo

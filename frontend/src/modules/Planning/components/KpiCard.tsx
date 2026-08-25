@@ -1,4 +1,5 @@
 import React from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
 
 interface KpiCardProps {
@@ -6,7 +7,7 @@ interface KpiCardProps {
   value: string | number;
   subtitle: string;
   color: 'emerald' | 'blue' | 'amber' | 'rose' | 'violet';
-  icon: string;
+  icon: LucideIcon;
   trend?: { value: string; up: boolean };
   isLoading?: boolean;
 }
@@ -19,13 +20,13 @@ const colorMap = {
   violet: { bg: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-200' },
 };
 
-export const KpiCard: React.FC<KpiCardProps> = ({ title, value, subtitle, color, icon, trend, isLoading }) => {
+export const KpiCard: React.FC<KpiCardProps> = ({ title, value, subtitle, color, icon: Icon, trend, isLoading }) => {
   const c = colorMap[color];
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-4">
-        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${c.bg} flex items-center justify-center text-2xl text-white shadow-lg ${c.shadow}`}>
-          {icon}
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${c.bg} flex items-center justify-center text-white shadow-lg ${c.shadow}`}>
+          <Icon className="w-6 h-6" />
         </div>
         {trend && (
           <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${trend.up ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>

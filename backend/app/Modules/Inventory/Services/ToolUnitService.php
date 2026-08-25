@@ -7,6 +7,7 @@ use App\Modules\Inventory\Models\ToolUnit;
 use App\Modules\Inventory\Repositories\Contracts\MovementRepositoryInterface;
 use App\Modules\Inventory\Repositories\Contracts\ToolUnitRepositoryInterface;
 use App\Modules\Shared\Services\BaseService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class ToolUnitService extends BaseService
@@ -37,7 +38,7 @@ class ToolUnitService extends BaseService
                 'tool_id' => $toolId,
                 'tool_unit_id' => $unit->id,
                 'user_id' => auth()->id(),
-                'type' => Movement::TYPE_ADJUSTMENT,
+                'type' => Movement::TYPE_CREATED,
                 'quantity' => 1,
                 'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => 'Registro de unidad adicional.'],
             ]);
@@ -80,7 +81,7 @@ class ToolUnitService extends BaseService
                 'maintenance' => Movement::TYPE_MAINTENANCE,
                 'borrowed' => Movement::TYPE_BORROWED,
                 'available' => Movement::TYPE_RETURN,
-                'out_of_service' => 'decommissioned',
+                'out_of_service' => Movement::TYPE_DELETED,
                 default => Movement::TYPE_ADJUSTMENT,
             };
 
@@ -106,7 +107,11 @@ class ToolUnitService extends BaseService
 
     public function findByCode(string $code)
     {
-        return $this->toolUnitRepository->findByCode($code);
+        try {
+            return $this->toolUnitRepository->findByCode($code);
+        } catch (ModelNotFoundException $e) {
+            throw new \DomainException("No se encontró ninguna herramienta con el código \"{$code}\". Verifica que el código escaneado o ingresado sea correcto.");
+        }
     }
 
     public function deleteUnit(int $id, ?string $motivo = null)
@@ -118,7 +123,7 @@ class ToolUnitService extends BaseService
                 'tool_id' => $unit->tool_id,
                 'tool_unit_id' => $unit->id,
                 'user_id' => auth()->id(),
-                'type' => 'decommissioned',
+                'type' => Movement::TYPE_DELETED,
                 'quantity' => 1,
                 'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => "Unidad eliminada del inventario."],
                 'observations' => $motivo,

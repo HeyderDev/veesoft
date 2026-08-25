@@ -17,9 +17,12 @@ class ProductionPhaseService extends BaseService
 {
     /**
      * Set de fases por defecto que recibe todo vivero nuevo (ver seedDefaultsForVivero()).
-     * `estimated_duration_days` de SIEM/INJER/DESP es solo un valor histórico/de
-     * referencia — nunca se usa para calcular fechas: son fases gateadas indefinidas
-     * (ver GatedPhaseCatalog, LotCycleService::scheduleBlockFrom()).
+     * `estimated_duration_days` de SIEM/INJER/DESP es el punto de partida (1 día):
+     * son actividades obligatorias del sistema, así que el calendario las calcula
+     * como cualquier otra fase, pero si su actividad asociada se demora, esa fase
+     * se extiende hasta la confirmación real y las siguientes se recalculan en
+     * cascada — ver GatedPhaseCatalog, LotCycleService::computeCurrentPhase()/
+     * markGateSatisfied().
      */
     private const DEFAULT_PHASES = [
         [
@@ -35,7 +38,7 @@ class ProductionPhaseService extends BaseService
             'name' => 'Siembra',
             'description' => 'Siembra de la semilla en las fundas preparadas.',
             'execution_order' => 2,
-            'estimated_duration_days' => 3,
+            'estimated_duration_days' => 1,
             'color_reference' => '#65a30d', // Lima
         ],
         [
@@ -51,7 +54,7 @@ class ProductionPhaseService extends BaseService
             'name' => 'Injertación',
             'description' => 'Proceso de injerto sobre el patrón desarrollado.',
             'execution_order' => 4,
-            'estimated_duration_days' => 15,
+            'estimated_duration_days' => 1,
             'color_reference' => '#0284c7', // Azul claro
         ],
         [
@@ -67,7 +70,7 @@ class ProductionPhaseService extends BaseService
             'name' => 'Despacho',
             'description' => 'Periodo de preparación y salida de las plantas.',
             'execution_order' => 6,
-            'estimated_duration_days' => 5,
+            'estimated_duration_days' => 1,
             'color_reference' => '#be123c', // Rosa/Rojo oscuro
         ],
     ];
@@ -100,15 +103,16 @@ class ProductionPhaseService extends BaseService
         $existing = $this->phaseRepository->find($id);
 
         // Siembra, Injertación y Despacho son actividades obligatorias del sistema
-        // (ver GatedPhaseCatalog): son indefinidas desde que arrancan (no tienen fecha
-        // de fin planificada — ver LotCycleService::scheduleBlockFrom()), así que su
-        // nombre, orden y duración no son editables. La descripción y el color sí se
-        // pueden seguir personalizando.
+        // (ver GatedPhaseCatalog): su duración de 1 día es un valor fijo del
+        // sistema (se extiende sola si la actividad se demora, ver
+        // LotCycleService::markGateSatisfied()), así que su nombre, orden y
+        // duración no son editables. La descripción y el color sí se pueden
+        // seguir personalizando.
         if (GatedPhaseCatalog::isGated($existing->code)) {
             $lockedFields = array_intersect(array_keys($data), ['name', 'execution_order', 'estimated_duration_days']);
 
             if (! empty($lockedFields)) {
-                throw new \DomainException("La fase {$existing->name} es una actividad obligatoria del sistema, indefinida hasta que se completa — su nombre, orden y duración no son editables.");
+                throw new \DomainException("La fase {$existing->name} es una actividad obligatoria del sistema — su nombre, orden y duración no son editables.");
             }
         }
 

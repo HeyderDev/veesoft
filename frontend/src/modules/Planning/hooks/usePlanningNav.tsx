@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useState } from 'react';
+import { BarChart3, Building2, FolderOpen, RefreshCw, type LucideIcon } from 'lucide-react';
 
-export type PlanningSection = 'resumen' | 'lotes' | 'fases' | 'reportes' | 'config';
+export type PlanningSection = 'resumen' | 'lotes' | 'fases' | 'historial';
+
+export const planningSectionTabs: { id: PlanningSection; label: string; icon: LucideIcon }[] = [
+  { id: 'resumen', label: 'Resumen Operativo', icon: BarChart3 },
+  { id: 'lotes', label: 'Lotes', icon: Building2 },
+  { id: 'fases', label: 'Fases', icon: RefreshCw },
+  { id: 'historial', label: 'Historial', icon: FolderOpen },
+];
 
 interface PlanningNavValue {
   activeSection: PlanningSection;

@@ -27,4 +27,9 @@ class ActivityType extends Model
     {
         return $this->hasMany(OperationalTask::class, 'activity_type_id');
     }
+
+    public function resources(): HasMany
+    {
+        return $this->hasMany(ActivityTypeResource::class);
+    }
 }

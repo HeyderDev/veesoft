@@ -5,6 +5,7 @@ namespace App\Modules\Logistics\Services;
 use App\Modules\Inventory\Models\Supply;
 use App\Modules\Inventory\Models\Tool;
 use App\Modules\Inventory\Models\ToolUnit;
+use App\Modules\Inventory\Models\Movement;
 use App\Modules\Inventory\Services\PurchaseReceiptInventoryService;
 use App\Modules\Logistics\Models\PurchaseOrder;
 use App\Modules\Logistics\Models\PurchaseOrderItem;
@@ -138,6 +139,17 @@ class PurchaseOrderService extends BaseService
                         ->limit((int) $purchaseOrderItem->quantity)
                         ->update(['purchase_order_item_id' => $purchaseOrderItem->id]);
                 }
+
+                if ($reconcilesExistingInventory && $purchaseOrderItem->supply_id) {
+                    Movement::query()
+                        ->where('supply_id', $purchaseOrderItem->supply_id)
+                        ->whereNull('purchase_order_item_id')
+                        ->where('requires_purchase_registration', true)
+                        ->update([
+                            'purchase_order_item_id' => $purchaseOrderItem->id,
+                            'requires_purchase_registration' => false,
+                        ]);
+                }
             }
 
             return $order;
@@ -224,8 +236,8 @@ class PurchaseOrderService extends BaseService
     }
 
     /**
-     * Insumos y herramientas del inventario que nunca han aparecido en un ítem de
-     * orden de compra, para avisar en el panel de Órdenes. Cada ítem lleva el ID
+     * Insumos y herramientas del inventario cuya entrada/unidad aún no está vinculada
+     * a una orden de compra, para avisar en el panel de Órdenes. Cada ítem lleva el ID
      * del proveedor (si existe alguno en su catálogo) que el frontend usa para
      * decidir si abre directamente "Nueva Orden" o pide vincular un catálogo, y la
      * `quantity` ya registrada en Inventory: la orden que reconcilia este aviso debe
@@ -235,7 +247,12 @@ class PurchaseOrderService extends BaseService
     public function unregisteredItems(): array
     {
         $supplies = Supply::query()
-            ->whereDoesntHave('purchaseOrderItems')
+            ->withSum([
+                'movements as unregistered_quantity' => fn ($query) => $query
+                    ->whereNull('purchase_order_item_id')
+                    ->where('requires_purchase_registration', true),
+            ], 'quantity')
+            ->having('unregistered_quantity', '>', 0)
             ->orderBy('name')
             ->get(['id', 'sku', 'name', 'unit', 'current_stock'])
             ->map(fn ($supply) => [
@@ -244,9 +261,14 @@ class PurchaseOrderService extends BaseService
                 'sku' => $supply->sku,
                 'name' => $supply->name,
                 'unit' => $supply->unit,
-                'quantity' => (string) $supply->current_stock,
+                // No se alerta por más de lo que aún existe físicamente: si una parte
+                // de la entrada manual ya se utilizó, la cantidad pendiente se limita
+                // al stock actual del insumo.
+                'quantity' => (string) min((float) $supply->current_stock, (float) $supply->unregistered_quantity),
                 'supplier_id' => $this->bestSupplierIdFor('supply', $supply->id),
-            ]);
+            ])
+            ->filter(fn (array $supply) => (float) $supply['quantity'] > 0)
+            ->values();
 
         $tools = Tool::query()
             ->withCount([

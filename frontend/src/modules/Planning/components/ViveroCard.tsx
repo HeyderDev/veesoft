@@ -1,4 +1,5 @@
 import React from 'react';
+import { MapPin, Pencil, User } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import type { EstadoMeta, MetaProduccion, Vivero } from '../types';
@@ -29,11 +30,13 @@ export const ViveroCard: React.FC<ViveroCardProps> = ({ vivero, meta, onEditVive
       <div className="flex items-start justify-between">
         <div>
           <h3 className="font-bold text-slate-800 text-lg leading-tight">{vivero.name}</h3>
-          <p className="text-xs text-slate-500 mt-1">📍 {vivero.location}</p>
-          <p className="text-xs text-slate-500">👤 {vivero.responsible}</p>
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> {vivero.location}</p>
+          <p className="text-xs text-slate-500 flex items-center gap-1"><User className="w-3 h-3" /> {vivero.responsible}</p>
         </div>
         {onEditVivero && (
-          <Button variant="ghost" onClick={onEditVivero} className="h-8 w-8 p-0 rounded-full shrink-0">✏️</Button>
+          <Button variant="ghost" onClick={onEditVivero} className="h-8 w-8 p-0 rounded-full shrink-0">
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
         )}
       </div>
 

@@ -26,6 +26,7 @@ export interface Supply {
   sku: string;
   name: string;
   description?: string | null;
+  category?: string | null;
   unit: string;
   current_stock: number;
   total_stock: number;

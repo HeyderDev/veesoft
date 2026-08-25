@@ -8,9 +8,12 @@ use Illuminate\Support\Collection;
 
 class TrackingLotRepository implements TrackingLotRepositoryInterface
 {
-    public function allWithVivero(): Collection
+    public function allWithVivero(?int $goalId = null): Collection
     {
-        return Lot::with('vivero')->orderBy('code')->get();
+        return Lot::with(['vivero', 'activeCycle.phases.phase'])
+            ->when($goalId, fn ($q) => $q->whereHas('lotCycles', fn ($cq) => $cq->where('production_goal_id', $goalId)))
+            ->orderBy('code')
+            ->get();
     }
 
     public function find(int $id): Lot

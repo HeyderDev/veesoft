@@ -178,13 +178,13 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-[90%] mx-auto">
+      <div className="mb-5">
         <div>
           <h3 className="font-bold text-slate-800 text-lg">Calendario de Fases</h3>
           <p className="text-xs text-slate-500 mt-1">Cronograma de todos los lotes con ciclo activo en este vivero</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 mt-3">
           {mode === 'year' && (
             <div className="flex items-center gap-1">
               <button
@@ -221,17 +221,13 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap gap-3 mb-4">
         {legend.map(item => (
           <div key={item.name} className="flex items-center gap-1.5 text-xs text-slate-600">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
             {item.name}
           </div>
         ))}
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 ml-2 pl-2 border-l border-slate-200">
-          <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-slate-400" style={{ outline: '1.5px dashed white', outlineOffset: -1 }} />
-          redondo = Siembra/Injerto/Despacho, un día hasta confirmarse en Tareas
-        </div>
       </div>
 
       {activeLots.length === 0 ? (
@@ -239,9 +235,9 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
           <p className="text-sm text-slate-400">Ningún lote de este vivero tiene un ciclo en curso todavía.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: 720 }}>
-            {/* Encabezado */}
+        <div className="overflow-x-auto lg:overflow-visible -mx-1 px-1">
+          <div className="min-w-[640px] lg:min-w-0">
+          {/* Encabezado */}
             <div className="flex">
               <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
               <div
@@ -308,7 +304,7 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
               </div>
 
               <div
-                className="relative flex-1 bg-slate-50/50 rounded-md overflow-hidden"
+                className="relative flex-1 bg-slate-50/50 rounded-md"
                 onMouseMove={handleTimelineMouseMove}
                 onMouseLeave={handleTimelineMouseLeave}
               >
@@ -364,31 +360,34 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
                     <div key={lot.id} className="absolute left-0 right-0" style={{ top: i * ROW_HEIGHT, height: ROW_HEIGHT }}>
                       {(cycle.phases ?? []).map(phase => {
                         const start = parseDate(phase.planned_start_date);
-                        // Fases gateadas (Siembra/Injertación/Despacho) no tienen fin
-                        // planificado: representan un único día (el que arrancan) y solo
-                        // se alargan día a día, sin pasar de hoy, mientras su actividad
-                        // obligatoria siga sin confirmarse — ver GatedPhaseCatalog.
-                        const openEndedEnd = start < today ? addDays(today, 1) : addDays(start, 1);
-                        const rawEnd = phase.planned_end_date ? addDays(parseDate(phase.planned_end_date), 1) : openEndedEnd;
-                        const end = rawEnd < win.end ? rawEnd : win.end;
-                        const leftPct = toPct(start);
-                        const widthPct = (diffDays(start, end) / win.totalDays) * 100;
                         const isCurrent = phase.id === currentPhaseId;
                         const isGated = isGatedPhaseCode(phase.phase?.code ?? '');
                         const isPending = isGated && !phase.gate_completed_at;
                         const label = phase.phase?.name?.charAt(0).toUpperCase() ?? '';
 
+                        // Siembra/Injertación/Despacho arrancan calculadas en 1 día — si
+                        // su actividad se demora, el backend la extiende recién cuando se
+                        // confirma (ver GatedPhaseCatalog). Mientras tanto, esta fase queda
+                        // "congelada" como actual: para que se note el atraso en vez de
+                        // mostrar una barra corta desfasada de "hoy", se estira la vista
+                        // hasta hoy sin tocar la fecha real guardada.
+                        const plannedEnd = phase.planned_end_date ? parseDate(phase.planned_end_date) : addDays(start, 1);
+                        const isFrozen = isCurrent && isPending && today > plannedEnd;
+                        const rawEnd = isFrozen ? addDays(today, 1) : addDays(plannedEnd, 1);
+                        const end = rawEnd < win.end ? rawEnd : win.end;
+                        const leftPct = toPct(start);
+                        const widthPct = (diffDays(start, end) / win.totalDays) * 100;
+
+                        const tooltipText = isGated
+                          ? `${phase.phase?.name} (actividad obligatoria): ${phase.planned_start_date} – ${phase.planned_end_date}` +
+                            (phase.gate_completed_at ? ' — confirmada' : isFrozen ? ' — atrasada, esperando confirmación en Tareas' : ' — esperando confirmación en Tareas')
+                          : `${phase.phase?.name}: ${phase.planned_start_date} – ${phase.planned_end_date}`;
+
                         return (
                           <div
                             key={phase.id}
-                            title={
-                              isGated
-                                ? `${phase.phase?.name} (actividad obligatoria): inició el ${phase.planned_start_date}` +
-                                  (phase.gate_completed_at ? ` — confirmada` : ' — esperando confirmación en Tareas')
-                                : `${phase.phase?.name}: ${phase.planned_start_date} – ${phase.planned_end_date}`
-                            }
-                            className={`absolute flex items-center justify-center text-[9px] font-bold text-white/90 ${
-                              isGated ? 'top-2.5 bottom-2.5 rounded-full' : 'top-1 bottom-1 rounded-sm'
+                            className={`group absolute flex items-center justify-center text-[9px] font-bold text-white/90 ${
+                              isGated ? 'top-1 bottom-1 rounded-full' : 'top-2 bottom-2 rounded-sm'
                             }`}
                             style={{
                               left: `${leftPct}%`,
@@ -396,11 +395,17 @@ export const LotCalendarView: React.FC<LotCalendarViewProps> = ({ lots, onResche
                               minWidth: isGated ? 8 : undefined,
                               backgroundColor: phase.phase?.color_reference || '#94a3b8',
                               opacity: isCurrent ? 1 : 0.55,
-                              outline: isCurrent ? '2px solid white' : isPending ? '1.5px dashed white' : 'none',
+                              outline: isCurrent ? '2px solid white' : 'none',
                               outlineOffset: -1,
                             }}
                           >
                             {isGated && widthPct > 2 ? label : null}
+                            <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 flex w-max max-w-[220px] -translate-x-1/2 flex-col items-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                              <span className="rounded-md bg-slate-800 px-2 py-1 text-center text-[11px] font-medium leading-snug text-white shadow-lg">
+                                {tooltipText}
+                              </span>
+                              <span className="-mt-0.5 h-1.5 w-1.5 rotate-45 bg-slate-800" />
+                            </div>
                           </div>
                         );
                       })}

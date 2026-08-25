@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AlertTriangle, Lock, Package, Wrench } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
 import { PurchaseSpendReportPanel } from '../components/PurchaseSpendReportPanel';
@@ -54,6 +56,9 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
     isFormOpen, openCreate, openCreateForItem, closeForm, form, setForm, items, quantityLocked, reconcilesExistingInventory, addItemRow, removeItemRow, updateItemRow, isSaving, handleSave,
     isReceiveOpen, receivingOrder, openReceive, closeReceive, receiveForm, setReceiveForm, isReceiving, handleReceive,
   } = usePurchaseOrdersViewModel();
+
+  const [detailOrder, setDetailOrder] = useState<(typeof orders)[number] | null>(null);
+  const handleOpenReceiveFromDetail = (order: (typeof orders)[number]) => { setDetailOrder(null); openReceive(order); };
 
   const handleUnregisteredItemClick = (item: UnregisteredItem) => {
     if (item.supplier_id) {
@@ -112,7 +117,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
                 ? item.name
                 : `${item.name}s`;
               const content = <>
-                <span>{item.item_type === 'tool' ? '🔧' : '📦'}</span>
+                <span>{item.item_type === 'tool' ? <Wrench className="w-3.5 h-3.5 inline" /> : <Package className="w-3.5 h-3.5 inline" />}</span>
                 {item.item_type === 'tool'
                   ? `${item.quantity} ${toolLabel}`
                   : `${item.name}${item.sku ? ` (${item.sku})` : ''} · ${item.quantity} ${item.unit}`}
@@ -148,57 +153,126 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
           <p className="text-slate-500">Aún no hay órdenes de compra registradas.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">N° Orden</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Proveedor</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ítems solicitados</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Entrega Estimada</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.map(order => (
-                <tr key={order.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-800">{order.order_number}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{order.supplier?.name}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
-                    <ul className="space-y-1">
-                      {(order.items ?? []).map(item => (
-                        <li key={item.id}>
-                          {item.item_name} <span className="text-slate-400">· {item.quantity} {item.unit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{order.estimated_delivery_date ?? '—'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-700">${Number(order.total).toFixed(2)}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={statusVariants[order.status]}>{statusLabels[order.status]}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {(order.status === 'issued' || order.status === 'sent') && (
-                      <Button variant="ghost" onClick={() => openReceive(order)}>Registrar Recepción</Button>
-                    )}
-                    {order.receipt && (
-                      <Badge
-                        variant={qualityStatusVariants[order.receipt.quality_status]}
-                        title={order.receipt.observations ?? undefined}
-                      >
-                        Calidad: {qualityStatusLabels[order.receipt.quality_status]}
-                      </Badge>
-                    )}
-                  </td>
+        <>
+          {/* Desktop: tabla completa (lg+) */}
+          <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[560px] max-w-[90%] mx-auto">
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">N° Orden</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Proveedor</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ítems solicitados</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Entrega Estimada</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {orders.map(order => (
+                  <tr key={order.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{order.order_number}</td>
+                    <td className="px-4 py-3 text-sm text-slate-500">{order.supplier?.name}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      <ul className="space-y-1">
+                        {(order.items ?? []).map(item => (
+                          <li key={item.id}>
+                            {item.item_name} <span className="text-slate-400">· {item.quantity} {item.unit}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-500">{order.estimated_delivery_date ?? '—'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">${Number(order.total).toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={statusVariants[order.status]}>{statusLabels[order.status]}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {(order.status === 'issued' || order.status === 'sent') && (
+                        <Button variant="ghost" onClick={() => openReceive(order)}>Registrar Recepción</Button>
+                      )}
+                      {order.receipt && (
+                        <Badge
+                          variant={qualityStatusVariants[order.receipt.quality_status]}
+                          title={order.receipt.observations ?? undefined}
+                        >
+                          Calidad: {qualityStatusLabels[order.receipt.quality_status]}
+                        </Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: solo N° Orden/Ítems, el resto vive en el detalle (lg:hidden) */}
+          <div className="lg:hidden bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[560px]">
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">N° Orden</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ítems solicitados</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {orders.map(order => (
+                  <tr key={order.id} onClick={() => setDetailOrder(order)} className="hover:bg-slate-50 cursor-pointer">
+                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{order.order_number}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      <ul className="space-y-1">
+                        {(order.items ?? []).map(item => (
+                          <li key={item.id}>
+                            {item.item_name} <span className="text-slate-400">· {item.quantity} {item.unit}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
+
+      {/* Detalle de la orden (mobile) — info completa y acciones al seleccionar una fila */}
+      <Modal isOpen={!!detailOrder} onClose={() => setDetailOrder(null)} title={detailOrder?.order_number ?? ''}>
+        {detailOrder && (
+          <div className="p-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={statusVariants[detailOrder.status]}>{statusLabels[detailOrder.status]}</Badge>
+              {detailOrder.receipt && (
+                <Badge
+                  variant={qualityStatusVariants[detailOrder.receipt.quality_status]}
+                  title={detailOrder.receipt.observations ?? undefined}
+                >
+                  Calidad: {qualityStatusLabels[detailOrder.receipt.quality_status]}
+                </Badge>
+              )}
+            </div>
+            <dl className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Proveedor</dt>
+                <dd className="text-slate-700">{detailOrder.supplier?.name}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Entrega estimada</dt>
+                <dd className="text-slate-700">{detailOrder.estimated_delivery_date ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Total</dt>
+                <dd className="text-slate-700">${Number(detailOrder.total).toFixed(2)}</dd>
+              </div>
+            </dl>
+            {(detailOrder.status === 'issued' || detailOrder.status === 'sent') && (
+              <div className="pt-3 border-t border-slate-100">
+                <Button variant="ghost" onClick={() => handleOpenReceiveFromDetail(detailOrder)}>Registrar Recepción</Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <PurchaseSpendReportPanel />
 
@@ -218,7 +292,7 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
               ))}
             </select>
             {selectedSupplier && Number(selectedSupplier.score) < 3 && (
-              <p className="text-xs text-amber-600 mt-1">⚠ Este proveedor tiene un score bajo ({Number(selectedSupplier.score).toFixed(2)}/5.00). Puedes continuar con la orden si lo consideras necesario.</p>
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Este proveedor tiene un score bajo ({Number(selectedSupplier.score).toFixed(2)}/5.00). Puedes continuar con la orden si lo consideras necesario.</p>
             )}
             {selectedSupplier && catalog.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">Este proveedor aún no tiene insumos en su catálogo.</p>
@@ -255,8 +329,8 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
 
                     return <>
                   {isLocked && (
-                    <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                      🔒 Ítem del aviso "Sin orden de compra": ya está registrado en Inventario; esta orden no aumentará su stock al recibirse.
+                    <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 flex items-center gap-1">
+                      <Lock className="w-3.5 h-3.5 shrink-0" /> Ítem del aviso "Sin orden de compra": ya está registrado en Inventario; esta orden no aumentará su stock al recibirse.
                     </p>
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
@@ -332,6 +406,18 @@ export const PurchaseOrdersPage: React.FC<PurchaseOrdersPageProps> = ({ onReques
         subtitle={receivingOrder?.order_number}
       >
         <form onSubmit={handleReceive} className="p-6 space-y-4">
+          {receivingOrder?.items && receivingOrder.items.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-600 mb-1.5">Ítems a recibir</p>
+              <ul className="space-y-1">
+                {receivingOrder.items.map(item => (
+                  <li key={item.id} className="text-sm text-slate-700">
+                    {item.item_name} <span className="text-slate-400">· {item.quantity} {item.unit}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Estado de Calidad *</label>
             <select

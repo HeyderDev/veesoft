@@ -18,6 +18,8 @@ Route::middleware(['auth:sanctum', 'vivero.scope'])->group(function () {
     // Admin y Operario: registrar movimientos de seguimiento y lo necesario para hacerlo.
     Route::get('tracking/lots', [TrackingLotController::class, 'index']);
     Route::get('tracking/lots/{lot}', [TrackingLotController::class, 'show']);
+    Route::get('tracking/goals', [TrackingLotController::class, 'goals']);
+    Route::get('tracking/production-summary', [TrackingSummaryController::class, 'production']);
 
     Route::get('tracking/movements', [TrackingMovementController::class, 'index']);
     Route::post('tracking/movements', [TrackingMovementController::class, 'store']);

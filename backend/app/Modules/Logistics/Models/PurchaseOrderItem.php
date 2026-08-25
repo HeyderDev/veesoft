@@ -39,4 +39,9 @@ class PurchaseOrderItem extends Model
     {
         return $this->hasMany(\App\Modules\Inventory\Models\ToolUnit::class);
     }
+
+    public function supplyMovements(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Inventory\Models\Movement::class);
+    }
 }

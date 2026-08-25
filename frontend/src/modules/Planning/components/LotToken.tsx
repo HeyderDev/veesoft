@@ -63,6 +63,45 @@ export const LotToken: React.FC<LotTokenProps> = ({
     window.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return; // deja el pellizco de 2 dedos al workspace (zoom)
+    e.stopPropagation();
+    const touch = e.touches[0];
+    dragState.current = { startX: touch.clientX, startY: touch.clientY, moved: false };
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      if (!dragState.current || moveEvent.touches.length !== 1) return;
+      const t = moveEvent.touches[0];
+      const dx = t.clientX - dragState.current.startX;
+      const dy = t.clientY - dragState.current.startY;
+      if (Math.abs(dx) > CLICK_THRESHOLD_PX || Math.abs(dy) > CLICK_THRESHOLD_PX) {
+        dragState.current.moved = true;
+        moveEvent.preventDefault();
+      }
+      setDragOffsetPx({ dx, dy });
+    };
+
+    const handleTouchEnd = (endEvent: TouchEvent) => {
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+
+      const lastTouch = endEvent.changedTouches[0];
+      if (dragState.current?.moved && lastTouch) {
+        const dx = lastTouch.clientX - dragState.current.startX;
+        const dy = lastTouch.clientY - dragState.current.startY;
+        const scale = pixelsPerMeter * zoom;
+        onDragEnd(Math.max(0, xMeters + dx / scale), Math.max(0, yMeters + dy / scale));
+      } else {
+        onClick();
+      }
+      setDragOffsetPx(null);
+      dragState.current = null;
+    };
+
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+  };
+
   const widthPx = Number(lote.width) * pixelsPerMeter;
   const heightPx = Number(lote.length) * pixelsPerMeter;
   const left = xMeters * pixelsPerMeter + (dragOffsetPx ? dragOffsetPx.dx / zoom : 0);
@@ -73,6 +112,7 @@ export const LotToken: React.FC<LotTokenProps> = ({
   return (
     <div
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       className={`absolute select-none cursor-grab active:cursor-grabbing ${dragOffsetPx ? 'z-30' : 'z-10'}`}
       style={{ left, top, width: widthPx, height: heightPx }}
     >

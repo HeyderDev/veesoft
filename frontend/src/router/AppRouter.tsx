@@ -14,7 +14,7 @@ export const AppRouter = () => {
         <Route
           path="/"
           element={
-            <AdminLayout currentModule="dashboard" setCurrentModule={() => {}}>
+            <AdminLayout currentModule="dashboard" setCurrentModule={() => {}} onUniversalScan={() => {}}>
               <div className="p-4"><h1 className="text-2xl font-bold">Dashboard</h1><p>Bienvenido al sistema ERP del Vivero de Cacao.</p></div>
             </AdminLayout>
           }

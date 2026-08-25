@@ -1,37 +1,48 @@
 import React, { useEffect, useState } from 'react';
+import { Camera } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { useActiveVivero } from '../../../shared/context/ActiveViveroContext';
+import { useTrackingNav, trackingSectionTabs } from '../hooks/useTrackingNav';
+import { useAuth } from '../../../shared/context/AuthContext';
 import { CameraQrModal } from './CameraQrModal';
 import { ClientesPage } from '../pages/ClientesPage';
 import { LotesPage } from '../pages/LotesPage';
+import { ReportesPage } from '../pages/ReportesPage';
 import { ResumenSeguimientoPage } from '../pages/ResumenSeguimientoPage';
-
-type TrackingSection = 'lotes' | 'resumen' | 'clientes';
-
-const sectionTabs: { id: TrackingSection; label: string; icon: string }[] = [
-  { id: 'lotes', label: 'Lotes', icon: '🌱' },
-  { id: 'resumen', label: 'Reportes', icon: '📊' },
-  { id: 'clientes', label: 'Clientes', icon: '🧑‍🤝‍🧑' },
-];
 
 interface TrackingTabsProps {
   onTabChange?: (tabLabel: string) => void;
+  /** Deep-link desde el escáner universal de la barra inferior móvil (ver
+   * App.tsx) — mismo mecanismo que ya usa el botón "Escanear QR" propio de
+   * este módulo, solo que el código se decodifica fuera de este componente.
+   * El nonce permite re-abrir el mismo lote dos veces seguidas. */
+  externalOpenLotId?: number | null;
+  externalOpenLotNonce?: number;
 }
 
 /**
  * Módulo plano (sin drill-down por vivero, a diferencia de Planning) — Lotes
- * tiene su propio drill-down interno (lista -> movimientos de un lote). No
- * incluye "Reportes de Despacho" (DispatchReport): esa pantalla ya vive
- * embebida como tab dentro de Planning.
+ * tiene su propio drill-down interno (lista -> movimientos de un lote).
+ * "Despachos Pendientes" (ReportesPage, cola manual de ciclos despachados sin
+ * reportar) vivía embebida como tab dentro de Planning — se movió acá porque
+ * Planning ya no tiene esa pestaña (ver HistorialPage). La navegación vive en
+ * TrackingNavContext, compartida con el panel del sidebar
+ * (TrackingSidebarSections) — no hay fila de botones aquí arriba.
  */
-export const TrackingTabs: React.FC<TrackingTabsProps> = ({ onTabChange }) => {
-  const [activeSection, setActiveSection] = useState<TrackingSection>('lotes');
+export const TrackingTabs: React.FC<TrackingTabsProps> = ({ onTabChange, externalOpenLotId, externalOpenLotNonce }) => {
+  const { isAdmin } = useAuth();
+  const { activeVivero } = useActiveVivero();
+  const { activeSection, setActiveSection } = useTrackingNav();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [scannedLotId, setScannedLotId] = useState<number | null>(null);
   const [scanNonce, setScanNonce] = useState(0);
 
+  const visibleTabs = trackingSectionTabs.filter(tab => !tab.adminOnly || isAdmin);
+
   useEffect(() => {
     if (!onTabChange) return;
-    onTabChange(sectionTabs.find(t => t.id === activeSection)?.label ?? '');
+    onTabChange(visibleTabs.find(t => t.id === activeSection)?.label ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, onTabChange]);
 
   const handleScanLot = (lotId: number) => {
@@ -40,39 +51,28 @@ export const TrackingTabs: React.FC<TrackingTabsProps> = ({ onTabChange }) => {
     setActiveSection('lotes');
   };
 
+  useEffect(() => {
+    if (externalOpenLotId == null || !externalOpenLotNonce) return;
+    handleScanLot(externalOpenLotId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalOpenLotNonce]);
+
   const renderSection = () => {
     switch (activeSection) {
       case 'lotes': return <LotesPage openLotId={scannedLotId} openLotNonce={scanNonce} />;
       case 'resumen': return <ResumenSeguimientoPage />;
       case 'clientes': return <ClientesPage />;
+      case 'pendientes': return activeVivero ? <ReportesPage viveroId={activeVivero.id} /> : null;
       default: return <LotesPage />;
     }
   };
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          {sectionTabs.map(tab => {
-            const isActive = activeSection === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSection(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                  isActive
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 transform -translate-y-0.5'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300'
-                }`}
-              >
-                <span>{tab.icon}</span>
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="mb-6 flex justify-end">
         <Button variant="secondary" onClick={() => setIsCameraOpen(true)}>
-          📷 Escanear QR
+          <Camera className="w-4 h-4 mr-2" />
+          Escanear QR
         </Button>
       </div>
       <div className="flex-1">

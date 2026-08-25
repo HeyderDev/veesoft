@@ -19,15 +19,17 @@ class TrackingMovementRepository extends BaseRepository implements TrackingMovem
     public function paginateWithFilters(?int $lotId, int $perPage = 15): LengthAwarePaginator
     {
         return $this->model
-            ->with('trackingClient')
+            ->with(['trackingClient', 'lot'])
             ->when($lotId, fn ($q) => $q->where('lot_id', $lotId))
             ->orderByDesc('movement_date')
             ->paginate($perPage);
     }
 
-    public function totalQuantity(): int
+    public function totalQuantity(?int $goalId = null): int
     {
-        return (int) $this->model->sum('quantity');
+        return (int) $this->model
+            ->when($goalId, fn ($q) => $q->whereHas('lotCycle', fn ($cq) => $cq->where('production_goal_id', $goalId)))
+            ->sum('quantity');
     }
 
     public function topClients(int $limit = 5): Collection

@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { RefreshCw, Search } from 'lucide-react';
 import { useMovementsViewModel } from '../viewmodels/useMovementsViewModel';
 
 export default function MovementsPage() {
-  const { movements, isLoading, loadMovements } = useMovementsViewModel();
+  const { movements, pagination, isLoading, loadMovements } = useMovementsViewModel();
 
   const [filterTipo, setFilterTipo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const handleFilterEvents = () => {
+  const handleFilterEvents = (page: number = 1) => {
+    setHasSearched(true);
     loadMovements(
+      page,
       filterTipo || undefined,
       searchTerm || undefined,
       filterStartDate || undefined,
@@ -18,9 +22,13 @@ export default function MovementsPage() {
     );
   };
 
-  useEffect(() => {
-    loadMovements();
-  }, [loadMovements]);
+  const handleClear = () => {
+    setSearchTerm('');
+    setFilterTipo('');
+    setFilterStartDate('');
+    setFilterEndDate('');
+    setHasSearched(false);
+  };
 
   const typeLabels: Record<string, string> = {
     BORROW: 'Préstamo',
@@ -31,7 +39,9 @@ export default function MovementsPage() {
     CONSUMPTION: 'Consumo',
     ENTRADA: 'Entrada',
     SALIDA: 'Salida',
-    decommissioned: 'Dado de baja'
+    decommissioned: 'Dado de baja',
+    CREATED: 'Registrado',
+    DELETED: 'Eliminado'
   };
 
   const typeColors: Record<string, string> = {
@@ -44,6 +54,8 @@ export default function MovementsPage() {
     ENTRADA: 'bg-emerald-100 text-emerald-700 border-emerald-300',
     SALIDA: 'bg-orange-50 text-orange-600 border-orange-200',
     decommissioned: 'bg-slate-50 text-slate-600 border-slate-200',
+    CREATED: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+    DELETED: 'bg-red-50 text-red-600 border-red-200',
   };
 
   return (
@@ -70,7 +82,9 @@ export default function MovementsPage() {
               <option value="BORROWED">Préstamo</option>
               <option value="RETURN">Devolución</option>
               <option value="MAINTENANCE">Mantenimiento</option>
-              <option value="ADJUSTMENT">Ajuste / Eliminación</option>
+              <option value="ADJUSTMENT">Ajuste</option>
+              <option value="CREATED">Registrado</option>
+              <option value="DELETED">Eliminado</option>
               <option value="CONSUMPTION">Consumo</option>
             </select>
           </div>
@@ -82,16 +96,28 @@ export default function MovementsPage() {
             <label className="block text-[10px] font-bold text-slate-500 mb-1">HASTA</label>
             <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none" />
           </div>
-          <button onClick={handleFilterEvents} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition">Filtrar</button>
+          <button onClick={() => handleFilterEvents(1)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition">Filtrar / Buscar</button>
           <button
-            onClick={() => { setSearchTerm(''); setFilterTipo(''); setFilterStartDate(''); setFilterEndDate(''); loadMovements(); }}
+            onClick={handleClear}
             className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 font-bold text-xs text-slate-700 transition"
           >
-            🔄 Limpiar
+            <RefreshCw className="w-3.5 h-3.5 inline mr-1" /> Limpiar
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        {!hasSearched ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              <Search className="w-6 h-6 text-slate-400" />
+            </div>
+            <h4 className="text-slate-800 font-bold text-lg mb-2">Busca en el historial</h4>
+            <p className="text-slate-500 text-sm max-w-md">
+              Ingresa un término de búsqueda o selecciona los filtros deseados y presiona "Filtrar / Buscar" para ver los resultados.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
@@ -159,6 +185,32 @@ export default function MovementsPage() {
             </tbody>
           </table>
         </div>
+        
+        {hasSearched && movements.length > 0 && (
+          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+            <span className="text-xs text-slate-500 font-medium">
+              Mostrando {movements.length} registros (Página {pagination.current_page} de {pagination.last_page}) - Total: {pagination.total}
+            </span>
+            <div className="flex gap-2">
+              <button
+                disabled={pagination.current_page <= 1 || isLoading}
+                onClick={() => handleFilterEvents(pagination.current_page - 1)}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Anterior
+              </button>
+              <button
+                disabled={pagination.current_page >= pagination.last_page || isLoading}
+                onClick={() => handleFilterEvents(pagination.current_page + 1)}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+      )}
       </div>
     </div>
   );

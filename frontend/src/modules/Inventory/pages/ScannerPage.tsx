@@ -1,10 +1,19 @@
+import { useEffect } from 'react';
 import { Camera, Search, CheckCircle2, User, X } from 'lucide-react';
 import { ToolDetailsModal } from '../components/ToolDetailsModal';
 import { SupplyScannerModal } from '../components/SupplyScannerModal';
 import { WebScanner } from '../components/WebScanner';
 import { useScannerViewModel } from '../viewmodels/useScannerViewModel';
 
-export const ScannerPage = () => {
+interface ScannerPageProps {
+  /** Código ya decodificado por el escáner universal de la barra inferior
+   * móvil (ver App.tsx) — si llega, se procesa directo sin pasar por la
+   * cámara propia de esta página. */
+  externalCode?: string;
+  externalNonce?: number;
+}
+
+export const ScannerPage = ({ externalCode, externalNonce }: ScannerPageProps) => {
   const {
     isScanning,
     setIsScanning,
@@ -23,6 +32,12 @@ export const ScannerPage = () => {
     handleManualSubmit,
     registerEvent,
   } = useScannerViewModel();
+
+  useEffect(() => {
+    if (!externalCode || !externalNonce) return;
+    handleScan(externalCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalNonce]);
 
   return (
     <div className="p-4 md:p-6 lg:p-8">

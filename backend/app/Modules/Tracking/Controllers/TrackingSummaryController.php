@@ -4,6 +4,7 @@ namespace App\Modules\Tracking\Controllers;
 
 use App\Modules\Shared\Controllers\BaseApiController;
 use App\Modules\Tracking\Services\TrackingSummaryService;
+use Illuminate\Http\Request;
 
 class TrackingSummaryController extends BaseApiController
 {
@@ -17,5 +18,10 @@ class TrackingSummaryController extends BaseApiController
     public function forLot(int $lot)
     {
         return $this->successResponse($this->summaryService->getLotSummary($lot));
+    }
+
+    public function production(Request $request)
+    {
+        return $this->successResponse($this->summaryService->getProductionSummary($request->integer('goal_id') ?: null));
     }
 }

@@ -41,10 +41,11 @@ export function useFasesViewModel(viveroId: number) {
     }
   };
 
-  // Siembra, Injertación y Despacho no tienen una duración fija (ver
-  // LotCycleService/GatedPhaseCatalog) — se excluyen de la suma de duración total;
-  // cada una termina cuando se confirma su actividad obligatoria en Tareas.
-  const duracionActual = fasesData.filter(f => !isGatedPhaseCode(f.code)).reduce((a, f) => a + f.estimated_duration_days, 0);
+  // Siembra, Injertación y Despacho arrancan en 1 día (ver GatedPhaseCatalog) y
+  // participan en la suma como cualquier otra fase — si su actividad obligatoria
+  // se demora, esa fase se extiende y el total real crece, pero el cálculo
+  // "de catálogo" siempre incluye las 6 fases.
+  const duracionActual = fasesData.reduce((a, f) => a + f.estimated_duration_days, 0);
   const gatedPhases = fasesData.filter(f => isGatedPhaseCode(f.code));
 
   return {

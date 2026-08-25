@@ -10,9 +10,9 @@ interface FaseModalProps {
 }
 
 const GATED_PHASE_MESSAGE: Record<string, string> = {
-  DESP: 'Despacho no tiene una duración fija: comienza cuando termina la fase anterior y permanece abierta hasta que se registre el despacho del lote (botón "Terminar Despacho").',
-  SIEM: 'Siembra no tiene una duración fija: comienza en un único día y permanece abierta hasta que se confirme su actividad en Tareas — recién ahí el lote puede pasar a la siguiente fase.',
-  INJER: 'Injertación no tiene una duración fija: comienza en un único día y permanece abierta hasta que se confirme su actividad en Tareas — recién ahí el lote puede pasar a la siguiente fase.',
+  DESP: 'Despacho arranca calculada en 1 día. Si el despacho se demora, se extiende sola hasta el día en que se registre (botón "Terminar Despacho") y el resto del calendario no cambia porque es la última fase.',
+  SIEM: 'Siembra arranca calculada en 1 día. Si la actividad de Siembra se confirma más tarde en Tareas, esa fase se extiende hasta ese día y las siguientes se recalculan solas.',
+  INJER: 'Injertación arranca calculada en 1 día. Si la actividad de Injerto se confirma más tarde en Tareas, esa fase se extiende hasta ese día y las siguientes se recalculan solas.',
 };
 
 export const FaseModal: React.FC<FaseModalProps> = ({ fase, onClose, onSave }) => {
@@ -36,7 +36,7 @@ export const FaseModal: React.FC<FaseModalProps> = ({ fase, onClose, onSave }) =
         {isGated ? (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs text-amber-800">
-              {GATED_PHASE_MESSAGE[fase.code] ?? 'Esta fase es una actividad obligatoria del sistema y no tiene una duración fija.'}
+              {GATED_PHASE_MESSAGE[fase.code] ?? 'Esta fase es una actividad obligatoria del sistema — su duración de catálogo no es editable.'}
             </p>
           </div>
         ) : (

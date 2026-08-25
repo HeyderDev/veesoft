@@ -25,6 +25,21 @@ export interface MetaProduccion {
   produced_seedlings?: number;
 }
 
+/** Fila de GET /production-goals/history — una meta con sus números acumulados,
+ * incluidas las ya culminadas (su historial no se borra, ver Historial). */
+export interface MetaHistorialEntry {
+  id: number;
+  title: string;
+  status: EstadoMeta;
+  finished_at: string | null;
+  created_at: string;
+  target_seedlings: number;
+  produced_seedlings: number;
+  lot_cycles_count: number;
+  distinct_lots_count: number;
+  tasks_completed_count: number;
+}
+
 export type EstadoLote = 'available' | 'occupied' | 'inactive';
 
 export interface LotCyclePhase {

@@ -18,6 +18,11 @@ class ProductionGoalController extends BaseApiController
         return $this->paginatedResponse($goals, 'Metas de producción obtenidas');
     }
 
+    public function history()
+    {
+        return $this->successResponse($this->goalService->getHistory(), 'Historial de metas obtenido');
+    }
+
     public function store(CreateProductionGoalRequest $request)
     {
         $data = $request->validated();

@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware(['role:Admin', 'vivero.scope'])->group(function () {
         // Metas de producción
+        Route::get('production-goals/history', [ProductionGoalController::class, 'history']);
         Route::post('production-goals/{production_goal}/culminar', [ProductionGoalController::class, 'culminar']);
         Route::get('production-goals/{production_goal}/lot-cycles', [ProductionGoalController::class, 'lotCycles']);
         Route::apiResource('production-goals', ProductionGoalController::class);
