@@ -3,6 +3,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { SlideOver } from '../../../components/ui/SlideOver';
+import { SupplierSpendReportPanel } from '../components/SupplierSpendReportPanel';
 import { useSuppliersViewModel } from '../viewmodels/useSuppliersViewModel';
 import type { Supplier, UnregisteredItem } from '../types';
 
@@ -134,6 +135,8 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
         </div>
       )}
 
+      <SupplierSpendReportPanel />
+
       <SlideOver
         isOpen={isFormOpen}
         onClose={closeForm}
@@ -178,24 +181,64 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ pendingLinkItem, o
               />
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Vencimiento certificado</label>
-            <input
-              type="date"
-              value={form.certificate_expires_at ?? ''}
-              onChange={e => setForm({ ...form, certificate_expires_at: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={form.organic_certified ?? false}
-              onChange={e => setForm({ ...form, organic_certified: e.target.checked })}
-              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            Certificado orgánico
-          </label>
+          <fieldset className="rounded-lg border border-slate-200 p-3 space-y-3">
+            <legend className="px-1 text-sm font-medium text-slate-700">¿El proveedor cuenta con certificado orgánico? *</legend>
+            <div className="flex gap-5 text-sm text-slate-700">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={form.organic_certified === true}
+                  onChange={() => setForm({ ...form, organic_certified: true, certification: { ...form.certification, has_certificate: true } })}
+                />
+                Sí
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={form.organic_certified === false}
+                  onChange={() => setForm({ ...form, organic_certified: false, certification: { ...form.certification, has_certificate: false } })}
+                />
+                No
+              </label>
+            </div>
+
+            {form.organic_certified && (
+              <div className="border-t border-slate-100 pt-3 space-y-3">
+                <p className="text-xs text-slate-500">Datos de respaldo opcionales. Puedes completarlos ahora o editar el proveedor después.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">N° de certificado</label>
+                    <input value={form.certification?.certificate_number ?? ''} onChange={e => setForm({ ...form, certification: { ...form.certification!, certificate_number: e.target.value } })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Entidad certificadora</label>
+                    <input value={form.certification?.certifying_entity ?? ''} onChange={e => setForm({ ...form, certification: { ...form.certification!, certifying_entity: e.target.value } })} placeholder="Ej.: Ecocert" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Fecha de emisión</label>
+                    <input type="date" value={form.certification?.issued_at ?? ''} onChange={e => setForm({ ...form, certification: { ...form.certification!, issued_at: e.target.value } })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Fecha de vencimiento</label>
+                    <input type="date" value={form.certification?.expires_at ?? ''} onChange={e => setForm({ ...form, certification: { ...form.certification!, expires_at: e.target.value } })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Documento de respaldo (PDF, JPG o PNG)</label>
+                  <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={e => setForm({ ...form, certification: { ...form.certification!, file: e.target.files?.[0] ?? null } })} className="block w-full text-sm text-slate-600" />
+                  {form.certification?.file_path && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Ya existe un documento adjunto.{' '}
+                      <a href={`/storage/${form.certification.file_path}`} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 underline">Ver documento</a>
+                      {' '}o selecciona otro archivo para sustituirlo.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </fieldset>
           <div className="pt-2">
             <Button type="submit" isLoading={isSaving} className="w-full">
               {editSupplier ? 'Guardar Cambios' : 'Registrar Proveedor'}

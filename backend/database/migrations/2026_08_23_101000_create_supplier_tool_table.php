@@ -9,7 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE tools ENGINE=InnoDB');
+        // Reconciliación exclusiva de MySQL, ver 2026_08_23_100200_ensure_supplier_supply_foreign_keys.php.
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE tools ENGINE=InnoDB');
+        }
 
         Schema::create('supplier_tool', function (Blueprint $table) {
             $table->engine = 'InnoDB';

@@ -9,7 +9,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Bases antiguas podían crear la tabla con MyISAM, que ignora claves foráneas.
+        // Reconciliación exclusiva de MySQL (bases antiguas podían crear la tabla con
+        // MyISAM, que ignora claves foráneas); la tabla ya nace con sus FK en
+        // 2026_08_23_100000_create_supplier_supply_table.php para cualquier driver,
+        // así que en sqlite (tests) no hay nada que reconciliar aquí.
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement('ALTER TABLE supplies ENGINE=InnoDB');
         DB::statement('ALTER TABLE supplier_supply ENGINE=InnoDB');
 

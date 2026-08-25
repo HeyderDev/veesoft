@@ -2,12 +2,15 @@
 
 namespace App\Modules\Logistics\Services;
 
+use App\Modules\Logistics\Models\PurchaseOrder;
 use App\Modules\Logistics\Models\Supplier;
 use App\Modules\Logistics\Models\SupplierEvaluation;
 use App\Modules\Logistics\Repositories\Contracts\SupplierRepositoryInterface;
 use App\Modules\Logistics\Traits\ValidatesEcuadorianTaxId;
 use App\Modules\Shared\Services\BaseService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Arr;
 use Carbon\Carbon;
 
 /**
@@ -57,10 +60,20 @@ class SupplierService extends BaseService
     {
         $this->assertValidTaxId($data['tax_id']);
 
+        $certification = Arr::pull($data, 'certification', []);
+        if (isset($certification['expires_at'])) {
+            $data['certificate_expires_at'] = $certification['expires_at'];
+        }
+
         $data['status'] = $data['status'] ?? Supplier::STATUS_ACTIVE;
         $data['score'] = self::MAXIMUM_SCORE;
 
-        $supplier = $this->supplierRepository->create($data);
+        $supplier = DB::transaction(function () use ($data, $certification) {
+            $supplier = $this->supplierRepository->create($data);
+            $this->saveCertification($supplier, $certification, (bool) ($data['organic_certified'] ?? false));
+
+            return $supplier;
+        });
 
         return $this->supplierRepository->findWithRelations($supplier->id);
     }
@@ -71,9 +84,44 @@ class SupplierService extends BaseService
             $this->assertValidTaxId($data['tax_id'], excludingId: $id);
         }
 
-        parent::update($id, $data);
+        $certification = Arr::pull($data, 'certification', []);
+        if (isset($certification['expires_at'])) {
+            $data['certificate_expires_at'] = $certification['expires_at'];
+        }
+
+        DB::transaction(function () use ($id, $data, $certification) {
+            parent::update($id, $data);
+            if ($certification || array_key_exists('organic_certified', $data)) {
+                $supplier = $this->supplierRepository->find($id);
+                $this->saveCertification($supplier, $certification, (bool) $supplier->organic_certified);
+            }
+        });
 
         return $this->supplierRepository->findWithRelations($id);
+    }
+
+    private function saveCertification(Supplier $supplier, array $data, bool $hasCertificate): void
+    {
+        $certification = $supplier->certification()->firstOrNew();
+        $filePath = $certification->file_path;
+
+        if (isset($data['file'])) {
+            if ($filePath) {
+                Storage::disk('public')->delete($filePath);
+            }
+            $filePath = $data['file']->store('supplier-certificates', 'public');
+        }
+
+        $certification->fill([
+            'has_certificate' => $hasCertificate,
+            'certificate_number' => $data['certificate_number'] ?? $certification->certificate_number,
+            'certifying_entity' => $data['certifying_entity'] ?? $certification->certifying_entity,
+            'issued_at' => $data['issued_at'] ?? $certification->issued_at,
+            'expires_at' => $data['expires_at'] ?? $supplier->certificate_expires_at,
+            'file_path' => $filePath,
+            'registered_at' => $certification->registered_at ?? now(),
+        ]);
+        $supplier->certification()->save($certification);
     }
 
     private function assertValidTaxId(string $taxId, ?int $excludingId = null): void
@@ -206,5 +254,38 @@ class SupplierService extends BaseService
                 ];
             })
             ->values();
+    }
+
+    /**
+     * Reporte de proveedores: cuántos hay registrados y cuánto se le ha comprado a cada
+     * uno históricamente (no acotado a ningún período, a diferencia de
+     * `PurchaseOrderService::spendReport()`, que sí se acota a un rango de fechas).
+     * Solo cuenta como "gasto real" las órdenes recibidas con calidad aprobada o condicional.
+     */
+    public function spendSummary(): array
+    {
+        $spendFilter = fn ($query) => $query
+            ->where('status', PurchaseOrder::STATUS_RECEIVED)
+            ->whereHas('receipt', fn ($receipt) => $receipt->whereIn('quality_status', [
+                \App\Modules\Logistics\Models\PurchaseReceipt::QUALITY_APPROVED,
+                \App\Modules\Logistics\Models\PurchaseReceipt::QUALITY_CONDITIONAL,
+            ]));
+
+        $suppliers = Supplier::query()
+            ->withSum(['purchaseOrders as total_spent' => $spendFilter], 'total')
+            ->withCount(['purchaseOrders as orders_count' => $spendFilter])
+            ->orderByDesc('total_spent')
+            ->get();
+
+        return [
+            'total_suppliers' => $suppliers->count(),
+            'suppliers' => $suppliers->map(fn (Supplier $supplier) => [
+                'supplier_id' => $supplier->id,
+                'supplier_name' => $supplier->name,
+                'status' => $supplier->status,
+                'orders_count' => (int) $supplier->orders_count,
+                'total_spent' => number_format((float) ($supplier->total_spent ?? 0), 2, '.', ''),
+            ])->values()->all(),
+        ];
     }
 }
