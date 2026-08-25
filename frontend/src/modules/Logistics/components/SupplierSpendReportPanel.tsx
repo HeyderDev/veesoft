@@ -34,9 +34,9 @@ export const SupplierSpendReportPanel: React.FC = () => {
             <p className="text-xl font-bold text-slate-800">{summary.total_suppliers}</p>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-slate-100">
+          <div className="max-h-[560px] overflow-x-auto overflow-y-auto rounded-lg border border-slate-100">
             <table className="min-w-full divide-y divide-slate-100">
-              <thead className="bg-slate-50">
+              <thead className="sticky top-0 z-10 bg-slate-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Proveedor</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useToast } from '../../../components/ui/Toast';
 import { inventoryService } from '../services/inventoryService';
 import type { Movement } from '../types';

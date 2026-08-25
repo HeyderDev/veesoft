@@ -78,7 +78,7 @@ export const PlanningOverviewPage: React.FC = () => {
       )}
 
       {/* Recursos en riesgo */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[620px]">
         <div className="px-5 py-4 border-b border-slate-100">
           <h3 className="text-sm font-bold text-slate-800">Recursos en Riesgo</h3>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -93,7 +93,7 @@ export const PlanningOverviewPage: React.FC = () => {
           <p className="p-5 text-sm text-slate-500">Los recursos disponibles cubren todas las actividades pendientes mostradas.</p>
         ) : (
           <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Recurso</th>
@@ -122,7 +122,7 @@ export const PlanningOverviewPage: React.FC = () => {
       </div>
 
       {/* Actividades pendientes */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto overflow-y-auto max-h-[620px]">
         <div className="px-5 py-4 border-b border-slate-100">
           <h3 className="text-sm font-bold text-slate-800">Actividades Pendientes de Planificación</h3>
           <p className="text-xs text-slate-500 mt-0.5">Solo se muestran las actividades de hoy y de fechas futuras. Las actividades de hoy aparecen primero como prioritarias.</p>
@@ -135,7 +135,7 @@ export const PlanningOverviewPage: React.FC = () => {
           <p className="p-5 text-sm text-slate-500">No hay actividades pendientes para hoy ni para fechas futuras.</p>
         ) : (
           <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Actividad</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Alcance</th>

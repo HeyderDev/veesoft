@@ -22,6 +22,7 @@ class PurchaseReceiptInventoryService
         foreach ($items as $item) {
             if ($item->supply_id) {
                 $this->receiveSupply($order, $item, $receivedBy);
+
                 continue;
             }
 
@@ -45,11 +46,13 @@ class PurchaseReceiptInventoryService
 
         Movement::create([
             'supply_id' => $supply->id,
+            'purchase_order_item_id' => $item->id,
             'user_id' => $receivedBy,
             'type' => 'ENTRADA',
             'quantity' => $quantity,
             'previous_stock' => $previousStock,
             'new_stock' => $newStock,
+            'requires_purchase_registration' => false,
             'reason' => "Recepción de orden {$order->order_number}",
             'details' => [
                 'usuario' => 'Logística',
