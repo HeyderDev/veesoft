@@ -10,7 +10,9 @@ export default function InventoryDashboardPage() {
     MAINTENANCE: 'Mantenimiento',
     ADJUSTMENT: 'Ajuste',
     CONSUMPTION: 'Consumo',
-    decommissioned: 'Dado de baja'
+    decommissioned: 'Dado de baja',
+    CREATED: 'Registrado',
+    DELETED: 'Eliminado'
   };
 
   const typeColors: Record<string, string> = {
@@ -21,6 +23,8 @@ export default function InventoryDashboardPage() {
     ADJUSTMENT: 'bg-slate-50 text-slate-600 border-slate-200',
     CONSUMPTION: 'bg-blue-50 text-blue-600 border-blue-200',
     decommissioned: 'bg-slate-50 text-slate-600 border-slate-200',
+    CREATED: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+    DELETED: 'bg-red-50 text-red-600 border-red-200',
   };
 
   const setActiveTab = (tab: string) => {

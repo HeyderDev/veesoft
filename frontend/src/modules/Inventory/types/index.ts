@@ -26,6 +26,7 @@ export interface Supply {
   sku: string;
   name: string;
   description?: string | null;
+  category?: string | null;
   unit: string;
   current_stock: number;
   total_stock: number;
@@ -40,6 +41,8 @@ export interface Student {
   career?: string | null;
   semester?: string | null;
   vivero_id: number;
+  /** Total histórico de préstamos (withCount('movements as total_borrows') en StudentController). */
+  total_borrows?: number;
 }
 
 export interface Movement {

@@ -16,6 +16,7 @@ class CreatePurchaseOrderRequest extends FormRequest
         return [
             'supplier_id' => 'required|integer|exists:suppliers,id',
             'estimated_delivery_date' => 'nullable|date',
+            'reconciles_existing_inventory' => 'sometimes|boolean',
             'items' => 'required|array|min:1',
             'items.*.item_type' => 'required|in:supply,tool',
             'items.*.item_id' => 'required|integer|distinct',

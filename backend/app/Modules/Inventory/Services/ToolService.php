@@ -53,7 +53,7 @@ class ToolService extends BaseService
                     'tool_id' => $tool->id,
                     'tool_unit_id' => $unit->id,
                     'user_id' => auth()->id(),
-                    'type' => Movement::TYPE_ADJUSTMENT,
+                    'type' => Movement::TYPE_CREATED,
                     'quantity' => 1,
                     'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => 'Registro inicial de unidad.'],
                 ]);
@@ -77,8 +77,21 @@ class ToolService extends BaseService
     {
         return DB::transaction(function () use ($id) {
             $tool = $this->toolRepository->find($id);
-            // Optional: delete or mark units as out_of_service here.
-            // For now just logically delete the tool.
+            
+            // Eliminar y registrar movimiento individual para cada unidad
+            foreach ($tool->units as $unit) {
+                $this->movementRepository->create([
+                    'tool_id' => $tool->id,
+                    'tool_unit_id' => $unit->id,
+                    'user_id' => auth()->id(),
+                    'type' => Movement::TYPE_DELETED,
+                    'quantity' => 1,
+                    'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => 'Eliminación de unidad por baja del conjunto.'],
+                ]);
+                
+                $this->toolUnitRepository->delete($unit->id);
+            }
+
             return $this->toolRepository->delete($id);
         });
     }

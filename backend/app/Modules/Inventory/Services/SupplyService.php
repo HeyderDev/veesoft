@@ -34,10 +34,13 @@ class SupplyService extends BaseService
             $this->movementRepository->create([
                 'supply_id' => $supply->id,
                 'user_id' => auth()->id(),
-                'type' => Movement::TYPE_ADJUSTMENT,
+                'type' => Movement::TYPE_CREATED,
                 'quantity' => $supply->current_stock,
                 'previous_stock' => 0,
                 'new_stock' => $supply->current_stock,
+                // Un insumo nuevo ingresa físicamente sin orden y debe aparecer en
+                // Logística por su cantidad inicial.
+                'requires_purchase_registration' => true,
                 'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => 'Registro inicial de insumo.'],
             ]);
 
@@ -61,6 +64,7 @@ class SupplyService extends BaseService
                     'quantity' => abs($data['current_stock'] - $previousStock),
                     'previous_stock' => $previousStock,
                     'new_stock' => $data['current_stock'],
+                    'requires_purchase_registration' => $data['current_stock'] > $previousStock,
                     'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => 'Actualización manual de stock en edición de insumo.'],
                 ]);
             }
@@ -77,7 +81,7 @@ class SupplyService extends BaseService
             $this->movementRepository->create([
                 'supply_id' => $supply->id,
                 'user_id' => auth()->id(),
-                'type' => Movement::TYPE_ADJUSTMENT,
+                'type' => Movement::TYPE_DELETED,
                 'quantity' => $supply->current_stock,
                 'previous_stock' => $supply->current_stock,
                 'new_stock' => 0,
@@ -126,6 +130,7 @@ class SupplyService extends BaseService
                 'quantity' => $quantity,
                 'previous_stock' => $previousStock,
                 'new_stock' => $newStock,
+                'requires_purchase_registration' => $newStock > $previousStock,
                 'reason' => $reason,
                 'observations' => $observation,
                 'scanned_code' => $scannedCode,

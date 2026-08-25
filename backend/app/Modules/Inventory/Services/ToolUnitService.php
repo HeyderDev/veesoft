@@ -37,7 +37,7 @@ class ToolUnitService extends BaseService
                 'tool_id' => $toolId,
                 'tool_unit_id' => $unit->id,
                 'user_id' => auth()->id(),
-                'type' => Movement::TYPE_ADJUSTMENT,
+                'type' => Movement::TYPE_CREATED,
                 'quantity' => 1,
                 'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => 'Registro de unidad adicional.'],
             ]);
@@ -80,7 +80,7 @@ class ToolUnitService extends BaseService
                 'maintenance' => Movement::TYPE_MAINTENANCE,
                 'borrowed' => Movement::TYPE_BORROWED,
                 'available' => Movement::TYPE_RETURN,
-                'out_of_service' => 'decommissioned',
+                'out_of_service' => Movement::TYPE_DELETED,
                 default => Movement::TYPE_ADJUSTMENT,
             };
 
@@ -118,7 +118,7 @@ class ToolUnitService extends BaseService
                 'tool_id' => $unit->tool_id,
                 'tool_unit_id' => $unit->id,
                 'user_id' => auth()->id(),
-                'type' => 'decommissioned',
+                'type' => Movement::TYPE_DELETED,
                 'quantity' => 1,
                 'details' => ['usuario' => auth()->user()?->name ?? 'Sistema', 'detalles' => "Unidad eliminada del inventario."],
                 'observations' => $motivo,

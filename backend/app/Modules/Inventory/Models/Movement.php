@@ -21,11 +21,17 @@ class Movement extends Model
 
     public const TYPE_BORROWED = 'BORROWED';
 
+    public const TYPE_CREATED = 'CREATED';
+
+    public const TYPE_DELETED = 'DELETED';
+
     protected $fillable = [
         'vivero_id',
         'tool_id',
         'tool_unit_id',
         'supply_id',
+        'purchase_order_item_id',
+        'requires_purchase_registration',
         'user_id',
         'operational_task_id',
         'type',
@@ -52,12 +58,17 @@ class Movement extends Model
 
     public function tool(): BelongsTo
     {
-        return $this->belongsTo(Tool::class);
+        return $this->belongsTo(Tool::class)->withTrashed();
     }
 
     public function supply(): BelongsTo
     {
-        return $this->belongsTo(Supply::class);
+        return $this->belongsTo(Supply::class)->withTrashed();
+    }
+
+    public function purchaseOrderItem(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Logistics\Models\PurchaseOrderItem::class);
     }
 
     public function user(): BelongsTo
@@ -67,12 +78,12 @@ class Movement extends Model
 
     public function toolUnit(): BelongsTo
     {
-        return $this->belongsTo(ToolUnit::class);
+        return $this->belongsTo(ToolUnit::class)->withTrashed();
     }
 
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class)->withTrashed();
     }
 
     public function operationalTask(): BelongsTo
