@@ -14,13 +14,19 @@ export const SlideOver: React.FC<SlideOverProps> = ({ isOpen, onClose, title, su
   const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
+    let transitionTimer: ReturnType<typeof setTimeout>;
+
     if (isOpen) {
       setShow(true);
-      setTimeout(() => setAnimate(true), 10);
+      transitionTimer = setTimeout(() => setAnimate(true), 10);
     } else {
       setAnimate(false);
-      setTimeout(() => setShow(false), 300); // transition duration
+      transitionTimer = setTimeout(() => setShow(false), 300); // transition duration
     }
+
+    // Si se vuelve a abrir antes de terminar la animación, evita que el temporizador
+    // de cierre anterior desmonte la nueva ventana.
+    return () => clearTimeout(transitionTimer);
   }, [isOpen]);
 
   if (!show) return null;

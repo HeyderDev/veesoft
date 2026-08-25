@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../../components/ui/Toast';
+import { useAuth } from '../../../shared/context/AuthContext';
 import { logisticsService } from '../services/logisticsService';
 import { planningService } from '../../Planning/services/planningService';
 import type { MetaProduccion } from '../../Planning/types';
@@ -11,14 +12,24 @@ import type { PurchaseSpendReport } from '../types';
  * reutiliza la que ya existe en Planning (ver docs/03_MODULE_CONTRACTS/Logistics.md §7).
  * El rango de fechas de la meta se resuelve aquí en el frontend (created_at →
  * finished_at o "hoy" si sigue abierta) y se le pasa al backend, que no conoce a Planning.
+ *
+ * Tanto `production-goals` (Planning) como `purchase-orders/spend-report` (Logistics)
+ * son `role:Admin` — un Operario recibiría 403 en ambos, así que este hook ni siquiera
+ * pide los datos si no es Admin (el componente igual no los renderiza).
  */
 export function usePurchaseSpendReportViewModel() {
+  const { isAdmin } = useAuth();
   const [currentGoal, setCurrentGoal] = useState<MetaProduccion | null>(null);
   const [report, setReport] = useState<PurchaseSpendReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { error } = useToast();
 
   useEffect(() => {
+    if (!isAdmin) {
+      setIsLoading(false);
+      return;
+    }
+
     (async () => {
       setIsLoading(true);
       try {
@@ -43,7 +54,7 @@ export function usePurchaseSpendReportViewModel() {
         setIsLoading(false);
       }
     })();
-  }, []);
+  }, [isAdmin]);
 
   return { currentGoal, report, isLoading };
 }

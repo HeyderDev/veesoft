@@ -22,6 +22,16 @@ export interface SupplierEvaluationInput {
   comment?: string;
 }
 
+export interface SupplierCertification {
+  has_certificate: boolean;
+  certificate_number?: string | null;
+  certifying_entity?: string | null;
+  issued_at?: string | null;
+  expires_at?: string | null;
+  file_path?: string | null;
+  file?: File | null;
+}
+
 /**
  * Nota de tipado: igual que en Planning, los campos `decimal:N` de Laravel llegan
  * como STRING en JSON (score, total, quantity, unit_price...), no como number.
@@ -38,6 +48,7 @@ export interface Supplier {
   score: string;
   status: SupplierStatus;
   evaluations?: SupplierEvaluation[];
+  certification?: SupplierCertification | null;
 }
 
 export interface SupplierCatalogItem {
@@ -63,6 +74,7 @@ export interface PurchaseOrderItem {
   id: number;
   purchase_order_id: number;
   supply_id: number | null;
+  tool_id: number | null;
   item_sku: string | null;
   item_name: string;
   unit: string;
@@ -129,37 +141,6 @@ export interface PendingDeliveryItem {
   urgency: DeliveryUrgency;
 }
 
-export type PurchaseRequestStatus = 'pending' | 'approved' | 'rejected';
-
-export interface PurchaseRequestItem {
-  id: number;
-  purchase_request_id: number;
-  supply_id: number | null;
-  tool_id: number | null;
-  item_sku: string | null;
-  item_name: string;
-  unit: string;
-  quantity: string;
-}
-
-export interface PurchaseRequestItemInput {
-  item_type: 'supply' | 'tool';
-  item_id: number | '';
-  quantity: number;
-}
-
-export interface PurchaseRequest {
-  id: number;
-  requested_by: number | null;
-  reason: string;
-  status: PurchaseRequestStatus;
-  reviewed_by: number | null;
-  reviewed_at: string | null;
-  purchase_order_id: number | null;
-  items?: PurchaseRequestItem[];
-  purchase_order?: PurchaseOrder;
-}
-
 /**
  * Reporte de gasto en compras (§ PurchaseSpendReportPanel): anual, o para el rango de
  * fechas de una Meta de Producción de Planning (`MetaProduccion`, ver ../../Planning/types)
@@ -180,4 +161,22 @@ export interface PurchaseSpendReport {
   total_spent: string;
   orders_count: number;
   suppliers: PurchaseSpendSupplier[];
+}
+
+/**
+ * Reporte de Proveedores (§ SupplierSpendReportPanel): cuántos proveedores hay
+ * registrados y cuánto se le ha comprado a cada uno históricamente — a diferencia de
+ * `PurchaseSpendReport`, no está acotado a ningún período.
+ */
+export interface SupplierSpend {
+  supplier_id: number;
+  supplier_name: string;
+  status: SupplierStatus;
+  orders_count: number;
+  total_spent: string;
+}
+
+export interface SupplierSpendSummary {
+  total_suppliers: number;
+  suppliers: SupplierSpend[];
 }

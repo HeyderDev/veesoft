@@ -46,7 +46,10 @@ export function useSuppliersViewModel() {
     if (editSupplier) {
       setForm(editSupplier);
     } else {
-      setForm({ name: '', tax_id: '', email: '', phone: '', organic_certified: false });
+      setForm({
+        name: '', tax_id: '', email: '', phone: '', organic_certified: false,
+        certification: { has_certificate: false, certificate_number: '', certifying_entity: '', issued_at: '', expires_at: '', file_path: null },
+      });
     }
   }, [editSupplier, isFormOpen]);
 
