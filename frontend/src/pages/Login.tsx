@@ -16,8 +16,20 @@ export const LoginPage = () => {
     setIsSubmitting(true);
     try {
       await login(email, password);
-    } catch (err) {
-      setError('Correo o contraseña incorrectos.');
+    } catch (err: any) {
+      // Antes esto siempre decía "Correo o contraseña incorrectos" sin
+      // importar la causa real — un 419 (CSRF) o un error de red se veían
+      // idénticos a una contraseña mal escrita, imposibles de distinguir.
+      const status = err?.response?.status;
+      if (status === 422) {
+        setError('Correo o contraseña incorrectos.');
+      } else if (status === 419) {
+        setError('Sesión de seguridad expirada (CSRF). Vuelve a intentar — si persiste, es un problema de configuración, no de tus credenciales.');
+      } else if (!err?.response) {
+        setError('No se pudo conectar con el servidor. Verifica tu conexión.');
+      } else {
+        setError(`Error inesperado (${status ?? '?'}). Intenta de nuevo.`);
+      }
       console.error(err);
     } finally {
       setIsSubmitting(false);
