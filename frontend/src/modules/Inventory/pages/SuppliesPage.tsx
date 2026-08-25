@@ -16,7 +16,7 @@ const UNIT_OPTIONS: { value: string; label: string }[] = [
 export default function SuppliesPage() {
   const { 
     supplies, isLoading,
-    loadSupplies, handleCreate, handleUpdate, handleDelete, handlePrintLabel
+    loadSupplies, handleCreate, handleUpdate, handleDelete, handleAddStock, handlePrintLabel
   } = useSuppliesViewModel();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,8 +24,10 @@ export default function SuppliesPage() {
   const [newInsumoDesc, setNewInsumoDesc] = useState('');
   const [newInsumoUnit, setNewInsumoUnit] = useState('');
   const [newInsumoInitialStock, setNewInsumoInitialStock] = useState(0);
-  const [newInsumoMinStock, setNewInsumoMinStock] = useState(0);
   const [editItem, setEditItem] = useState<{ id: number, data: any } | null>(null);
+  const [addStockItem, setAddStockItem] = useState<{ id: number, name: string, unit: string } | null>(null);
+  const [addStockQuantity, setAddStockQuantity] = useState(0);
+  const [addStockReason, setAddStockReason] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [generatedLabel, setGeneratedLabel] = useState<{code: string, name: string} | null>(null);
   const [labelFormat, setLabelFormat] = useState<'qr' | 'barcode'>('qr');
@@ -71,7 +73,6 @@ export default function SuppliesPage() {
       name: newInsumoName.trim(),
       description: newInsumoDesc.trim(),
       current_stock: Number(newInsumoInitialStock),
-      min_stock: Number(newInsumoMinStock),
       unit: newInsumoUnit,
     });
 
@@ -80,12 +81,21 @@ export default function SuppliesPage() {
       setNewInsumoDesc('');
       setNewInsumoUnit('');
       setNewInsumoInitialStock(0);
-      setNewInsumoMinStock(0);
       setGeneratedLabel({ code: createdSupply.sku, name: createdSupply.name });
       Swal.fire('¡Éxito!', 'Insumo registrado correctamente.', 'success');
     } else {
       Swal.fire('Error', 'Ocurrió un error al registrar el insumo.', 'error');
     }
+  };
+
+  const handleSubmitAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addStockItem || addStockQuantity <= 0) return;
+    
+    await handleAddStock(addStockItem.id, addStockQuantity, addStockReason);
+    setAddStockItem(null);
+    setAddStockQuantity(0);
+    setAddStockReason('');
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -179,19 +189,20 @@ export default function SuppliesPage() {
                       </h3>
                       <p className="text-slate-500 text-xs mt-1 leading-relaxed">{item.description || 'Sin descripción.'}</p>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center">
+                    <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center gap-1 flex-wrap">
                       <button
                         onClick={() => handleDeleteInsumo(item.id, item.name)}
-                        className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 transition rounded-lg font-semibold"
+                        className="px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 transition rounded-lg font-semibold"
                       >
                         Eliminar
                       </button>
-                      <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock, min_stock: item.min_stock } })} className="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-50 transition rounded-lg font-semibold">Editar</button>
+                      <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock } })} className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 transition rounded-lg font-semibold">Editar</button>
+                      <button onClick={() => setAddStockItem({ id: item.id, name: item.name, unit: item.unit })} className="px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 transition rounded-lg font-semibold">Agregar Stock</button>
                       <button
                         onClick={() => setGeneratedLabel({ code: item.sku, name: item.name })}
                         className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition rounded-lg font-bold"
                       >
-                        QR/Barras
+                        QR
                       </button>
                     </div>
                   </div>
@@ -227,7 +238,8 @@ export default function SuppliesPage() {
                             </span>
                           </td>
                           <td className="px-5 py-3 text-xs flex gap-2">
-                            <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock, min_stock: item.min_stock } })} className="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
+                            <button onClick={() => setAddStockItem({ id: item.id, name: item.name, unit: item.unit })} className="text-indigo-600 hover:text-indigo-900 font-semibold">Stock (+)</button>
+                            <button onClick={() => setEditItem({ id: item.id, data: { name: item.name, description: item.description, current_stock: item.current_stock } })} className="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
                             <button onClick={() => handleDeleteInsumo(item.id, item.name)} className="text-rose-600 hover:text-rose-900 font-semibold">Eliminar</button>
                             <button onClick={() => setGeneratedLabel({ code: item.sku, name: item.name })} className="text-emerald-600 hover:text-emerald-900 font-semibold">QR/Barras</button>
                           </td>
@@ -273,14 +285,6 @@ export default function SuppliesPage() {
                     <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{newInsumoUnit}</div>
                   </div>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500">Stock mínimo (Alerta)</label>
-                  <div className="relative">
-                    <input type="number" min="0" step={newInsumoUnit === 'und' ? '1' : '0.01'} required value={newInsumoMinStock || ''} onChange={(e) => setNewInsumoMinStock(Number(e.target.value))} className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    <div className="absolute right-4 top-2.5 text-slate-400 font-medium">{newInsumoUnit}</div>
-                  </div>
-                </div>
               </>
             )}
 
@@ -298,19 +302,41 @@ export default function SuppliesPage() {
                 <label className="text-[10px] text-slate-500 font-bold">NOMBRE</label>
                 <input type="text" required value={editItem.data.name} onChange={e => setEditItem({...editItem, data: {...editItem.data, name: e.target.value.replace(/[^A-Za-záéíóúÁÉÍÓÚñÑ\s]/g, '')}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 <div>
                   <label className="text-[10px] text-slate-500 font-bold">STOCK ACTUAL</label>
-                  <input type="number" step="0.01" required value={editItem.data.current_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, current_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 font-bold">STOCK MÍNIMO</label>
-                  <input type="number" step="0.01" required value={editItem.data.min_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, min_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs" />
+                  <input type="number" step="0.01" required value={editItem.data.current_stock} onChange={e => setEditItem({...editItem, data: {...editItem.data, current_stock: Number(e.target.value)}})} className="w-full px-4 py-2 border rounded-xl text-xs bg-slate-50 text-slate-500 cursor-not-allowed" readOnly title="Para modificar el stock, utiliza la acción Agregar Stock" />
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
                   <button type="button" onClick={() => setEditItem(null)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Cancelar</button>
                   <button type="submit" className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {addStockItem && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl border border-slate-100">
+            <h3 className="font-bold text-slate-800 text-lg mb-1">Agregar Stock</h3>
+            <p className="text-xs text-slate-500 mb-4">Ingresa la cantidad a añadir para <span className="font-bold text-slate-700">{addStockItem.name}</span>.</p>
+            <form onSubmit={handleSubmitAddStock} className="space-y-4">
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold">CANTIDAD A AGREGAR</label>
+                <div className="relative">
+                  <input type="number" min="0.01" step={addStockItem.unit === 'und' ? '1' : '0.01'} required value={addStockQuantity || ''} onChange={e => setAddStockQuantity(Number(e.target.value))} className="w-full pl-4 pr-12 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <div className="absolute right-4 top-2 text-slate-400 font-medium text-sm">{addStockItem.unit}</div>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold">OBSERVACIÓN / MOTIVO (Opcional)</label>
+                <input type="text" value={addStockReason} onChange={e => setAddStockReason(e.target.value)} placeholder="Ej: Compra directa, donación..." className="w-full px-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div className="flex gap-2 mt-4">
+                  <button type="button" onClick={() => { setAddStockItem(null); setAddStockQuantity(0); setAddStockReason(''); }} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Cancelar</button>
+                  <button type="submit" className="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition">Registrar Ingreso</button>
               </div>
             </form>
           </div>

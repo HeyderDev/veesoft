@@ -17,24 +17,28 @@ const reportTabLabels: Record<ReportTab, string> = {
 export default function ReportsPage() {
   const { tools, loadTools } = useToolsViewModel();
   const { supplies, loadSupplies } = useSuppliesViewModel();
-  const { movements, loadMovements } = useMovementsViewModel();
+  const { movements, pagination, loadMovements } = useMovementsViewModel();
   const { students, loadStudents } = useStudentsViewModel();
 
   const [activeTab, setActiveTab] = useState<ReportTab>('herramientas');
 
   // Herramientas Filters
   const [hSearch, setHSearch] = useState('');
+  const [hasSearchedHerramientas, setHasSearchedHerramientas] = useState(false);
 
   // Insumos Filters
   const [iSearch, setISearch] = useState('');
   const [iAlertOnly, setIAlertOnly] = useState(false);
+  const [hasSearchedInsumos, setHasSearchedInsumos] = useState(false);
 
   const [sSearch, setSSearch] = useState('');
+  const [hasSearchedEstudiantes, setHasSearchedEstudiantes] = useState(false);
   // Movimientos Filters
   const [mTipo, setMTipo] = useState('');
   const [mUsuario, setMUsuario] = useState('');
   const [mStartDate, setMStartDate] = useState('');
   const [mEndDate, setMEndDate] = useState('');
+  const [hasSearchedMovimientos, setHasSearchedMovimientos] = useState(false);
 
   useEffect(() => {
     loadTools();
@@ -47,8 +51,9 @@ export default function ReportsPage() {
     window.print();
   };
 
-  const handleFilterMovimientos = () => {
-    loadMovements(mTipo || undefined, mUsuario || undefined, mStartDate || undefined, mEndDate || undefined);
+  const handleFilterMovimientos = (page: number = 1) => {
+    setHasSearchedMovimientos(true);
+    loadMovements(page, mTipo || undefined, mUsuario || undefined, mStartDate || undefined, mEndDate || undefined);
   };
 
   const clearMovimientosFilters = () => {
@@ -56,7 +61,8 @@ export default function ReportsPage() {
     setMUsuario('');
     setMStartDate('');
     setMEndDate('');
-    loadMovements();
+    setHasSearchedMovimientos(false);
+    loadMovements(1);
   };
 
   // --- Loan calculations per student ---
@@ -142,7 +148,9 @@ export default function ReportsPage() {
     MAINTENANCE: 'Mantenimiento',
     ADJUSTMENT: 'Ajuste',
     CONSUMPTION: 'Consumo',
-    decommissioned: 'Dado de baja'
+    decommissioned: 'Dado de baja',
+    CREATED: 'Registrado',
+    DELETED: 'Eliminado'
   };
 
   return (
@@ -204,48 +212,67 @@ export default function ReportsPage() {
                 <label className="block text-[10px] font-bold text-slate-500 mb-1">BUSCAR ESTUDIANTE</label>
                 <input type="text" placeholder="Nombre, apellido o cédula..." value={sSearch} onChange={e => setSSearch(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" />
               </div>
+              <button onClick={() => setHasSearchedEstudiantes(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition">Filtrar / Buscar</button>
+              <button
+                onClick={() => { setSSearch(''); setHasSearchedEstudiantes(false); }}
+                className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-xs text-slate-700 transition"
+              >
+                Limpiar
+              </button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-100 rounded-2xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="px-5 py-3 font-bold text-slate-500">Estudiante</th>
-                    <th className="px-5 py-3 font-bold text-slate-500">Cédula</th>
-                    <th className="px-5 py-3 font-bold text-slate-500">Carrera</th>
-                    <th className="px-5 py-3 font-bold text-slate-500">Semestre</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Préstamos Activos</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Préstamos Pendientes</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Total Préstamos</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredStudents.map(s => {
-                    const active = (s as any).active_loans || 0;
-                    const pending = (s as any).pending_loans || 0;
-                    const total = s.total_borrows || 0;
-                    return (
-                      <tr key={s.id}>
-                        <td className="px-5 py-3 font-bold text-slate-800">{s.first_name} {s.last_name}</td>
-                        <td className="px-5 py-3 font-mono text-slate-500">{s.cedula}</td>
-                        <td className="px-5 py-3 text-slate-600">{s.career || '-'}</td>
-                        <td className="px-5 py-3 text-slate-600">{s.semester || '-'}</td>
-                        <td className="px-5 py-3 text-center">
-                          {active > 0 ? <span className="inline-block px-2 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded font-bold">{active} Hoy</span> : <span className="text-slate-400">0</span>}
-                        </td>
-                        <td className="px-5 py-3 text-center">
-                          {pending > 0 ? <span className="inline-block px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded font-bold">{pending} {'>'}1d</span> : <span className="text-slate-400">0</span>}
-                        </td>
-                        <td className="px-5 py-3 text-center font-bold text-slate-600">{total}</td>
-                      </tr>
-                    );
-                  })}
-                  {filteredStudents.length === 0 && (
-                    <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">No hay estudiantes que coincidan con la búsqueda.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {!hasSearchedEstudiantes ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl">🔍</span>
+                </div>
+                <h4 className="text-slate-800 font-bold text-lg mb-2">Busca estudiantes</h4>
+                <p className="text-slate-500 text-sm max-w-md">
+                  Ingresa un término de búsqueda y presiona "Filtrar / Buscar" para ver los resultados.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-5 py-3 font-bold text-slate-500">Estudiante</th>
+                      <th className="px-5 py-3 font-bold text-slate-500">Cédula</th>
+                      <th className="px-5 py-3 font-bold text-slate-500">Carrera</th>
+                      <th className="px-5 py-3 font-bold text-slate-500">Semestre</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Préstamos Activos</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Préstamos Pendientes</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Total Préstamos</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredStudents.map(s => {
+                      const active = (s as any).active_loans || 0;
+                      const pending = (s as any).pending_loans || 0;
+                      const total = s.total_borrows || 0;
+                      return (
+                        <tr key={s.id}>
+                          <td className="px-5 py-3 font-bold text-slate-800">{s.first_name} {s.last_name}</td>
+                          <td className="px-5 py-3 font-mono text-slate-500">{s.cedula}</td>
+                          <td className="px-5 py-3 text-slate-600">{s.career || '-'}</td>
+                          <td className="px-5 py-3 text-slate-600">{s.semester || '-'}</td>
+                          <td className="px-5 py-3 text-center">
+                            {active > 0 ? <span className="inline-block px-2 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded font-bold">{active} Hoy</span> : <span className="text-slate-400">0</span>}
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            {pending > 0 ? <span className="inline-block px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded font-bold">{pending} {'>'}1d</span> : <span className="text-slate-400">0</span>}
+                          </td>
+                          <td className="px-5 py-3 text-center font-bold text-slate-600">{total}</td>
+                        </tr>
+                      );
+                    })}
+                    {filteredStudents.length === 0 && (
+                      <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">No hay estudiantes que coincidan con la búsqueda.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 )}
 
@@ -278,41 +305,57 @@ export default function ReportsPage() {
 
             <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-4 rounded-2xl border border-slate-100 print:hidden">
               <div className="flex-1 min-w-[200px]">
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">BUSCAR ENTIDAD</label>
-                <input type="text" placeholder="Nombre o descripción..." value={hSearch} onChange={e => setHSearch(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" />
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">BUSCAR HERRAMIENTA</label>
+                <input type="text" placeholder="Nombre de herramienta..." value={hSearch} onChange={e => setHSearch(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" />
               </div>
+              <button onClick={() => setHasSearchedHerramientas(true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition">Filtrar / Buscar</button>
+              <button
+                onClick={() => { setHSearch(''); setHasSearchedHerramientas(false); }}
+                className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-xs text-slate-700 transition"
+              >
+                Limpiar
+              </button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-100 rounded-2xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="px-5 py-3 font-bold text-slate-500">Entidad</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Unidades Totales</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Disponibles</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">En Préstamo</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Baja</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredTools.map(t => (
-                    <tr key={t.id}>
-                      <td className="px-5 py-2.5 font-bold text-slate-800">
-                        {t.name}
-                        <p className="text-[10px] font-normal text-slate-500 truncate max-w-xs">{t.description}</p>
-                      </td>
-                      <td className="px-5 py-2.5 text-center font-bold text-slate-600">{t.units_count || 0}</td>
-                      <td className="px-5 py-2.5 text-center font-bold text-emerald-600">{t.available_units_count || 0}</td>
-                      <td className="px-5 py-2.5 text-center font-bold text-amber-600">{t.borrowed_units_count || 0}</td>
-                      <td className="px-5 py-2.5 text-center font-bold text-slate-400">{t.out_of_service_units_count || 0}</td>
+            {!hasSearchedHerramientas ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl">🔍</span>
+                </div>
+                <h4 className="text-slate-800 font-bold text-lg mb-2">Busca herramientas</h4>
+                <p className="text-slate-500 text-sm max-w-md">
+                  Ingresa un término de búsqueda y presiona "Filtrar / Buscar" para ver los resultados.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-5 py-3 font-bold text-slate-500">Conjunto / Herramienta</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Unidades Totales</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Disponibles</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Prestadas</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Mantenimiento</th>
                     </tr>
-                  ))}
-                  {filteredTools.length === 0 && (
-                    <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400">No hay herramientas que coincidan con la búsqueda.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredTools.map(t => (
+                      <tr key={t.id}>
+                        <td className="px-5 py-3 font-bold text-slate-800">{t.name}</td>
+                        <td className="px-5 py-3 text-center text-slate-600 font-bold">{t.units_count || 0}</td>
+                        <td className="px-5 py-3 text-center"><span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">{t.available_units_count || 0}</span></td>
+                        <td className="px-5 py-3 text-center"><span className="text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded">{t.borrowed_units_count || 0}</span></td>
+                        <td className="px-5 py-3 text-center"><span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded">{t.maintenance_units_count || 0}</span></td>
+                      </tr>
+                    ))}
+                    {filteredTools.length === 0 && (
+                      <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400">No hay herramientas que coincidan con la búsqueda.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -333,48 +376,71 @@ export default function ReportsPage() {
             <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-4 rounded-2xl border border-slate-100 print:hidden">
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-[10px] font-bold text-slate-500 mb-1">BUSCAR INSUMO</label>
-                <input type="text" placeholder="Nombre o código..." value={iSearch} onChange={e => setISearch(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" />
+                <input type="text" placeholder="Nombre o SKU..." value={iSearch} onChange={e => setISearch(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" />
               </div>
-              <div className="flex items-center gap-2 pb-2">
-                <input type="checkbox" id="chkAlert" checked={iAlertOnly} onChange={e => setIAlertOnly(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded" />
-                <label htmlFor="chkAlert" className="text-xs font-bold text-slate-600 cursor-pointer">Solo mostrar insumos en alerta crítica</label>
+              <div className="flex items-center gap-2 mb-2 sm:mb-0">
+                <input type="checkbox" id="criticalOnly" checked={iAlertOnly} onChange={e => setIAlertOnly(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                <label htmlFor="criticalOnly" className="text-xs font-bold text-slate-600">Solo Stock Crítico</label>
               </div>
+              <button onClick={() => setHasSearchedInsumos(true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition">Filtrar / Buscar</button>
+              <button
+                onClick={() => { setISearch(''); setIAlertOnly(false); setHasSearchedInsumos(false); }}
+                className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-xs text-slate-700 transition"
+              >
+                Limpiar
+              </button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-100 rounded-2xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="px-5 py-3 font-bold text-slate-500">Insumo</th>
-                    <th className="px-5 py-3 font-bold text-slate-500">Código (SKU)</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Stock Actual</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Stock Mínimo</th>
-                    <th className="px-5 py-3 font-bold text-slate-500 text-center">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredInsumos.map(i => {
-                    const isCritical = i.current_stock <= (i.min_stock ?? 0);
-                    return (
-                      <tr key={i.id} className={isCritical ? 'bg-rose-50/30' : ''}>
-                        <td className="px-5 py-2.5 font-bold text-slate-800">{i.name}</td>
-                        <td className="px-5 py-2.5 font-mono text-slate-500">{i.sku}</td>
-                        <td className={`px-5 py-2.5 text-center font-bold ${isCritical ? 'text-rose-700' : 'text-slate-700'}`}>{i.current_stock}</td>
-                        <td className="px-5 py-2.5 text-center text-slate-500">{i.min_stock}</td>
-                        <td className="px-5 py-2.5 text-center">
-                          {isCritical
-                            ? <span className="text-[10px] font-bold uppercase tracking-wide text-rose-700 px-2 py-1 border border-rose-200 bg-rose-50 rounded">Reabastecer</span>
-                            : <span className="text-[10px] font-bold uppercase tracking-wide text-slate-600 px-2 py-1 border border-slate-200 bg-slate-50 rounded">Normal</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filteredInsumos.length === 0 && (
-                    <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400">No hay insumos que coincidan con la búsqueda.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {!hasSearchedInsumos ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl">🔍</span>
+                </div>
+                <h4 className="text-slate-800 font-bold text-lg mb-2">Busca insumos</h4>
+                <p className="text-slate-500 text-sm max-w-md">
+                  Ingresa un término de búsqueda o selecciona "Solo Stock Crítico" y presiona "Filtrar / Buscar".
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-5 py-3 font-bold text-slate-500">Insumo</th>
+                      <th className="px-5 py-3 font-bold text-slate-500">SKU</th>
+                      <th className="px-5 py-3 font-bold text-slate-500">Categoría</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Total Entradas</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Stock Actual</th>
+                      <th className="px-5 py-3 font-bold text-slate-500 text-center">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredInsumos.map(i => {
+                      const isCritical = i.current_stock <= (i.min_stock ?? 0);
+                      return (
+                        <tr key={i.id}>
+                          <td className="px-5 py-3 font-bold text-slate-800">{i.name}</td>
+                          <td className="px-5 py-3 font-mono text-slate-500">{i.sku}</td>
+                          <td className="px-5 py-3 text-slate-600">{i.category || '-'}</td>
+                          <td className="px-5 py-3 text-center text-slate-600">{i.total_stock} {i.unit}</td>
+                          <td className="px-5 py-3 text-center">
+                            <span className={`font-bold px-2 py-1 rounded ${isCritical ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                              {i.current_stock} {i.unit}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            {isCritical ? <span className="text-[10px] uppercase font-bold text-red-500">Crítico</span> : <span className="text-[10px] uppercase font-bold text-emerald-500">Óptimo</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredInsumos.length === 0 && (
+                      <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-400">No hay insumos que coincidan con la búsqueda.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -382,15 +448,26 @@ export default function ReportsPage() {
         {activeTab === 'movimientos' && (
           <div className="space-y-6">
             <div className="flex flex-wrap gap-3 items-end bg-slate-50 p-4 rounded-2xl border border-slate-100 print:hidden">
-              <div className="flex-1 min-w-[150px]"><label className="block text-[10px] font-bold text-slate-500 mb-1">TIPO EVENTO</label><select value={mTipo} onChange={e => setMTipo(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs"><option value="">Todos</option><option value="BORROWED">Préstamo</option><option value="RETURN">Devolución</option><option value="MAINTENANCE">Mantenimiento</option><option value="ADJUSTMENT">Ajuste</option><option value="CONSUMPTION">Consumo</option></select></div>
+              <div className="flex-1 min-w-[150px]"><label className="block text-[10px] font-bold text-slate-500 mb-1">TIPO EVENTO</label><select value={mTipo} onChange={e => setMTipo(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs"><option value="">Todos</option><option value="BORROWED">Préstamo</option><option value="RETURN">Devolución</option><option value="MAINTENANCE">Mantenimiento</option><option value="ADJUSTMENT">Ajuste</option><option value="CREATED">Registrado</option><option value="DELETED">Eliminado</option><option value="CONSUMPTION">Consumo</option></select></div>
               <div className="flex-1 min-w-[150px]"><label className="block text-[10px] font-bold text-slate-500 mb-1">OPERARIO / USUARIO</label><input type="text" value={mUsuario} onChange={e => setMUsuario(e.target.value)} placeholder="Nombre o email" className="w-full px-3 py-2 border rounded-xl text-xs" /></div>
               <div className="w-full sm:w-auto"><label className="block text-[10px] font-bold text-slate-500 mb-1">DESDE</label><input type="date" value={mStartDate} onChange={e => setMStartDate(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" /></div>
               <div className="w-full sm:w-auto"><label className="block text-[10px] font-bold text-slate-500 mb-1">HASTA</label><input type="date" value={mEndDate} onChange={e => setMEndDate(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" /></div>
-              <button onClick={handleFilterMovimientos} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 transition shadow-sm">Filtrar</button>
+              <button onClick={() => handleFilterMovimientos(1)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 transition shadow-sm">Filtrar</button>
               <button onClick={clearMovimientosFilters} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-300 transition">Limpiar</button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+            {!hasSearchedMovimientos ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-slate-100 rounded-2xl">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl">🔍</span>
+                </div>
+                <h4 className="text-slate-800 font-bold text-lg mb-2">Busca en el historial</h4>
+                <p className="text-slate-500 text-sm max-w-md">
+                  Ingresa un término o utiliza los filtros para cargar el historial de movimientos.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-100 rounded-2xl">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>
@@ -438,6 +515,31 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
+            )}
+
+            {movements.length > 0 && (
+              <div className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50 rounded-xl border border-slate-100 print:hidden">
+                <span className="text-xs text-slate-500 font-medium">
+                  Mostrando página {pagination.current_page} de {pagination.last_page} - Total: {pagination.total} registros
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={pagination.current_page <= 1}
+                    onClick={() => handleFilterMovimientos(pagination.current_page - 1)}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    disabled={pagination.current_page >= pagination.last_page}
+                    onClick={() => handleFilterMovimientos(pagination.current_page + 1)}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

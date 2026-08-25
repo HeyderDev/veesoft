@@ -21,6 +21,10 @@ class Movement extends Model
 
     public const TYPE_BORROWED = 'BORROWED';
 
+    public const TYPE_CREATED = 'CREATED';
+
+    public const TYPE_DELETED = 'DELETED';
+
     protected $fillable = [
         'vivero_id',
         'tool_id',
@@ -52,12 +56,12 @@ class Movement extends Model
 
     public function tool(): BelongsTo
     {
-        return $this->belongsTo(Tool::class);
+        return $this->belongsTo(Tool::class)->withTrashed();
     }
 
     public function supply(): BelongsTo
     {
-        return $this->belongsTo(Supply::class);
+        return $this->belongsTo(Supply::class)->withTrashed();
     }
 
     public function user(): BelongsTo
@@ -67,12 +71,12 @@ class Movement extends Model
 
     public function toolUnit(): BelongsTo
     {
-        return $this->belongsTo(ToolUnit::class);
+        return $this->belongsTo(ToolUnit::class)->withTrashed();
     }
 
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class)->withTrashed();
     }
 
     public function operationalTask(): BelongsTo

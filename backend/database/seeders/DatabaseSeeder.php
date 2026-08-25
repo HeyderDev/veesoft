@@ -41,7 +41,6 @@ class DatabaseSeeder extends Seeder
                 'status' => 'active',
             ]
         );
-
         // Plantillas de actividad obligatorias (Siembra/Injerto/Despacho) para
         // cada vivero ya existente — ver SystemActivityTypesSeeder.
         $this->call(SystemActivityTypesSeeder::class);

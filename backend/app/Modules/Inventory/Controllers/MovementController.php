@@ -18,8 +18,9 @@ class MovementController extends BaseApiController
         $search = $request->query('q');
         $startDate = $request->query('startDate');
         $endDate = $request->query('endDate');
+        $perPage = $request->query('per_page', 20);
 
-        $movements = $this->movementService->list(15, $type, $search, $startDate, $endDate);
+        $movements = $this->movementService->list($perPage, $type, $search, $startDate, $endDate);
 
         return $this->paginatedResponse($movements, 'Movimientos obtenidos');
     }
